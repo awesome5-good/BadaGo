@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="light only">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>바다고 (BadaGo)</title>
+    <style>
+        :root {
+            color-scheme: light only;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --primary: #1E7EC8;
+            --accent-yellow: #FFF35A;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; width: 100%; }
+        body { background-color: #0f172a; font-family: var(--font-sans); display: flex; justify-content: center; align-items: center; color: #fff; overflow: hidden; }
+
+        .phone-frame {
+            width: 100%; height: 100%;
+            background: linear-gradient(170deg, #A8E6FF 0%, #5BC8F5 35%, #3AA0E8 70%, #1E7EC8 100%);
+            display: flex; flex-direction: column; position: relative; overflow: hidden;
+        }
+        @media (min-width: 480px) and (min-height: 600px) {
+            .phone-frame { max-width: 420px; height: 100vh; max-height: 880px; border-radius: 36px; box-shadow: 0 20px 50px rgba(0,40,80,0.4); border: 8px solid rgba(255,255,255,0.15); }
+        }
+        body.android-app .phone-frame { background: transparent !important; height: 100% !important; max-height: 100% !important; border-radius: 0 !important; border: none !important; box-shadow: none !important; }
+
+        .content-scroll { flex: 1; overflow-y: auto; padding: 20px; padding-top: calc(15px + var(--safe-top)); padding-bottom: 90px; scrollbar-width: none; }
+        .content-scroll::-webkit-scrollbar { display: none; }
+
+        /* 위치 탭 */
+        .location-chips { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+        .location-chips::-webkit-scrollbar { display: none; }
+        .l-chip { padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.25s; flex-shrink: 0; }
+        .l-chip.active { background: #fff; color: var(--primary); box-shadow: 0 4px 12px rgba(0,50,100,0.15); }
+        .l-chip.inactive { background: rgba(255,255,255,0.25); color: #fff; }
+        .l-chip.gps-active { background: #4ade80; color: #064e3b; }
+
+        /* 위치 헤더 */
+        .location-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .loc-name-group { display: flex; align-items: center; gap: 10px; }
+        .loc-title { font-size: 32px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: -0.5px; }
+        .refresh-btn { background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; outline: none; flex-shrink: 0; }
+        .refresh-btn svg { width: 16px; height: 16px; fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+        .refresh-btn:active { background: rgba(255,255,255,0.35); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinning svg { animation: spin 0.6s linear; }
+        .weather-badge { background: rgba(255,255,255,0.25); padding: 8px 14px; border-radius: 12px; font-size: 14px; font-weight: 700; color: #fff; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
+
+        /* API 상태 */
+        .api-status-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); }
+        .api-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+        .api-dot.loading { background: #fbbf24; animation: pulse 1s infinite; }
+        .api-dot.error { background: #f87171; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* 캐릭터 + 수온 */
+        .char-temp-section { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 8px; margin: 0 auto 20px; width: fit-content; padding: 0 6px; }
+        .character-box { width: 150px !important; height: 150px !important; background: transparent; border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .character-box img { width: 140px !important; height: 140px !important; object-fit: contain; display: block; }
+        .temp-info-box { display: flex; flex-direction: column; justify-content: center; }
+        .temp-label { font-size: 14px; color: rgba(255,255,255,0.75); font-weight: 600; margin-bottom: 2px; }
+        .temp-number { font-size: 56px; font-weight: 850; line-height: 1.1; color: #fff; letter-spacing: -2px; text-shadow: 0 2px 8px rgba(0,40,80,0.15); }
+        .temp-number span { font-size: 32px; vertical-align: super; font-weight: 500; margin-left: 2px; }
+        .suit-comment { font-size: 16px; font-weight: 700; color: #fff; margin-top: 6px; line-height: 1.4; letter-spacing: -0.2px; }
+        .sub-comment { font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.75); margin-top: 3px; }
+
+        /* 시간별 예보 */
+        .hourly-card { background: rgba(255,255,255,0.15); backdrop-filter: blur(15px); border-radius: 24px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.15); }
+        .hourly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding: 0 4px; }
+        .hourly-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); }
+        .chart-legend { display: flex; gap: 12px; font-size: 10px; font-weight: 600; }
+        .legend-item { display: flex; align-items: center; gap: 4px; color: rgba(255,255,255,0.82); }
+        .dot-yellow { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-yellow); }
+        .dot-white { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+        .hourly-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+        .hourly-scroll::-webkit-scrollbar { display: none; }
+        .hour-column { display: flex; flex-direction: column; align-items: center; min-width: 46px; padding: 10px 4px; border-radius: 14px; gap: 4px; }
+        .hour-column.now { background: rgba(255,255,255,0.3); transform: scale(1.05); border: 1px solid rgba(255,255,255,0.2); }
+        .hour-time { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7); line-height: 1; }
+        .hour-column.now .hour-time { color: #fff; font-weight: 800; }
+        .hour-icon { font-size: 15px; line-height: 1; }
+        .hour-air { font-size: 12px; font-weight: 700; color: var(--accent-yellow); line-height: 1; }
+        .hour-divider { width: 16px; height: 1px; background: rgba(255,255,255,0.2); }
+        .hour-column.now .hour-divider { display: none; }
+        .hour-water { font-size: 11px; font-weight: 700; color: #fff; line-height: 1; }
+
+        /* 정보 카드 */
+        .info-cards-stack { display: flex; flex-direction: column; gap: 12px; }
+        .info-card { background: #fff; border-radius: 18px; padding: 14px 18px; display: flex; align-items: center; box-shadow: 0 4px 16px rgba(0,80,160,0.08); transition: transform 0.2s; }
+        .info-card:active { transform: scale(0.98); }
+        .card-icon-container { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex-shrink: 0; }
+        .icon-wave { background: linear-gradient(135deg, #38bdf8, #0284c7); }
+        .icon-jelly { background: linear-gradient(135deg, #c084fc, #db2777); }
+        .icon-wind { background: linear-gradient(135deg, #4ade80, #15803d); }
+        .card-icon-svg { width: 22px; height: 22px; }
+        .card-title { font-size: 15px; font-weight: 700; color: #1e293b; }
+        .flex-space { flex: 1; }
+        .card-val { font-size: 16px; font-weight: 800; color: #1e293b; margin-right: 10px; }
+        .status-badge { font-size: 11px; font-weight: 750; padding: 5px 10px; border-radius: 10px; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+        .status-green { background: #f0fdf4; color: #16a34a; }
+        .status-orange { background: #fff7ed; color: #ea580c; }
+        .status-red { background: #fef2f2; color: #dc2626; }
+
+        /* 하단 탭 */
+        .bottom-tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: calc(64px + var(--safe-bottom)); background: #fff; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-around; align-items: flex-start; padding-top: 10px; padding-bottom: var(--safe-bottom); z-index: 100; }
+        .tab-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; width: 50%; position: relative; }
+        .tab-icon { font-size: 20px; line-height: 1; margin-bottom: 2px; transition: transform 0.2s; }
+        .tab-item:active .tab-icon { transform: scale(1.15); }
+        .tab-label { font-size: 10px; font-weight: 700; }
+        .tab-item.active { color: var(--primary); }
+        .tab-item.active::after { content: "●"; font-size: 6px; color: var(--primary); position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); }
+        .tab-item.inactive { color: #9CA3AF; }
+
+        /* 토스트 */
+        .toast-container { position: absolute; bottom: 85px; left: 50%; transform: translate(-50%, 40px); background: rgba(15,23,42,0.88); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12px; font-weight: 600; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,0.25); border: 1.5px solid rgba(255,255,255,0.15); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 200; white-space: nowrap; }
+        .toast-container.show { opacity: 1; transform: translate(-50%, 0); }
+
+        /* ===== 위치 관리 바텀시트 ===== */
+        .loc-sheet-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .loc-sheet-overlay.show { opacity: 1; pointer-events: all; }
+        .loc-sheet { background: #fff; border-radius: 24px 24px 0 0; padding: 0; width: 100%; max-height: 85vh; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; }
+        .loc-sheet-overlay.show .loc-sheet { transform: translateY(0); }
+
+        .loc-sheet-handle-area { padding: 14px 20px 0; flex-shrink: 0; }
+        .loc-sheet-handle { width: 36px; height: 4px; background: #e2e8f0; border-radius: 2px; margin: 0 auto 16px; }
+        .loc-sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .loc-sheet-title { font-size: 18px; font-weight: 800; color: #1e293b; }
+        .loc-sheet-close { background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
+
+        /* 검색창 */
+        .loc-search-box { margin: 0 20px 12px; position: relative; flex-shrink: 0; }
+        .loc-search-input { width: 100%; padding: 12px 16px 12px 40px; border-radius: 14px; border: 2px solid #e2e8f0; font-size: 14px; font-family: var(--font-sans); outline: none; color: #1e293b; transition: border-color 0.2s; background: #f8fafc; }
+        .loc-search-input:focus { border-color: var(--primary); background: #fff; }
+        .loc-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none; }
+
+        /* 섹션 */
+        .loc-sheet-body { flex: 1; overflow-y: auto; padding: 0 20px 20px; scrollbar-width: none; }
+        .loc-sheet-body::-webkit-scrollbar { display: none; }
+        .loc-section-title { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase; margin: 16px 0 8px; }
+
+        /* GPS 버튼 */
+        .gps-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; background: #f0fdf4; border: 2px solid #bbf7d0; cursor: pointer; margin-bottom: 4px; transition: all 0.2s; }
+        .gps-row:active { transform: scale(0.98); }
+        .gps-row-icon { font-size: 20px; }
+        .gps-row-info { flex: 1; }
+        .gps-row-name { font-size: 14px; font-weight: 700; color: #15803d; }
+        .gps-row-desc { font-size: 12px; color: #16a34a; margin-top: 1px; }
+        .gps-row-arrow { font-size: 14px; color: #16a34a; }
+
+        /* 즐겨찾기 목록 */
+        .fav-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: all 0.2s; margin-bottom: 6px; position: relative; }
+        .fav-item.selected { border-color: var(--primary); background: #eff6ff; }
+        .fav-item:active { transform: scale(0.98); }
+        .fav-emoji { font-size: 22px; }
+        .fav-info { flex: 1; }
+        .fav-name { font-size: 15px; font-weight: 700; color: #1e293b; }
+        .fav-desc { font-size: 12px; color: #64748b; margin-top: 1px; }
+        .fav-actions { display: flex; align-items: center; gap: 6px; }
+        .fav-check { font-size: 16px; color: var(--primary); }
+        .fav-delete { background: #fee2e2; border: none; width: 26px; height: 26px; border-radius: 8px; font-size: 12px; cursor: pointer; color: #dc2626; display: flex; align-items: center; justify-content: center; }
+
+        /* 검색 결과 */
+        .search-result-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: all 0.2s; margin-bottom: 6px; }
+        .search-result-item:active { transform: scale(0.98); background: #f8fafc; }
+        .search-result-item .sr-emoji { font-size: 20px; }
+        .search-result-item .sr-info { flex: 1; }
+        .search-result-item .sr-name { font-size: 14px; font-weight: 700; color: #1e293b; }
+        .search-result-item .sr-desc { font-size: 12px; color: #64748b; margin-top: 1px; }
+        .search-result-item .sr-add { font-size: 18px; color: #94a3b8; }
+        .search-result-item.already-fav .sr-add { color: var(--primary); }
+        .no-result { text-align: center; padding: 30px 0; color: #94a3b8; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="phone-frame">
+    <div class="content-scroll">
+
+        <!-- 상단 아이콘 바 -->
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:8px;">
+            <button class="refresh-btn" onclick="showToast('👤 프로필 기능이 곧 업데이트됩니다!')">
+                <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </button>
+            <button class="refresh-btn" onclick="showToast('🔔 알림 기능이 곧 업데이트됩니다!')">
+                <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </button>
+            <button class="refresh-btn" onclick="showToast('⚙️ 설정 기능이 곧 업데이트됩니다!')">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+        </div>
+
+        <!-- 위치 탭 (즐겨찾기 기반) -->
+        <div class="location-chips" id="location-chips"></div>
+
+        <!-- 위치명 + 날씨 -->
+        <div class="location-header">
+            <div class="loc-name-group">
+                <span class="loc-title" id="loc-title-text">--</span>
+                <button class="refresh-btn" id="refresh-main-btn" onclick="fetchAllData()">
+                    <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>
+                </button>
+            </div>
+            <div class="weather-badge" id="weather-badge-text">⏳ 로딩 중...</div>
+        </div>
+
+        <!-- API 상태 -->
+        <div class="api-status-bar">
+            <div class="api-dot loading" id="api-status-dot"></div>
+            <span id="api-status-text">실시간 데이터 불러오는 중...</span>
+        </div>
+
+        <!-- 캐릭터 + 수온 -->
+        <div class="char-temp-section">
+            <div class="character-box" id="char-image-container">
+                <svg viewBox="0 0 120 120" style="width:140px;height:140px;display:block;">
+                    <defs><linearGradient id="gl" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0284c7"/></linearGradient></defs>
+                    <rect width="120" height="120" rx="20" fill="url(#gl)" opacity="0.5"/>
+                    <text x="60" y="70" font-size="44" text-anchor="middle" dominant-baseline="middle">⏳</text>
+                </svg>
+            </div>
+            <div class="temp-info-box">
+                <div class="temp-label">🌊 바다 수온</div>
+                <div class="temp-number" id="main-temp-val">--<span>°C</span></div>
+                <div class="suit-comment" id="main-suit-text">불러오는 중...</div>
+                <div class="sub-comment" id="main-sub-text">잠시만 기다려 주세요</div>
+            </div>
+        </div>
+
+        <!-- 시간별 예보 -->
+        <div class="hourly-card">
+            <div class="hourly-header">
+                <span class="hourly-title">오늘의 예보</span>
+                <div class="chart-legend">
+                    <div class="legend-item"><span class="dot-yellow"></span>기온</div>
+                    <div class="legend-item"><span class="dot-white"></span>수온</div>
+                </div>
+            </div>
+            <div class="hourly-scroll" id="hourly-scroll-container"></div>
+        </div>
+
+        <!-- 정보 카드 -->
+        <div class="info-cards-stack">
+            <div class="info-card">
+                <div class="card-icon-container icon-wave">
+                    <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 13c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
+                        <path d="M2 18c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
+                    </svg>
+                </div>
+                <span class="card-title">파도 높이</span>
+                <div class="flex-space"></div>
+                <span class="card-val" id="val-wave">--</span>
+                <span class="status-badge status-green" id="badge-wave">⏳</span>
+            </div>
+            <div class="info-card">
+                <div class="card-icon-container icon-jelly">
+                    <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 11a6 6 0 0 1 12 0c0 .5-.5 1-1 1s-.75-.5-1-.5-.5.5-1 .5-.5-.5-1-.5s-.5.5-1 .5-.5-.5-1-.5-.5.5-1 .5c-.5 0-1-.5-1-1z" fill="rgba(255,255,255,0.2)"/>
+                        <path d="M9 13v6M12 12v7M15 13v5"/>
+                    </svg>
+                </div>
+                <span class="card-title">해파리</span>
+                <div class="flex-space"></div>
+                <span class="card-val" id="val-jelly">--</span>
+                <span class="status-badge status-green" id="badge-jelly">⏳</span>
+            </div>
+            <div class="info-card">
+                <div class="card-icon-container icon-wind">
+                    <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 10h15a3 3 0 1 0-3-3"/>
+                        <path d="M4 14h14a3 3 0 1 1-3 3"/>
+                        <path d="M2 18h9a2 2 0 1 0-2-2"/>
+                    </svg>
+                </div>
+                <span class="card-title">풍속</span>
+                <div class="flex-space"></div>
+                <span class="card-val" id="val-wind">--</span>
+                <span class="status-badge status-green" id="badge-wind">⏳</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 탭 -->
+    <div class="bottom-tab-bar">
+        <div class="tab-item active" id="tab0" onclick="switchTab(0)"><span class="tab-icon">🌊</span><span class="tab-label">홈</span></div>
+        <div class="tab-item inactive" id="tab1" onclick="switchTab(1)"><span class="tab-icon">📊</span><span class="tab-label">기록</span></div>
+    </div>
+
+    <!-- 토스트 -->
+    <div class="toast-container" id="toast"></div>
+
+    <!-- ===== 위치 관리 바텀시트 ===== -->
+    <div class="loc-sheet-overlay" id="loc-sheet-overlay" onclick="handleOverlayClick(event)">
+        <div class="loc-sheet">
+            <div class="loc-sheet-handle-area">
+                <div class="loc-sheet-handle"></div>
+                <div class="loc-sheet-header">
+                    <div class="loc-sheet-title">📍 위치 관리</div>
+                    <button class="loc-sheet-close" onclick="closeLocSheet()">✕</button>
+                </div>
+            </div>
+            <!-- 검색창 -->
+            <div class="loc-search-box">
+                <span class="loc-search-icon">🔍</span>
+                <input class="loc-search-input" id="loc-search-input" type="text" placeholder="해변 이름 검색 (예: 해운대, 경포대...)" oninput="onSearchInput(this.value)" />
+            </div>
+            <!-- 본문 -->
+            <div class="loc-sheet-body" id="loc-sheet-body"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// =====================================================
+//  전국 해변 데이터베이스
+// =====================================================
+const ALL_BEACHES = [
+    // 부산
+    { id:'haeundae',  name:'해운대',   emoji:'🏖️', region:'부산', lat:35.158, lon:129.160 },
+    { id:'songjeong', name:'송정',     emoji:'🌊', region:'부산', lat:35.179, lon:129.209 },
+    { id:'gwangan',   name:'광안리',   emoji:'🌉', region:'부산', lat:35.153, lon:129.118 },
+    { id:'dadaepo',   name:'다대포',   emoji:'🏄', region:'부산', lat:35.047, lon:128.961 },
+    { id:'ilgwang',   name:'일광',     emoji:'🐚', region:'부산', lat:35.245, lon:129.228 },
+    { id:'imrang',    name:'임랑',     emoji:'🌅', region:'부산', lat:35.295, lon:129.255 },
+    // 경남
+    { id:'sangju',    name:'상주은모래',emoji:'✨', region:'경남', lat:34.837, lon:128.422 },
+    { id:'mongsanpo', name:'몽돌',     emoji:'🪨', region:'경남', lat:34.725, lon:128.433 },
+    // 동해
+    { id:'gyeongpo',  name:'경포대',   emoji:'🌲', region:'강원', lat:37.796, lon:128.906 },
+    { id:'naksan',    name:'낙산',     emoji:'🏯', region:'강원', lat:38.121, lon:128.636 },
+    { id:'jeongdongjin', name:'정동진',emoji:'🌄', region:'강원', lat:37.682, lon:129.049 },
+    { id:'sokcho',    name:'속초해수욕장',emoji:'🦀', region:'강원', lat:38.196, lon:128.582 },
+    // 서해
+    { id:'daecheon',  name:'대천',     emoji:'🦀', region:'충남', lat:36.318, lon:126.502 },
+    { id:'mallipo',   name:'만리포',   emoji:'🐟', region:'충남', lat:36.788, lon:126.148 },
+    { id:'byeonsan',  name:'변산',     emoji:'🌾', region:'전북', lat:35.621, lon:126.533 },
+    // 제주
+    { id:'hamdeok',   name:'함덕',     emoji:'🌺', region:'제주', lat:33.543, lon:126.670 },
+    { id:'gwakji',    name:'곽지',     emoji:'🐠', region:'제주', lat:33.461, lon:126.301 },
+    { id:'jungmun',   name:'중문색달', emoji:'🏝️', region:'제주', lat:33.244, lon:126.412 },
+    { id:'hyeopjae',  name:'협재',     emoji:'🟦', region:'제주', lat:33.394, lon:126.239 },
+];
+
+// =====================================================
+//  상태
+// =====================================================
+// 즐겨찾기: localStorage 저장
+let favorites = JSON.parse(localStorage.getItem('bada_favorites') || '["haeundae"]');
+let currentLocationId = favorites[0] || 'haeundae';
+let isGpsMode = false;
+let gpsLocation = null; // { name, lat, lon }
+
+let currentWaterTemp = null;
+let currentWaveHeight = null;
+let currentWindSpeed = null;
+let currentAirTemp = null;
+let isLoading = false;
+
+function saveFavorites() {
+    localStorage.setItem('bada_favorites', JSON.stringify(favorites));
+}
+
+function getBeachById(id) {
+    return ALL_BEACHES.find(b => b.id === id);
+}
+
+function getCurrentLoc() {
+    if (isGpsMode && gpsLocation) return gpsLocation;
+    return getBeachById(currentLocationId) || ALL_BEACHES[0];
+}
+
+// =====================================================
+//  API 호출 (Open-Meteo)
+// =====================================================
+async function fetchAllData() {
+    if (isLoading) return;
+    isLoading = true;
+    const btn = document.getElementById('refresh-main-btn');
+    btn.classList.add('spinning');
+    setApiStatus('loading', '실시간 데이터 불러오는 중...');
+
+    const loc = getCurrentLoc();
+    try {
+        const [marineRes, weatherRes] = await Promise.all([
+            fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&forecast_days=1`),
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&timezone=Asia%2FSeoul&forecast_days=1`)
+        ]);
+        const marine = await marineRes.json();
+        const weather = await weatherRes.json();
+
+        currentWaterTemp  = marine?.current?.sea_surface_temperature ?? null;
+        currentWaveHeight = marine?.current?.wave_height ?? null;
+        currentAirTemp    = weather?.current?.temperature_2m ?? null;
+        const windKmh     = weather?.current?.wind_speed_10m ?? null;
+        currentWindSpeed  = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
+
+        window._hourlyData = { marine: marine?.hourly || {}, weather: weather?.hourly || {} };
+        window._weatherCode = weather?.current?.weather_code ?? 0;
+
+        renderAll();
+        setApiStatus('ok', `실시간 · ${getTimeStr()} 기준`);
+        showToast(`🌊 ${loc.name} 실시간 데이터 갱신 완료!`);
+    } catch (err) {
+        if (currentWaterTemp === null) currentWaterTemp = 20;
+        if (currentWaveHeight === null) currentWaveHeight = 0.5;
+        if (currentWindSpeed === null) currentWindSpeed = 3;
+        if (currentAirTemp === null) currentAirTemp = 25;
+        renderAll();
+        setApiStatus('error', 'API 오류 · 기본값 표시 중');
+        showToast('❌ 데이터 연결 실패');
+    } finally {
+        isLoading = false;
+        setTimeout(() => btn.classList.remove('spinning'), 600);
+    }
+}
+
+// =====================================================
+//  전체 렌더링
+// =====================================================
+function renderAll() {
+    const loc = getCurrentLoc();
+    document.getElementById('loc-title-text').textContent = isGpsMode ? '현재위치' : loc.name;
+    const wCode = window._weatherCode ?? 0;
+    document.getElementById('weather-badge-text').textContent = `${getWeatherEmoji(wCode)} ${currentAirTemp !== null ? Math.round(currentAirTemp)+'°C' : '--°C'}`;
+    renderCharTemp();
+    renderHourly();
+    renderInfoCards();
+    renderLocationChips();
+}
+
+// =====================================================
+//  위치 탭 (즐겨찾기만 표시)
+// =====================================================
+function renderLocationChips() {
+    const container = document.getElementById('location-chips');
+    container.innerHTML = '';
+
+    // 현재위치 버튼
+    const gpsChip = document.createElement('button');
+    gpsChip.className = `l-chip ${isGpsMode ? 'gps-active' : 'inactive'}`;
+    gpsChip.textContent = '📍 현재위치';
+    gpsChip.onclick = useGPS;
+    container.appendChild(gpsChip);
+
+    // 즐겨찾기 위치만 탭으로 표시
+    favorites.forEach(id => {
+        const beach = getBeachById(id);
+        if (!beach) return;
+        const chip = document.createElement('button');
+        chip.className = `l-chip ${!isGpsMode && id === currentLocationId ? 'active' : 'inactive'}`;
+        chip.textContent = `${beach.emoji} ${beach.name}`;
+        chip.onclick = () => selectLocation(id);
+        container.appendChild(chip);
+    });
+
+    // 위치 관리 버튼
+    const manageChip = document.createElement('button');
+    manageChip.className = 'l-chip inactive';
+    manageChip.textContent = '⚙️ 관리';
+    manageChip.onclick = openLocSheet;
+    container.appendChild(manageChip);
+}
+
+function selectLocation(id) {
+    isGpsMode = false;
+    if (id === currentLocationId && !isGpsMode) return;
+    currentLocationId = id;
+    currentWaterTemp = null; currentWaveHeight = null; currentWindSpeed = null; currentAirTemp = null;
+    renderLocationChips();
+    fetchAllData();
+}
+
+// =====================================================
+//  GPS
+// =====================================================
+function useGPS() {
+    if (!navigator.geolocation) { showToast('❌ 위치 서비스 미지원'); return; }
+    showToast('📡 현재 위치 감지 중...');
+    navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        // 가장 가까운 해변 찾기
+        let closest = ALL_BEACHES[0], minDist = Infinity;
+        ALL_BEACHES.forEach(b => {
+            const d = Math.hypot(b.lat - latitude, b.lon - longitude);
+            if (d < minDist) { minDist = d; closest = b; }
+        });
+        isGpsMode = true;
+        gpsLocation = { name: closest.name + ' 근처', lat: latitude, lon: longitude, emoji: '📍' };
+        currentWaterTemp = null; currentWaveHeight = null; currentWindSpeed = null; currentAirTemp = null;
+        renderLocationChips();
+        fetchAllData();
+        showToast(`📍 현재 위치 근처: ${closest.name}`);
+    }, () => showToast('❌ 위치 접근 권한이 필요해요'));
+}
+
+// =====================================================
+//  위치 관리 바텀시트
+// =====================================================
+function openLocSheet() {
+    document.getElementById('loc-search-input').value = '';
+    renderLocSheetBody('');
+    document.getElementById('loc-sheet-overlay').classList.add('show');
+}
+
+function closeLocSheet() {
+    document.getElementById('loc-sheet-overlay').classList.remove('show');
+}
+
+function handleOverlayClick(e) {
+    if (e.target === document.getElementById('loc-sheet-overlay')) closeLocSheet();
+}
+
+function onSearchInput(val) {
+    renderLocSheetBody(val.trim());
+}
+
+function renderLocSheetBody(query) {
+    const body = document.getElementById('loc-sheet-body');
+    body.innerHTML = '';
+
+    if (!query) {
+        // 기본: GPS + 즐겨찾기 관리
+        body.innerHTML += `<div class="loc-section-title">현재 위치</div>`;
+        const gpsRow = document.createElement('div');
+        gpsRow.className = 'gps-row';
+        gpsRow.innerHTML = `<div class="gps-row-icon">📡</div><div class="gps-row-info"><div class="gps-row-name">현재 위치 자동 감지</div><div class="gps-row-desc">GPS로 가장 가까운 해변 정보</div></div><div class="gps-row-arrow">→</div>`;
+        gpsRow.onclick = () => { closeLocSheet(); useGPS(); };
+        body.appendChild(gpsRow);
+
+        body.innerHTML += `<div class="loc-section-title">즐겨찾기 (탭에 표시됨)</div>`;
+        if (favorites.length === 0) {
+            body.innerHTML += `<div class="no-result">아직 즐겨찾기가 없어요<br>아래에서 검색해서 추가하세요 🔍</div>`;
+        } else {
+            favorites.forEach(id => {
+                const beach = getBeachById(id);
+                if (!beach) return;
+                const item = document.createElement('div');
+                item.className = `fav-item ${!isGpsMode && id === currentLocationId ? 'selected' : ''}`;
+                item.innerHTML = `
+                    <div class="fav-emoji">${beach.emoji}</div>
+                    <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region}</div></div>
+                    <div class="fav-actions">
+                        ${!isGpsMode && id === currentLocationId ? '<span class="fav-check">✓</span>' : ''}
+                        <button class="fav-delete" onclick="removeFavorite('${id}', event)">✕</button>
+                    </div>`;
+                item.onclick = () => { selectLocation(id); closeLocSheet(); };
+                body.appendChild(item);
+            });
+        }
+
+        body.innerHTML += `<div class="loc-section-title">해변 검색해서 추가하기</div>`;
+        body.innerHTML += `<div style="color:#94a3b8;font-size:13px;text-align:center;padding:8px 0;">위 검색창에 해변 이름을 입력하세요</div>`;
+
+    } else {
+        // 검색 결과
+        const results = ALL_BEACHES.filter(b =>
+            b.name.includes(query) || b.region.includes(query)
+        );
+
+        if (results.length === 0) {
+            body.innerHTML = `<div class="no-result">🔍 "${query}"에 대한 결과가 없어요</div>`;
+            return;
+        }
+
+        body.innerHTML += `<div class="loc-section-title">검색 결과 ${results.length}건</div>`;
+        results.forEach(beach => {
+            const isFav = favorites.includes(beach.id);
+            const item = document.createElement('div');
+            item.className = `search-result-item ${isFav ? 'already-fav' : ''}`;
+            item.innerHTML = `
+                <div class="sr-emoji">${beach.emoji}</div>
+                <div class="sr-info"><div class="sr-name">${beach.name}</div><div class="sr-desc">${beach.region}</div></div>
+                <div class="sr-add">${isFav ? '★' : '+'}</div>`;
+            item.onclick = () => {
+                if (!isFav) {
+                    addFavorite(beach.id);
+                } else {
+                    selectLocation(beach.id);
+                    closeLocSheet();
+                }
+            };
+            body.appendChild(item);
+        });
+    }
+}
+
+function addFavorite(id) {
+    if (!favorites.includes(id)) {
+        favorites.push(id);
+        saveFavorites();
+        const beach = getBeachById(id);
+        showToast(`⭐ ${beach.name} 즐겨찾기 추가!`);
+        renderLocSheetBody(document.getElementById('loc-search-input').value.trim());
+        renderLocationChips();
+    }
+}
+
+function removeFavorite(id, e) {
+    e.stopPropagation();
+    favorites = favorites.filter(f => f !== id);
+    saveFavorites();
+    if (currentLocationId === id) {
+        currentLocationId = favorites[0] || 'haeundae';
+        if (!favorites.includes('haeundae') && favorites.length === 0) {
+            favorites = ['haeundae'];
+            saveFavorites();
+        }
+    }
+    renderLocSheetBody('');
+    renderLocationChips();
+    const beach = getBeachById(id);
+    showToast(`${beach?.name || ''} 즐겨찾기 삭제`);
+}
+
+// =====================================================
+//  캐릭터 + 수온
+// =====================================================
+function getCharInfo(temp) {
+    if (temp <= 10) return { img:'https://i.imgur.com/3b6NSFh.png', text:'풀슈트+후드+장갑+부츠 필수!', sub:'15분 이내 권장' };
+    if (temp <= 14) return { img:'https://i.imgur.com/Pc5bUs1.png', text:'풀슈트+장갑+후드 착용', sub:'30분 이내 권장' };
+    if (temp <= 17) return { img:'https://i.imgur.com/Y0ASHWS.png', text:'풀슈트 착용', sub:'45분 이내 권장' };
+    if (temp <= 20) return { img:'https://i.imgur.com/8VR2nWX.png', text:'나시슈트 OK', sub:'60분 이내 권장' };
+    if (temp <= 23) return { img:'https://i.imgur.com/FkAqcjO.png', text:'반팔숏슈트 OK 👌', sub:'수온 적당 · 쾌적해요' };
+    return { img:'https://i.imgur.com/uEV5qB3.png', text:'수영복으로 알탕 가능! 🌊', sub:'오늘 바다 완전 좋아요' };
+}
+
+function getSvgFallback(temp) {
+    let cs='#38bdf8',ce='#0284c7',em='🏊';
+    if(temp<=10){cs='#a5f3fc';ce='#1d4ed8';em='🥶';}
+    else if(temp<=14){cs='#60a5fa';ce='#1e3a8a';em='🥶';}
+    else if(temp<=17){cs='#2dd4bf';ce='#0f766e';em='🏊';}
+    else if(temp<=20){cs='#34d399';ce='#065f46';em='🚣';}
+    else if(temp<=23){cs='#fbbf24';ce='#b45309';em='😄';}
+    else{cs='#f97316';ce='#9a3412';em='😎';}
+    return `<svg viewBox='0 0 120 120' style='width:140px;height:140px;display:block;'><defs><linearGradient id='gf' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='${cs}'/><stop offset='100%' stop-color='${ce}'/></linearGradient></defs><rect width='120' height='120' rx='20' fill='url(#gf)'/><text x='60' y='70' font-size='44' text-anchor='middle' dominant-baseline='middle'>${em}</text></svg>`;
+}
+
+function renderCharTemp() {
+    const temp = currentWaterTemp ?? 20;
+    const cInfo = getCharInfo(temp);
+    document.getElementById('main-temp-val').innerHTML = `${temp.toFixed(1)}<span>°C</span>`;
+    document.getElementById('main-suit-text').textContent = cInfo.text;
+    document.getElementById('main-sub-text').textContent = cInfo.sub;
+    document.getElementById('char-image-container').innerHTML =
+        `<img src="${cInfo.img}?v=${Date.now()}" alt="캐릭터"
+            onerror="this.onerror=null;this.outerHTML='${getSvgFallback(temp)}';"
+            style="width:140px!important;height:140px!important;object-fit:contain;display:block;">`;
+}
+
+// =====================================================
+//  시간별 예보 (1시간 간격)
+// =====================================================
+function getWeatherEmoji(code) {
+    if (code === 0) return '☀️';
+    if (code <= 2)  return '🌤️';
+    if (code <= 3)  return '☁️';
+    if (code <= 49) return '🌫️';
+    if (code <= 59) return '🌧️';
+    if (code <= 69) return '🌨️';
+    if (code <= 79) return '❄️';
+    if (code <= 84) return '🌧️';
+    if (code <= 99) return '⛈️';
+    return '🌤️';
+}
+
+function getTimeStr() {
+    const n = new Date();
+    return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+}
+
+function renderHourly() {
+    const container = document.getElementById('hourly-scroll-container');
+    container.innerHTML = '';
+
+    const hourly = window._hourlyData;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+    // 현재 시각 기준 앞뒤 포함 1시간 간격 12개 슬롯
+    const startHour = Math.max(0, currentHour - 1);
+    const hours = [];
+    for (let h = startHour; h <= Math.min(23, startHour + 11); h++) hours.push(h);
+
+    const weatherIcons = ['🌙','🌙','🌙','🌙','🌙','🌅','🌤️','🌤️','☀️','☀️','☀️','☀️','☀️','☀️','☀️','🌤️','🌤️','🌤️','🌤️','🌙','🌙','🌙','🌙','🌙'];
+
+    hours.forEach(h => {
+        const isNow = h === currentHour;
+        const timeStr = `${String(h).padStart(2,'0')}:00`;
+        const isoTime = `${today}T${timeStr}`;
+
+        let airTemp = '--';
+        let waterTemp = '--';
+        let wCode = 0;
+
+        if (hourly?.weather?.time) {
+            const idx = hourly.weather.time.indexOf(isoTime);
+            if (idx !== -1) {
+                const a = hourly.weather.temperature_2m?.[idx];
+                if (a !== undefined) airTemp = Math.round(a) + '°';
+                wCode = hourly.weather.weather_code?.[idx] ?? 0;
+            }
+        }
+        if (hourly?.marine?.time) {
+            const idx = hourly.marine.time.indexOf(isoTime);
+            if (idx !== -1) {
+                const w = hourly.marine.sea_surface_temperature?.[idx];
+                if (w !== undefined) waterTemp = w.toFixed(1) + '°';
+            }
+        }
+
+        const col = document.createElement('div');
+        col.className = `hour-column${isNow ? ' now' : ''}`;
+        col.innerHTML = `
+            <div class="hour-time">${isNow ? '지금' : timeStr}</div>
+            <div class="hour-icon">${getWeatherEmoji(wCode) || weatherIcons[h]}</div>
+            <div class="hour-air">${airTemp}</div>
+            <div class="hour-divider"></div>
+            <div class="hour-water">${waterTemp}</div>
+        `;
+        container.appendChild(col);
+        if (isNow) setTimeout(() => col.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' }), 100);
+    });
+}
+
+// =====================================================
+//  정보 카드
+// =====================================================
+function renderInfoCards() {
+    // 파고
+    const waveVal = document.getElementById('val-wave');
+    const waveBadge = document.getElementById('badge-wave');
+    if (currentWaveHeight !== null) {
+        waveVal.textContent = `${currentWaveHeight.toFixed(1)}m`;
+        if (currentWaveHeight <= 0.8)      { waveBadge.className='status-badge status-green';  waveBadge.innerHTML='✓ 안전'; }
+        else if (currentWaveHeight <= 1.5) { waveBadge.className='status-badge status-orange'; waveBadge.innerHTML='⚠ 주의'; }
+        else                               { waveBadge.className='status-badge status-red';    waveBadge.innerHTML='⚠ 위험'; }
+    }
+    // 해파리
+    const jellyVal = document.getElementById('val-jelly');
+    const jellyBadge = document.getElementById('badge-jelly');
+    const month = new Date().getMonth() + 1;
+    const wt = currentWaterTemp ?? 20;
+    if (wt >= 25 && month >= 7 && month <= 9)      { jellyVal.textContent='경보'; jellyBadge.className='status-badge status-red';    jellyBadge.innerHTML='⚠ 위험'; }
+    else if (wt >= 22 && month >= 6 && month <= 9) { jellyVal.textContent='주의'; jellyBadge.className='status-badge status-orange'; jellyBadge.innerHTML='⚠ 보름달'; }
+    else                                            { jellyVal.textContent='안전'; jellyBadge.className='status-badge status-green';  jellyBadge.innerHTML='✓ 없음'; }
+    // 풍속
+    const windVal = document.getElementById('val-wind');
+    const windBadge = document.getElementById('badge-wind');
+    if (currentWindSpeed !== null) {
+        windVal.textContent = `${currentWindSpeed}m/s`;
+        if (currentWindSpeed <= 4)      { windBadge.className='status-badge status-green';  windBadge.innerHTML='✓ 잔잔'; }
+        else if (currentWindSpeed <= 8) { windBadge.className='status-badge status-orange'; windBadge.innerHTML='⚠ 보통'; }
+        else                            { windBadge.className='status-badge status-red';    windBadge.innerHTML='⚠ 강풍'; }
+    }
+}
+
+// =====================================================
+//  API 상태 / 탭 / 토스트
+// =====================================================
+function setApiStatus(state, text) {
+    document.getElementById('api-status-dot').className = 'api-dot' + (state==='loading' ? ' loading' : state==='error' ? ' error' : '');
+    document.getElementById('api-status-text').textContent = text;
+}
+
+function switchTab(idx) {
+    for (let i=0;i<2;i++) document.getElementById(`tab${i}`).className = i===idx ? 'tab-item active' : 'tab-item inactive';
+    if (idx !== 0) { showToast('🔧 준비 중이에요! 곧 업데이트될 예정이에요 😊'); setTimeout(()=>switchTab(0), 800); }
+}
+
+let toastT = null;
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    if (toastT) clearTimeout(toastT);
+    toastT = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// =====================================================
+//  초기화
+// =====================================================
+window.onload = function() {
+    if (navigator.userAgent.includes('Android')) document.body.classList.add('android-app');
+    // 즐겨찾기에 기본값 보정
+    if (favorites.length === 0) { favorites = ['haeundae']; saveFavorites(); }
+    currentLocationId = favorites[0];
+    renderLocationChips();
+    fetchAllData();
+    setInterval(fetchAllData, 5 * 60 * 1000);
+};
+</script>
+</body>
+</html>
