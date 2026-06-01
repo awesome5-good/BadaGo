@@ -1,6 +1,6 @@
 {
   "outputDirectory": "www",
-  "routes": [
-    { "src": "/callback", "dest": "/api/strava/callback" }
+  "rewrites": [
+    { "source": "/callback", "destination": "/api/strava/callback" }
   ]
 }

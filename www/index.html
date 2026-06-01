@@ -187,28 +187,44 @@
             display: flex;
             flex-direction: column;
             min-height: calc(100dvh - var(--tab-bar-height) - var(--safe-top) - 48px);
+            box-sizing: border-box;
+        }
+        #tab-panel-2.strava-auth-mode #strava-record-header {
+            flex-shrink: 0;
+            margin-bottom: 0;
         }
         #tab-panel-2.strava-auth-mode #strava-auth-section {
             flex: 1;
-            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 0;
             width: 100%;
-            min-height: calc(100dvh - var(--tab-bar-height) - var(--safe-top) - 48px);
+            padding: 16px 24px 40px;
         }
-        .strava-auth-text {
-            position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            padding: 0 20px;
+        .strava-login-btn {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 11px;
+            min-width: 240px;
+            max-width: min(300px, calc(100% - 48px));
+            padding: 15px 32px;
+            border: none;
+            border-radius: 20px;
+            background: #fff;
+            color: #FC4C02;
+            font-size: 16px;
+            font-weight: 800;
+            line-height: 1.2;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,80,160,0.12);
+            transition: transform 0.2s;
+            font-family: var(--font-sans);
         }
-        .strava-auth-text .record-subtitle { margin-top: 4px; }
-        .strava-login-btn { width: 100%; max-width: 280px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 24px; border: none; border-radius: 18px; background: #fff; color: #FC4C02; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 16px rgba(0,80,160,0.12); transition: transform 0.2s; font-family: var(--font-sans); }
         .strava-login-btn:active { transform: scale(0.98); }
-        .strava-login-btn svg { width: 22px; height: 22px; fill: #FC4C02; }
+        .strava-login-btn svg { width: 26px; height: 26px; flex-shrink: 0; fill: #FC4C02; }
         .strava-user-bar { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.18); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 12px 14px; margin-bottom: 16px; }
         .strava-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.5); flex-shrink: 0; background: #fff; }
         .strava-user-info { flex: 1; min-width: 0; }
@@ -366,13 +382,9 @@
                 <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
             </div>
             <div id="strava-auth-section">
-                <div class="strava-auth-text">
-                    <div class="record-title">🏊 수영 기록</div>
-                    <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
-                </div>
-                <button class="strava-login-btn" onclick="startStravaLogin()">
-                    <svg viewBox="0 0 24 24"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h3.065L5.704 0 0 10.172h3.066l2.836-5.599z"/></svg>
-                    스트라바 로그인
+                <button type="button" class="strava-login-btn" onclick="startStravaLogin()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h3.065L5.704 0 0 10.172h3.066l2.836-5.599z"/></svg>
+                    <span>스트라바 로그인</span>
                 </button>
             </div>
             <div id="strava-user-bar" style="display:none;">
@@ -1412,8 +1424,8 @@ function renderStravaUI() {
 
     if (!tokens) {
         panel.classList.add('strava-auth-mode');
-        recordHeader.style.display = 'none';
-        authSection.style.display = 'block';
+        recordHeader.style.display = 'block';
+        authSection.style.display = 'flex';
         userBar.style.display = 'none';
         listTitle.style.display = 'none';
         listEl.innerHTML = '';
