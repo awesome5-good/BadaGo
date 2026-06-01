@@ -1,0 +1,6 @@
+{
+  "outputDirectory": "www",
+  "routes": [
+    { "src": "/callback", "dest": "/api/strava/callback" }
+  ]
+}
