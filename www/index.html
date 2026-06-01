@@ -186,25 +186,26 @@
         #tab-panel-2.strava-auth-mode.active {
             display: flex;
             flex-direction: column;
-            min-height: calc(100dvh - var(--tab-bar-height) - var(--safe-top) - 50px);
+            min-height: calc(100dvh - var(--tab-bar-height) - var(--safe-top) - 48px);
         }
         #tab-panel-2.strava-auth-mode #strava-auth-section {
             flex: 1;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px 0;
-        }
-        .strava-auth-prompt {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 24px;
             width: 100%;
-            max-width: 320px;
+            min-height: calc(100dvh - var(--tab-bar-height) - var(--safe-top) - 48px);
         }
-        .strava-auth-prompt .record-subtitle { margin-top: 0; }
+        .strava-auth-text {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 0 20px;
+        }
+        .strava-auth-text .record-subtitle { margin-top: 4px; }
         .strava-login-btn { width: 100%; max-width: 280px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 24px; border: none; border-radius: 18px; background: #fff; color: #FC4C02; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 16px rgba(0,80,160,0.12); transition: transform 0.2s; font-family: var(--font-sans); }
         .strava-login-btn:active { transform: scale(0.98); }
         .strava-login-btn svg { width: 22px; height: 22px; fill: #FC4C02; }
@@ -365,16 +366,14 @@
                 <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
             </div>
             <div id="strava-auth-section">
-                <div class="strava-auth-prompt">
-                    <div>
-                        <div class="record-title">🏊 수영 기록</div>
-                        <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
-                    </div>
-                    <button class="strava-login-btn" onclick="startStravaLogin()">
-                        <svg viewBox="0 0 24 24"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h3.065L5.704 0 0 10.172h3.066l2.836-5.599z"/></svg>
-                        스트라바 로그인
-                    </button>
+                <div class="strava-auth-text">
+                    <div class="record-title">🏊 수영 기록</div>
+                    <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
                 </div>
+                <button class="strava-login-btn" onclick="startStravaLogin()">
+                    <svg viewBox="0 0 24 24"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h3.065L5.704 0 0 10.172h3.066l2.836-5.599z"/></svg>
+                    스트라바 로그인
+                </button>
             </div>
             <div id="strava-user-bar" style="display:none;">
                 <img class="strava-avatar" id="strava-avatar" src="" alt="">
