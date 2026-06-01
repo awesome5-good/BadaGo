@@ -1,4 +1,4 @@
-const REDIRECT_URI = 'https://bada-go.vercel.app/callback';
+const REDIRECT_URI = 'https://bada-go.vercel.app/api/strava/callback';
 const DEEP_LINK = 'com.badago.app://strava/callback';
 
 module.exports = async (req, res) => {

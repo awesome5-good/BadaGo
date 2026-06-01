@@ -13,6 +13,7 @@
             --primary: #1E7EC8;
             --accent-yellow: #FFF35A;
             --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --tab-bar-height: calc(58px + var(--safe-bottom));
         }
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; width: 100%; }
@@ -26,9 +27,9 @@
         @media (min-width: 480px) and (min-height: 600px) {
             .phone-frame { max-width: 420px; height: 100vh; max-height: 880px; border-radius: 36px; box-shadow: 0 20px 50px rgba(0,40,80,0.4); border: 8px solid rgba(255,255,255,0.15); }
         }
-        body.android-app .phone-frame { background: transparent !important; height: 100% !important; max-height: 100% !important; border-radius: 0 !important; border: none !important; box-shadow: none !important; }
+        body.android-app .phone-frame { background: linear-gradient(170deg, #A8E6FF 0%, #5BC8F5 35%, #3AA0E8 70%, #1E7EC8 100%) !important; height: 100% !important; max-height: 100% !important; border-radius: 0 !important; border: none !important; box-shadow: none !important; }
 
-        .content-scroll { flex: 1; overflow-y: auto; padding: 20px; padding-top: calc(15px + var(--safe-top)); padding-bottom: 90px; scrollbar-width: none; }
+        .content-scroll { flex: 1; overflow-y: auto; padding: 20px; padding-top: calc(15px + var(--safe-top)); padding-bottom: calc(var(--tab-bar-height) + 28px); scrollbar-width: none; }
         .content-scroll::-webkit-scrollbar { display: none; }
 
         /* 위치 탭 */
@@ -78,15 +79,14 @@
         .dot-white { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
         .hourly-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
         .hourly-scroll::-webkit-scrollbar { display: none; }
-        .hour-column { display: flex; flex-direction: column; align-items: center; min-width: 46px; padding: 10px 4px; border-radius: 14px; gap: 4px; }
-        .hour-column.now { background: rgba(255,255,255,0.3); transform: scale(1.05); border: 1px solid rgba(255,255,255,0.2); }
-        .hour-time { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7); line-height: 1; }
+        .hour-column { display: flex; flex-direction: column; align-items: center; min-width: 46px; padding: 10px 4px; border-radius: 14px; gap: 2px; }
+        .hour-column.now { background: rgba(255,255,255,0.3); transform: scale(1.05); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .hour-time { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7); line-height: 1; margin-bottom: 4px; }
         .hour-column.now .hour-time { color: #fff; font-weight: 800; }
-        .hour-icon { font-size: 15px; line-height: 1; }
-        .hour-air { font-size: 12px; font-weight: 700; color: var(--accent-yellow); line-height: 1; }
-        .hour-divider { width: 16px; height: 1px; background: rgba(255,255,255,0.2); }
-        .hour-column.now .hour-divider { display: none; }
-        .hour-water { font-size: 11px; font-weight: 700; color: #fff; line-height: 1; }
+        .hour-icon { font-size: 15px; line-height: 1; margin-bottom: 6px; }
+        .hour-air { font-size: 12px; font-weight: 700; color: var(--accent-yellow); line-height: 1; margin-bottom: 8px; }
+        .hour-divider { width: 16px; height: 1px; background: rgba(255,255,255,0.25); margin-bottom: 8px; flex-shrink: 0; }
+        .hour-water { font-size: 11px; font-weight: 700; color: #fff; line-height: 1; margin-top: 0; }
 
         /* 정보 카드 */
         .info-cards-stack { display: flex; flex-direction: column; gap: 12px; }
@@ -106,17 +106,18 @@
         .status-red { background: #fef2f2; color: #dc2626; }
 
         /* 하단 탭 */
-        .bottom-tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: calc(64px + var(--safe-bottom)); background: #fff; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-around; align-items: flex-start; padding-top: 10px; padding-bottom: var(--safe-bottom); z-index: 100; }
-        .tab-item { display: flex; flex-direction: column; align-items: center; cursor: pointer; width: 50%; position: relative; }
-        .tab-icon { font-size: 20px; line-height: 1; margin-bottom: 2px; transition: transform 0.2s; }
-        .tab-item:active .tab-icon { transform: scale(1.15); }
-        .tab-label { font-size: 10px; font-weight: 700; }
-        .tab-item.active { color: var(--primary); }
-        .tab-item.active::after { content: "●"; font-size: 6px; color: var(--primary); position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); }
+        .bottom-tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: var(--tab-bar-height); background: #fff; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-around; align-items: stretch; padding-top: 0; padding-bottom: var(--safe-bottom); z-index: 100; }
+        .tab-item { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 25%; position: relative; padding-top: 6px; gap: 2px; transition: color 0.2s; }
+        .tab-item.active::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 32px; height: 3px; background: #1E7EC8; border-radius: 0 0 3px 3px; }
+        .tab-icon { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; transition: transform 0.2s; }
+        .tab-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .tab-item:active .tab-icon { transform: scale(1.08); }
+        .tab-label { font-size: 10px; font-weight: 700; letter-spacing: -0.2px; }
+        .tab-item.active { color: #1E7EC8; }
         .tab-item.inactive { color: #9CA3AF; }
 
         /* 토스트 */
-        .toast-container { position: absolute; bottom: 85px; left: 50%; transform: translate(-50%, 40px); background: rgba(15,23,42,0.88); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12px; font-weight: 600; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,0.25); border: 1.5px solid rgba(255,255,255,0.15); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 200; white-space: nowrap; }
+        .toast-container { position: absolute; bottom: calc(var(--tab-bar-height) + 12px); left: 50%; transform: translate(-50%, 40px); background: rgba(15,23,42,0.88); color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 12px; font-weight: 600; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,0.25); border: 1.5px solid rgba(255,255,255,0.15); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 200; white-space: nowrap; }
         .toast-container.show { opacity: 1; transform: translate(-50%, 0); }
 
         /* ===== 위치 관리 바텀시트 ===== */
@@ -173,13 +174,78 @@
         .search-result-item .sr-add { font-size: 18px; color: #94a3b8; }
         .search-result-item.already-fav .sr-add { color: var(--primary); }
         .no-result { text-align: center; padding: 30px 0; color: #94a3b8; font-size: 14px; }
+
+        /* 탭 패널 */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* 기록 탭 (Strava) */
+        .record-header { margin-bottom: 20px; }
+        .record-title { font-size: 28px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: -0.5px; }
+        .record-subtitle { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 4px; }
+        #tab-panel-2.strava-auth-mode.active {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100dvh - var(--tab-bar-height) - var(--safe-top) - 50px);
+        }
+        #tab-panel-2.strava-auth-mode #strava-auth-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 0;
+        }
+        .strava-auth-prompt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 24px;
+            width: 100%;
+            max-width: 320px;
+        }
+        .strava-auth-prompt .record-subtitle { margin-top: 0; }
+        .strava-login-btn { width: 100%; max-width: 280px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 24px; border: none; border-radius: 18px; background: #fff; color: #FC4C02; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 16px rgba(0,80,160,0.12); transition: transform 0.2s; font-family: var(--font-sans); }
+        .strava-login-btn:active { transform: scale(0.98); }
+        .strava-login-btn svg { width: 22px; height: 22px; fill: #FC4C02; }
+        .strava-user-bar { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.18); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 12px 14px; margin-bottom: 16px; }
+        .strava-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.5); flex-shrink: 0; background: #fff; }
+        .strava-user-info { flex: 1; min-width: 0; }
+        .strava-user-name { font-size: 15px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .strava-user-meta { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 2px; }
+        .strava-logout-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; font-size: 11px; font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
+        .strava-section-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: 12px; padding: 0 2px; }
+        .strava-activity-list { display: flex; flex-direction: column; gap: 10px; }
+        .strava-activity-card { background: #fff; border-radius: 18px; padding: 16px 18px; box-shadow: 0 4px 16px rgba(0,80,160,0.08); cursor: pointer; transition: transform 0.2s; }
+        .strava-activity-card:active { transform: scale(0.98); }
+        .strava-act-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .strava-act-name { font-size: 15px; font-weight: 800; color: #1e293b; line-height: 1.35; flex: 1; }
+        .strava-act-date { font-size: 11px; font-weight: 700; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+        .strava-act-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .strava-stat { background: #f8fafc; border-radius: 12px; padding: 10px 8px; text-align: center; }
+        .strava-stat-val { font-size: 14px; font-weight: 800; color: #1e293b; line-height: 1.2; }
+        .strava-stat-label { font-size: 10px; font-weight: 600; color: #94a3b8; margin-top: 3px; }
+        .strava-empty, .strava-loading { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.8); font-size: 14px; font-weight: 600; }
+        .strava-loading { animation: pulse 1.2s infinite; }
+        .tab-placeholder { text-align: center; padding: 80px 20px; color: rgba(255,255,255,0.85); }
+        .tab-placeholder-icon { font-size: 48px; margin-bottom: 12px; }
+        .tab-placeholder-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+        .tab-placeholder-desc { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7); }
+
+        /* Strava 활동 상세 */
+        .strava-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
+        .strava-detail-row:last-child { border-bottom: none; }
+        .strava-detail-label { font-size: 13px; font-weight: 600; color: #64748b; }
+        .strava-detail-value { font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; }
+        .strava-detail-map-placeholder { background: #f1f5f9; border-radius: 14px; padding: 28px 16px; text-align: center; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
     </style>
 </head>
 <body>
 <div class="phone-frame">
     <div class="content-scroll">
 
-        <!-- 상단 아이콘 바 -->
+        <!-- ===== 홈 탭 ===== -->
+        <div id="tab-panel-0" class="tab-panel active">
         <div style="display:flex;justify-content:flex-end;align-items:center;gap:4px;margin-bottom:8px;">
             <button class="refresh-btn" onclick="showToast('👤 프로필 기능이 곧 업데이트됩니다!')">
                 <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -281,12 +347,100 @@
                 <span class="status-badge status-green" id="badge-wind">⏳</span>
             </div>
         </div>
+        </div>
+
+        <!-- ===== 날씨 탭 ===== -->
+        <div id="tab-panel-1" class="tab-panel">
+            <div class="tab-placeholder">
+                <div class="tab-placeholder-icon">🌤️</div>
+                <div class="tab-placeholder-title">날씨</div>
+                <div class="tab-placeholder-desc">곧 업데이트될 예정이에요</div>
+            </div>
+        </div>
+
+        <!-- ===== 기록 탭 (Strava) ===== -->
+        <div id="tab-panel-2" class="tab-panel strava-auth-mode">
+            <div class="record-header" id="strava-record-header">
+                <div class="record-title">🏊 수영 기록</div>
+                <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
+            </div>
+            <div id="strava-auth-section">
+                <div class="strava-auth-prompt">
+                    <div>
+                        <div class="record-title">🏊 수영 기록</div>
+                        <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
+                    </div>
+                    <button class="strava-login-btn" onclick="startStravaLogin()">
+                        <svg viewBox="0 0 24 24"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h3.065L5.704 0 0 10.172h3.066l2.836-5.599z"/></svg>
+                        스트라바 로그인
+                    </button>
+                </div>
+            </div>
+            <div id="strava-user-bar" style="display:none;">
+                <img class="strava-avatar" id="strava-avatar" src="" alt="">
+                <div class="strava-user-info">
+                    <div class="strava-user-name" id="strava-user-name">--</div>
+                    <div class="strava-user-meta" id="strava-user-meta">연결됨</div>
+                </div>
+                <button class="strava-logout-btn" onclick="stravaLogout()">로그아웃</button>
+            </div>
+            <div id="strava-loading" class="strava-loading" style="display:none;">활동 불러오는 중...</div>
+            <div id="strava-empty" class="strava-empty" style="display:none;">수영 기록이 없어요 🏊</div>
+            <div class="strava-section-title" id="strava-list-title" style="display:none;">최근 수영 활동</div>
+            <div class="strava-activity-list" id="strava-activity-list"></div>
+        </div>
+
+        <!-- ===== 내정보 탭 ===== -->
+        <div id="tab-panel-3" class="tab-panel">
+            <div class="tab-placeholder">
+                <div class="tab-placeholder-icon">👤</div>
+                <div class="tab-placeholder-title">내정보</div>
+                <div class="tab-placeholder-desc">곧 업데이트될 예정이에요</div>
+            </div>
+        </div>
     </div>
 
     <!-- 하단 탭 -->
     <div class="bottom-tab-bar">
-        <div class="tab-item active" id="tab0" onclick="switchTab(0)"><span class="tab-icon">🌊</span><span class="tab-label">홈</span></div>
-        <div class="tab-item inactive" id="tab1" onclick="switchTab(1)"><span class="tab-icon">📊</span><span class="tab-label">기록</span></div>
+        <div class="tab-item active" id="tab0" onclick="switchTab(0)">
+            <span class="tab-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M2 13c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
+                    <path d="M2 18c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
+                </svg>
+            </span>
+            <span class="tab-label">홈</span>
+        </div>
+        <div class="tab-item inactive" id="tab1" onclick="switchTab(1)">
+            <span class="tab-icon">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="8" cy="8" r="3"/>
+                    <path d="M3 17h11a4 4 0 0 0 0-8 4.5 4.5 0 0 0 8.6-1.2"/>
+                    <path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.8 3.8l1 1M11.2 11.2l1 1M3.8 12.2l1-1M11.2 4.8l1-1"/>
+                </svg>
+            </span>
+            <span class="tab-label">날씨</span>
+        </div>
+        <div class="tab-item inactive" id="tab2" onclick="switchTab(2)">
+            <span class="tab-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M4 20V10"/>
+                    <path d="M10 20V4"/>
+                    <path d="M16 20v-6"/>
+                    <path d="M22 20V8"/>
+                </svg>
+            </span>
+            <span class="tab-label">기록</span>
+        </div>
+        <div class="tab-item inactive" id="tab3" onclick="switchTab(3)">
+            <span class="tab-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+            </span>
+            <span class="tab-label">내정보</span>
+        </div>
     </div>
 
     <!-- 토스트 -->
@@ -298,7 +452,7 @@
             <div class="loc-sheet-handle-area">
                 <div class="loc-sheet-handle"></div>
                 <div class="loc-sheet-header">
-                    <div class="loc-sheet-title">📍 위치 관리</div>
+                    <div class="loc-sheet-title">🌊 바다 선택</div>
                     <button class="loc-sheet-close" onclick="closeLocSheet()">✕</button>
                 </div>
             </div>
@@ -311,53 +465,121 @@
             <div class="loc-sheet-body" id="loc-sheet-body"></div>
         </div>
     </div>
+
+    <!-- Strava 활동 상세 바텀시트 -->
+    <div class="loc-sheet-overlay" id="strava-detail-overlay" onclick="handleStravaDetailOverlayClick(event)">
+        <div class="loc-sheet">
+            <div class="loc-sheet-handle-area">
+                <div class="loc-sheet-handle"></div>
+                <div class="loc-sheet-header">
+                    <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
+                    <button class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
+                </div>
+            </div>
+            <div class="loc-sheet-body" id="strava-detail-body"></div>
+        </div>
+    </div>
 </div>
 
 <script>
 // =====================================================
-//  전국 해변 데이터베이스
+//  전국 해변 데이터베이스 (바다누리 BeachCode)
 // =====================================================
+const KHOA_SERVICE_KEY = 'asGG26KX5P9eLKZkroj0Kg==';
+const KHOA_BEACH_API = 'https://khoa.go.kr/oceandata/api/beach/search.do';
+// 국립수산과학원 실시간어장정보 (수온) — nifs.go.kr/openApi 신청 후 key 발급
+const NIFS_SERVICE_KEY = '';
+const NIFS_OBS_API = 'https://www.nifs.go.kr/OpenAPI_json?id=risaList';
+
+// RISA 관측소 코드 (sta_cde) — 키워드별 대표 관측소
+const NIFS_STATION_CODES = {
+    '해운대': 'bgj8a',  // 기장 (해운대·송정 인근)
+    '부산':   'bbji5',  // 부산 장안 (광안리 인근)
+    '강릉':   'bgna3',
+    '속초':   'byy87',  // 양양 (속초·낙산 인근)
+    '보령':   'bbsi5',  // 보령 삽시도 (대천 인근)
+    '제주':   'bjni5',  // 제주 중문
+};
+
+const KHOA_OBS_STATIONS = [
+    { code:'BCH001', name:'해운대',     lat:35.158, lon:129.160 },
+    { code:'BCH002', name:'광안리',     lat:35.153, lon:129.118 },
+    { code:'BCH004', name:'망상',       lat:37.594, lon:129.152 },
+    { code:'BCH005', name:'낙산',       lat:38.121, lon:128.636 },
+    { code:'BCH006', name:'진하',       lat:35.438, lon:129.357 },
+    { code:'BCH008', name:'일광',       lat:35.245, lon:129.228 },
+    { code:'BCH009', name:'삼척',       lat:37.439, lon:129.166 },
+    { code:'BCH010', name:'송정',       lat:35.179, lon:129.209 },
+    { code:'BCH012', name:'송도',       lat:35.069, lon:129.016 },
+    { code:'BCH013', name:'다대포',     lat:35.047, lon:128.961 },
+    { code:'BCH014', name:'대천',       lat:36.318, lon:126.502 },
+    { code:'BCH017', name:'중문',       lat:33.244, lon:126.412 },
+    { code:'BCH020', name:'협재',       lat:33.394, lon:126.239 },
+    { code:'BCH021', name:'곽지',       lat:33.461, lon:126.301 },
+    { code:'BCH024', name:'함덕',       lat:33.543, lon:126.670 },
+    { code:'BCH031', name:'경포대',     lat:37.796, lon:128.906 },
+    { code:'BCH033', name:'만리포',     lat:36.788, lon:126.148 },
+    { code:'BCH041', name:'상주은모래', lat:34.837, lon:128.422 },
+    { code:'BCH042', name:'학동몽돌',   lat:34.725, lon:128.433 },
+    { code:'BCH050', name:'정동진',     lat:37.682, lon:129.049 },
+];
+
 const ALL_BEACHES = [
     // 부산
-    { id:'haeundae',  name:'해운대',   emoji:'🏖️', region:'부산', lat:35.158, lon:129.160 },
-    { id:'songjeong', name:'송정',     emoji:'🌊', region:'부산', lat:35.179, lon:129.209 },
-    { id:'gwangan',   name:'광안리',   emoji:'🌉', region:'부산', lat:35.153, lon:129.118 },
-    { id:'dadaepo',   name:'다대포',   emoji:'🏄', region:'부산', lat:35.047, lon:128.961 },
-    { id:'ilgwang',   name:'일광',     emoji:'🐚', region:'부산', lat:35.245, lon:129.228 },
-    { id:'imrang',    name:'임랑',     emoji:'🌅', region:'부산', lat:35.295, lon:129.255 },
+    { id:'haeundae',   name:'해운대',     emoji:'🏖️', region:'부산', lat:35.158, lon:129.160, beachCode:'BCH001', nifsStation:'해운대', khoaObsAccept:['해운대'] },
+    { id:'gwangan',    name:'광안리',     emoji:'🌉', region:'부산', lat:35.153, lon:129.118, beachCode:'BCH002', nifsStation:'부산',   khoaObsAccept:['광안','부산'] },
+    { id:'songjeong',  name:'송정',       emoji:'🌊', region:'부산', lat:35.179, lon:129.209, beachCode:'BCH010', nifsStation:'해운대', khoaObsAccept:['송정','해운대'] },
+    { id:'songdo',     name:'송도',       emoji:'🎡', region:'부산', lat:35.091, lon:129.014, beachCode:'BCH012', nifsStation:'부산',   khoaObsAccept:['송도','감천','부산'] },
+    { id:'dadaepo',    name:'다대포',     emoji:'🏄', region:'부산', lat:35.046, lon:128.965, beachCode:'BCH013', nifsStation:'부산',   khoaObsAccept:['다대포','감천','부산'] },
+    { id:'ilgwang',    name:'일광',       emoji:'🐚', region:'부산', lat:35.245, lon:129.228, beachCode:'BCH008', nifsStation:'해운대', khoaObsAccept:['일광','임랑'] },
     // 경남
-    { id:'sangju',    name:'상주은모래',emoji:'✨', region:'경남', lat:34.837, lon:128.422 },
-    { id:'mongsanpo', name:'몽돌',     emoji:'🪨', region:'경남', lat:34.725, lon:128.433 },
-    // 동해
-    { id:'gyeongpo',  name:'경포대',   emoji:'🌲', region:'강원', lat:37.796, lon:128.906 },
-    { id:'naksan',    name:'낙산',     emoji:'🏯', region:'강원', lat:38.121, lon:128.636 },
-    { id:'jeongdongjin', name:'정동진',emoji:'🌄', region:'강원', lat:37.682, lon:129.049 },
-    { id:'sokcho',    name:'속초해수욕장',emoji:'🦀', region:'강원', lat:38.196, lon:128.582 },
-    // 서해
-    { id:'daecheon',  name:'대천',     emoji:'🦀', region:'충남', lat:36.318, lon:126.502 },
-    { id:'mallipo',   name:'만리포',   emoji:'🐟', region:'충남', lat:36.788, lon:126.148 },
-    { id:'byeonsan',  name:'변산',     emoji:'🌾', region:'전북', lat:35.621, lon:126.533 },
+    { id:'sangju',     name:'상주은모래', emoji:'✨', region:'경남', lat:34.837, lon:128.422, beachCode:'BCH041' },
+    { id:'hakdong',    name:'학동몽돌',   emoji:'🪨', region:'경남', lat:34.727, lon:128.431, beachCode:'BCH042' },
+    { id:'jinha',      name:'진하',       emoji:'🌅', region:'경남', lat:35.403, lon:129.324, beachCode:'BCH006' },
+    // 강원
+    { id:'gyeongpo',   name:'경포대',     emoji:'🌲', region:'강원', lat:37.803, lon:128.910, beachCode:'BCH031', nifsStation:'강릉', khoaObsAccept:['경포','강릉'] },
+    { id:'naksan',     name:'낙산',       emoji:'🏯', region:'강원', lat:38.115, lon:128.635, beachCode:'BCH005', nifsStation:'속초', khoaObsAccept:['낙산'] },
+    { id:'hajodae',    name:'하조대',     emoji:'🌊', region:'강원', lat:38.085, lon:128.642, beachCode:'BCH007', nifsStation:'속초', khoaObsAccept:['하조대','낙산'] },
+    { id:'jeongdongjin', name:'정동진',   emoji:'🌄', region:'강원', lat:37.682, lon:129.049, beachCode:'BCH050', nifsStation:'강릉', khoaObsAccept:['정동진','망상'] },
+    { id:'maengbang',  name:'맹방',       emoji:'🏖️', region:'강원', lat:37.584, lon:129.117, beachCode:'BCH049' },
+    { id:'samcheok',   name:'삼척',       emoji:'⛰️', region:'강원', lat:37.443, lon:129.167, beachCode:'BCH009' },
+    { id:'mangsang',   name:'망상',       emoji:'🌅', region:'강원', lat:37.592, lon:129.085, beachCode:'BCH004', nifsStation:'강릉', khoaObsAccept:['망상'] },
+    { id:'goraebul',   name:'고래불',     emoji:'🐋', region:'강원', lat:36.578, lon:129.402, beachCode:'BCH048' },
+    { id:'yeongildae', name:'영일대',     emoji:'🌇', region:'강원', lat:36.051, lon:129.378, beachCode:'BCH044' },
+    // 충남
+    { id:'daecheon',   name:'대천',       emoji:'🦀', region:'충남', lat:36.310, lon:126.513, beachCode:'BCH014', nifsStation:'보령', khoaObsAccept:['대천'] },
+    { id:'kkotji',     name:'꽃지',       emoji:'🌸', region:'충남', lat:36.273, lon:126.282, beachCode:'BCH015', nifsStation:'보령', khoaObsAccept:['꽃지','보령'] },
+    { id:'mallipo',    name:'만리포',     emoji:'🐟', region:'충남', lat:36.788, lon:126.148, beachCode:'BCH033', nifsStation:'보령', khoaObsAccept:['만리포','안흥'] },
+    { id:'muchangpo',  name:'무창포',     emoji:'🌊', region:'충남', lat:36.251, lon:126.453, beachCode:'BCH035', nifsStation:'보령', khoaObsAccept:['무창포','대천'] },
+    { id:'chunjangdae', name:'춘장대',    emoji:'🪨', region:'충남', lat:36.107, lon:126.345, beachCode:'BCH036' },
+    { id:'anmyeon',    name:'안면',       emoji:'🏝️', region:'충남', lat:36.525, lon:126.338, beachCode:'BCH011', nifsStation:'보령', khoaObsAccept:['안면','보령'] },
     // 제주
-    { id:'hamdeok',   name:'함덕',     emoji:'🌺', region:'제주', lat:33.543, lon:126.670 },
-    { id:'gwakji',    name:'곽지',     emoji:'🐠', region:'제주', lat:33.461, lon:126.301 },
-    { id:'jungmun',   name:'중문색달', emoji:'🏝️', region:'제주', lat:33.244, lon:126.412 },
-    { id:'hyeopjae',  name:'협재',     emoji:'🟦', region:'제주', lat:33.394, lon:126.239 },
+    { id:'hyeopjae',   name:'협재',       emoji:'🟦', region:'제주', lat:33.394, lon:126.239, beachCode:'BCH020', nifsStation:'제주', khoaObsAccept:['협재','제주서부'] },
+    { id:'gwakji',     name:'곽지',       emoji:'🐠', region:'제주', lat:33.451, lon:126.304, beachCode:'BCH021', nifsStation:'제주', khoaObsAccept:['곽지','제주서부'] },
+    { id:'jungmun',    name:'중문',       emoji:'🏝️', region:'제주', lat:33.244, lon:126.412, beachCode:'BCH017', nifsStation:'제주', khoaObsAccept:['중문'] },
+    { id:'hamdeok',    name:'함덕',       emoji:'🌺', region:'제주', lat:33.543, lon:126.670, beachCode:'BCH024', nifsStation:'제주', khoaObsAccept:['함덕','제주'] },
+    { id:'gimnyeong',  name:'김녕',       emoji:'🐚', region:'제주', lat:33.559, lon:126.764, beachCode:'BCH025', nifsStation:'제주', khoaObsAccept:['김녕','성산'] },
+    { id:'woljeongri', name:'월정리',     emoji:'🌙', region:'제주', lat:33.556, lon:126.794, beachCode:'BCH026', nifsStation:'제주', khoaObsAccept:['월정','성산'] },
+    { id:'pyoseon',    name:'표선',       emoji:'🌾', region:'제주', lat:33.323, lon:126.838, beachCode:'BCH018', nifsStation:'제주', khoaObsAccept:['표선','성산'] },
+    // 전남
+    { id:'manseongri', name:'만성리',     emoji:'🌊', region:'전남', lat:34.722, lon:127.559, beachCode:'BCH040' },
 ];
 
 // =====================================================
 //  상태
 // =====================================================
-// 즐겨찾기: localStorage 저장
 let favorites = JSON.parse(localStorage.getItem('bada_favorites') || '["haeundae"]');
 let currentLocationId = favorites[0] || 'haeundae';
-let isGpsMode = false;
-let gpsLocation = null; // { name, lat, lon }
 
 let currentWaterTemp = null;
 let currentWaveHeight = null;
 let currentWindSpeed = null;
 let currentAirTemp = null;
 let isLoading = false;
+let usedKhoaApi = false;
+let usedNifsApi = false;
+let nifsRisaCache = null;
+let nifsRisaCacheTime = 0;
 
 function saveFavorites() {
     localStorage.setItem('bada_favorites', JSON.stringify(favorites));
@@ -368,16 +590,177 @@ function getBeachById(id) {
 }
 
 function getCurrentLoc() {
-    if (isGpsMode && gpsLocation) return gpsLocation;
     return getBeachById(currentLocationId) || ALL_BEACHES[0];
 }
 
+function formatKhoaObsTime(obsTime) {
+    if (!obsTime) return getTimeStr();
+    const part = String(obsTime).trim().split(' ')[1];
+    return part ? part.slice(0, 5) : getTimeStr();
+}
+
+function formatObsPostLabel(obsPostName) {
+    let name = String(obsPostName || '관측소').trim();
+    if (/관측소$/.test(name)) return name;
+    return name.replace(/해수욕장$/, '') + '관측소';
+}
+
+function formatKhoaStatusText(beachName, obsPostName, obsTime) {
+    return `${beachName} → ${formatObsPostLabel(obsPostName)} · ${formatKhoaObsTime(obsTime)} 기준`;
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function findNearestKhoaObsStation(lat, lon) {
+    let nearest = null;
+    let minDist = Infinity;
+    for (const st of KHOA_OBS_STATIONS) {
+        const d = haversineKm(lat, lon, st.lat, st.lon);
+        if (d < minDist) {
+            minDist = d;
+            nearest = { ...st, distanceKm: d };
+        }
+    }
+    return nearest;
+}
+
+function normalizeObsPostName(name) {
+    return String(name || '').replace(/해수욕장$/, '').replace(/\s+/g, '').trim();
+}
+
+function isKhoaObsAcceptable(beach, obsPostName) {
+    if (!beach.khoaObsAccept) return true;
+    const obs = normalizeObsPostName(obsPostName);
+    return beach.khoaObsAccept.some(k => obs.includes(k));
+}
+
+function formatNifsObsDateTime(obsDat, obsTim) {
+    if (!obsDat) return getTimeStr();
+    const t = String(obsTim || '').replace(/\D/g, '').padStart(4, '0');
+    const hh = t.slice(0, 2), mm = t.slice(2, 4);
+    const dat = String(obsDat).trim();
+    if (dat.includes('-')) return `${dat} ${hh}:${mm}`;
+    if (dat.length >= 8) {
+        return `${dat.slice(0, 4)}-${dat.slice(4, 6)}-${dat.slice(6, 8)} ${hh}:${mm}`;
+    }
+    return getTimeStr();
+}
+
+function formatNifsStatusText(staName, obsTime) {
+    const name = (staName || '관측소').includes('관측소') ? staName : `${staName} 관측소`;
+    return `${name} · ${formatKhoaObsTime(obsTime)} 기준`;
+}
+
+function normalizeNifsItems(item) {
+    if (!item) return [];
+    return Array.isArray(item) ? item : [item];
+}
+
+function pickNifsStationItem(items, keyword) {
+    const kw = keyword.trim();
+    const surface = items.filter(it => String(it.obs_lay || '1') === '1');
+    const code = NIFS_STATION_CODES[kw];
+    if (code) {
+        const byCode = surface.find(it => it.sta_cde === code);
+        if (byCode) return byCode;
+    }
+    const candidates = surface.filter(it => (it.sta_nam_kor || '').includes(kw));
+    if (!candidates.length) return null;
+    const score = (name) => {
+        if (name === kw) return 0;
+        if (name.startsWith(kw)) return 1;
+        return 2 + name.length;
+    };
+    candidates.sort((a, b) => {
+        const diff = score(a.sta_nam_kor || '') - score(b.sta_nam_kor || '');
+        if (diff !== 0) return diff;
+        const aKey = String(a.obs_dat || '') + String(a.obs_tim || '');
+        const bKey = String(b.obs_dat || '') + String(b.obs_tim || '');
+        return bKey.localeCompare(aKey);
+    });
+    return candidates[0];
+}
+
+async function fetchNifsRisaList() {
+    if (!NIFS_SERVICE_KEY) throw new Error('NIFS key not configured');
+    const now = Date.now();
+    if (nifsRisaCache && now - nifsRisaCacheTime < 5 * 60 * 1000) return nifsRisaCache;
+    const url = `${NIFS_OBS_API}&key=${encodeURIComponent(NIFS_SERVICE_KEY)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.header?.resultCode !== '00') {
+        throw new Error(json.header?.resultMsg || 'NIFS API error');
+    }
+    const items = normalizeNifsItems(json.body?.item);
+    nifsRisaCache = items;
+    nifsRisaCacheTime = now;
+    return items;
+}
+
+async function fetchNifsObsData(stationKeyword) {
+    const items = await fetchNifsRisaList();
+    const item = pickNifsStationItem(items, stationKeyword);
+    if (!item) throw new Error('NIFS station not found');
+    const temp = parseFloat(item.wtr_tmp);
+    if (Number.isNaN(temp)) throw new Error('NIFS water temp unavailable');
+    return {
+        water_temp: temp,
+        sta_nam_kor: item.sta_nam_kor || stationKeyword,
+        obs_time: formatNifsObsDateTime(item.obs_dat, item.obs_tim),
+    };
+}
+
+function applyOpenMeteoWaterWind(marine, weather) {
+    currentWaterTemp = marine?.current?.sea_surface_temperature ?? null;
+    const windKmh = weather?.current?.wind_speed_10m ?? null;
+    currentWindSpeed = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
+}
+
+function applyOpenMeteoWind(weather) {
+    const windKmh = weather?.current?.wind_speed_10m ?? null;
+    currentWindSpeed = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
+}
+
+async function fetchKhoaBeachData(beach) {
+    const nearest = findNearestKhoaObsStation(beach.lat, beach.lon);
+    if (!nearest) throw new Error('No KHOA station');
+    const beachCode = nearest.code;
+    const url = `${KHOA_BEACH_API}?ServiceKey=${encodeURIComponent(KHOA_SERVICE_KEY)}&ResultType=json&BeachCode=${encodeURIComponent(beachCode)}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const meta = json.result?.meta || {};
+    console.log('[KHOA]', beach.name, '→', beachCode, nearest.name, {
+        beach_name: meta.beach_name,
+        obs_post_name: meta.obs_post_name,
+        distance_km: Math.round(nearest.distanceKm * 10) / 10,
+    });
+    if (json.result?.error) throw new Error(json.result.error);
+    const data = json.result?.data?.[0];
+    if (!data) throw new Error('No data');
+    return {
+        ...data,
+        obs_post_name: meta.obs_post_name || '',
+        obs_time: data.obs_time || '',
+        nearest_station: nearest,
+    };
+}
+
 // =====================================================
-//  API 호출 (Open-Meteo)
+//  API 호출 (바다누리 → 국립수산과학원 → Open-Meteo)
 // =====================================================
 async function fetchAllData() {
     if (isLoading) return;
     isLoading = true;
+    usedKhoaApi = false;
+    usedNifsApi = false;
     const btn = document.getElementById('refresh-main-btn');
     btn.classList.add('spinning');
     setApiStatus('loading', '실시간 데이터 불러오는 중...');
@@ -385,23 +768,46 @@ async function fetchAllData() {
     const loc = getCurrentLoc();
     try {
         const [marineRes, weatherRes] = await Promise.all([
-            fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&forecast_days=1`),
-            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&timezone=Asia%2FSeoul&forecast_days=1`)
+            fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`),
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`)
         ]);
         const marine = await marineRes.json();
         const weather = await weatherRes.json();
 
-        currentWaterTemp  = marine?.current?.sea_surface_temperature ?? null;
         currentWaveHeight = marine?.current?.wave_height ?? null;
         currentAirTemp    = weather?.current?.temperature_2m ?? null;
-        const windKmh     = weather?.current?.wind_speed_10m ?? null;
-        currentWindSpeed  = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
-
         window._hourlyData = { marine: marine?.hourly || {}, weather: weather?.hourly || {} };
         window._weatherCode = weather?.current?.weather_code ?? 0;
 
+        let statusText = null;
+        let khoa = null;
+        try {
+            khoa = await fetchKhoaBeachData(loc);
+        } catch (_) { /* KHOA 실패 → NIFS/Open-Meteo */ }
+
+        if (khoa) {
+            currentWaterTemp = khoa.water_temp ?? null;
+            currentWindSpeed = khoa.wind_speed ?? null;
+            statusText = formatKhoaStatusText(loc.name, khoa.obs_post_name, khoa.obs_time);
+            usedKhoaApi = true;
+        } else if (loc.nifsStation && NIFS_SERVICE_KEY) {
+            try {
+                const nifs = await fetchNifsObsData(loc.nifsStation);
+                currentWaterTemp = nifs.water_temp;
+                applyOpenMeteoWind(weather);
+                statusText = formatNifsStatusText(nifs.sta_nam_kor, nifs.obs_time);
+                usedNifsApi = true;
+            } catch (_) {
+                applyOpenMeteoWaterWind(marine, weather);
+                statusText = `Open-Meteo 폴백 · ${getTimeStr()} 기준`;
+            }
+        } else {
+            applyOpenMeteoWaterWind(marine, weather);
+            statusText = `Open-Meteo 폴백 · ${getTimeStr()} 기준`;
+        }
+
         renderAll();
-        setApiStatus('ok', `실시간 · ${getTimeStr()} 기준`);
+        setApiStatus('ok', statusText);
         showToast(`🌊 ${loc.name} 실시간 데이터 갱신 완료!`);
     } catch (err) {
         if (currentWaterTemp === null) currentWaterTemp = 20;
@@ -422,7 +828,7 @@ async function fetchAllData() {
 // =====================================================
 function renderAll() {
     const loc = getCurrentLoc();
-    document.getElementById('loc-title-text').textContent = isGpsMode ? '현재위치' : loc.name;
+    document.getElementById('loc-title-text').textContent = loc.name;
     const wCode = window._weatherCode ?? 0;
     document.getElementById('weather-badge-text').textContent = `${getWeatherEmoji(wCode)} ${currentAirTemp !== null ? Math.round(currentAirTemp)+'°C' : '--°C'}`;
     renderCharTemp();
@@ -438,62 +844,29 @@ function renderLocationChips() {
     const container = document.getElementById('location-chips');
     container.innerHTML = '';
 
-    // 현재위치 버튼
-    const gpsChip = document.createElement('button');
-    gpsChip.className = `l-chip ${isGpsMode ? 'gps-active' : 'inactive'}`;
-    gpsChip.textContent = '📍 현재위치';
-    gpsChip.onclick = useGPS;
-    container.appendChild(gpsChip);
-
-    // 즐겨찾기 위치만 탭으로 표시
     favorites.forEach(id => {
         const beach = getBeachById(id);
         if (!beach) return;
         const chip = document.createElement('button');
-        chip.className = `l-chip ${!isGpsMode && id === currentLocationId ? 'active' : 'inactive'}`;
+        chip.className = `l-chip ${id === currentLocationId ? 'active' : 'inactive'}`;
         chip.textContent = `${beach.emoji} ${beach.name}`;
         chip.onclick = () => selectLocation(id);
         container.appendChild(chip);
     });
 
-    // 위치 관리 버튼
     const manageChip = document.createElement('button');
     manageChip.className = 'l-chip inactive';
-    manageChip.textContent = '⚙️ 관리';
+    manageChip.textContent = '🌊 바다 선택';
     manageChip.onclick = openLocSheet;
     container.appendChild(manageChip);
 }
 
 function selectLocation(id) {
-    isGpsMode = false;
-    if (id === currentLocationId && !isGpsMode) return;
+    if (id === currentLocationId) return;
     currentLocationId = id;
     currentWaterTemp = null; currentWaveHeight = null; currentWindSpeed = null; currentAirTemp = null;
     renderLocationChips();
     fetchAllData();
-}
-
-// =====================================================
-//  GPS
-// =====================================================
-function useGPS() {
-    if (!navigator.geolocation) { showToast('❌ 위치 서비스 미지원'); return; }
-    showToast('📡 현재 위치 감지 중...');
-    navigator.geolocation.getCurrentPosition(pos => {
-        const { latitude, longitude } = pos.coords;
-        // 가장 가까운 해변 찾기
-        let closest = ALL_BEACHES[0], minDist = Infinity;
-        ALL_BEACHES.forEach(b => {
-            const d = Math.hypot(b.lat - latitude, b.lon - longitude);
-            if (d < minDist) { minDist = d; closest = b; }
-        });
-        isGpsMode = true;
-        gpsLocation = { name: closest.name + ' 근처', lat: latitude, lon: longitude, emoji: '📍' };
-        currentWaterTemp = null; currentWaveHeight = null; currentWindSpeed = null; currentAirTemp = null;
-        renderLocationChips();
-        fetchAllData();
-        showToast(`📍 현재 위치 근처: ${closest.name}`);
-    }, () => showToast('❌ 위치 접근 권한이 필요해요'));
 }
 
 // =====================================================
@@ -522,14 +895,6 @@ function renderLocSheetBody(query) {
     body.innerHTML = '';
 
     if (!query) {
-        // 기본: GPS + 즐겨찾기 관리
-        body.innerHTML += `<div class="loc-section-title">현재 위치</div>`;
-        const gpsRow = document.createElement('div');
-        gpsRow.className = 'gps-row';
-        gpsRow.innerHTML = `<div class="gps-row-icon">📡</div><div class="gps-row-info"><div class="gps-row-name">현재 위치 자동 감지</div><div class="gps-row-desc">GPS로 가장 가까운 해변 정보</div></div><div class="gps-row-arrow">→</div>`;
-        gpsRow.onclick = () => { closeLocSheet(); useGPS(); };
-        body.appendChild(gpsRow);
-
         body.innerHTML += `<div class="loc-section-title">즐겨찾기 (탭에 표시됨)</div>`;
         if (favorites.length === 0) {
             body.innerHTML += `<div class="no-result">아직 즐겨찾기가 없어요<br>아래에서 검색해서 추가하세요 🔍</div>`;
@@ -538,12 +903,12 @@ function renderLocSheetBody(query) {
                 const beach = getBeachById(id);
                 if (!beach) return;
                 const item = document.createElement('div');
-                item.className = `fav-item ${!isGpsMode && id === currentLocationId ? 'selected' : ''}`;
+                item.className = `fav-item ${id === currentLocationId ? 'selected' : ''}`;
                 item.innerHTML = `
                     <div class="fav-emoji">${beach.emoji}</div>
-                    <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region}</div></div>
+                    <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region} · ${beach.beachCode}</div></div>
                     <div class="fav-actions">
-                        ${!isGpsMode && id === currentLocationId ? '<span class="fav-check">✓</span>' : ''}
+                        ${id === currentLocationId ? '<span class="fav-check">✓</span>' : ''}
                         <button class="fav-delete" onclick="removeFavorite('${id}', event)">✕</button>
                     </div>`;
                 item.onclick = () => { selectLocation(id); closeLocSheet(); };
@@ -671,26 +1036,29 @@ function getTimeStr() {
     return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
 }
 
+function formatHourlyIso(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    return `${y}-${m}-${d}T${h}:00`;
+}
+
 function renderHourly() {
     const container = document.getElementById('hourly-scroll-container');
     container.innerHTML = '';
 
     const hourly = window._hourlyData;
     const now = new Date();
-    const currentHour = now.getHours();
-    const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    now.setMinutes(0, 0, 0);
+    const currentMs = now.getTime();
+    let nowCol = null;
 
-    // 현재 시각 기준 앞뒤 포함 1시간 간격 12개 슬롯
-    const startHour = Math.max(0, currentHour - 1);
-    const hours = [];
-    for (let h = startHour; h <= Math.min(23, startHour + 11); h++) hours.push(h);
-
-    const weatherIcons = ['🌙','🌙','🌙','🌙','🌙','🌅','🌤️','🌤️','☀️','☀️','☀️','☀️','☀️','☀️','☀️','🌤️','🌤️','🌤️','🌤️','🌙','🌙','🌙','🌙','🌙'];
-
-    hours.forEach(h => {
-        const isNow = h === currentHour;
-        const timeStr = `${String(h).padStart(2,'0')}:00`;
-        const isoTime = `${today}T${timeStr}`;
+    for (let offset = -24; offset <= 24; offset++) {
+        const slotDate = new Date(currentMs + offset * 3600000);
+        const isNow = offset === 0;
+        const timeStr = `${String(slotDate.getHours()).padStart(2, '0')}:00`;
+        const isoTime = formatHourlyIso(slotDate);
 
         let airTemp = '--';
         let waterTemp = '--';
@@ -715,15 +1083,19 @@ function renderHourly() {
         const col = document.createElement('div');
         col.className = `hour-column${isNow ? ' now' : ''}`;
         col.innerHTML = `
-            <div class="hour-time">${isNow ? '지금' : timeStr}</div>
-            <div class="hour-icon">${getWeatherEmoji(wCode) || weatherIcons[h]}</div>
+            <div class="hour-time">${timeStr}</div>
+            <div class="hour-icon">${getWeatherEmoji(wCode)}</div>
             <div class="hour-air">${airTemp}</div>
             <div class="hour-divider"></div>
             <div class="hour-water">${waterTemp}</div>
         `;
         container.appendChild(col);
-        if (isNow) setTimeout(() => col.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' }), 100);
-    });
+        if (isNow) nowCol = col;
+    }
+
+    if (nowCol) {
+        setTimeout(() => nowCol.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 100);
+    }
 }
 
 // =====================================================
@@ -767,8 +1139,423 @@ function setApiStatus(state, text) {
 }
 
 function switchTab(idx) {
-    for (let i=0;i<2;i++) document.getElementById(`tab${i}`).className = i===idx ? 'tab-item active' : 'tab-item inactive';
-    if (idx !== 0) { showToast('🔧 준비 중이에요! 곧 업데이트될 예정이에요 😊'); setTimeout(()=>switchTab(0), 800); }
+    for (let i = 0; i < 4; i++) {
+        document.getElementById(`tab${i}`).className = i === idx ? 'tab-item active' : 'tab-item inactive';
+        document.getElementById(`tab-panel-${i}`).className = i === idx ? 'tab-panel active' : 'tab-panel';
+    }
+    if (idx === 2) initStravaTab();
+}
+
+// =====================================================
+//  Strava 연동 (Browser 팝업 + deep link 콜백)
+// =====================================================
+const STRAVA_CLIENT_ID = '250779';
+const STRAVA_REDIRECT_URI = 'https://bada-go.vercel.app/api/strava/callback';
+const STRAVA_DEEP_LINK_PREFIX = 'com.badago.app://strava/callback';
+const STRAVA_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/strava';
+const STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize';
+const STRAVA_API = 'https://www.strava.com/api/v3';
+const STRAVA_TOKEN_KEY = 'bada_strava_tokens';
+const STRAVA_ATHLETE_KEY = 'bada_strava_athlete';
+
+let stravaActivities = [];
+let stravaTabInitialized = false;
+let stravaOAuthInProgress = false;
+let stravaOAuthListenersReady = false;
+
+function isCapacitorNative() {
+    return !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+}
+
+function getCapPlugin(name) {
+    if (!window.Capacitor) return null;
+    window.__capPlugins = window.__capPlugins || {};
+    if (window.__capPlugins[name]) return window.__capPlugins[name];
+    if (window.Capacitor.Plugins?.[name]) {
+        window.__capPlugins[name] = window.Capacitor.Plugins[name];
+        return window.__capPlugins[name];
+    }
+    if (window.Capacitor.registerPlugin) {
+        window.__capPlugins[name] = window.Capacitor.registerPlugin(name);
+        return window.__capPlugins[name];
+    }
+    return null;
+}
+
+function getStravaApiBase() {
+    return window.location.hostname === 'bada-go.vercel.app' ? '/api/strava' : STRAVA_REMOTE_API_BASE;
+}
+
+function buildStravaAuthUrl() {
+    const params = new URLSearchParams({
+        client_id: STRAVA_CLIENT_ID,
+        redirect_uri: STRAVA_REDIRECT_URI,
+        response_type: 'code',
+        approval_prompt: 'auto',
+        scope: 'activity:read_all,profile:read_all',
+    });
+    return `${STRAVA_AUTH_URL}?${params}`;
+}
+
+function parseStravaOAuthUrl(url) {
+    if (!url) return null;
+    const isDeepLink = url.startsWith(`${STRAVA_DEEP_LINK_PREFIX}`)
+        || url.startsWith('com.badago.app://strava');
+    if (!isDeepLink) return null;
+    const qIndex = url.indexOf('?');
+    const params = new URLSearchParams(qIndex >= 0 ? url.slice(qIndex + 1) : '');
+    return { code: params.get('code'), error: params.get('error') };
+}
+
+async function closeStravaBrowser() {
+    const Browser = getCapPlugin('Browser');
+    if (!Browser) return;
+    try { await Browser.close(); } catch (_) { /* already closed */ }
+}
+
+async function setupStravaOAuthListeners() {
+    if (!isCapacitorNative() || stravaOAuthListenersReady) return;
+    const App = getCapPlugin('App');
+    const Browser = getCapPlugin('Browser');
+    if (!App) return;
+
+    stravaOAuthListenersReady = true;
+
+    await App.addListener('appUrlOpen', async (event) => {
+        const parsed = parseStravaOAuthUrl(event.url);
+        if (!parsed) return;
+        console.log('[Strava OAuth] appUrlOpen', event.url);
+        stravaOAuthInProgress = false;
+        await closeStravaBrowser();
+        await completeStravaOAuth(parsed.code, parsed.error);
+    });
+
+    if (Browser) {
+        await Browser.addListener('browserFinished', async () => {
+            if (!stravaOAuthInProgress) return;
+            // deep link(appUrlOpen)이 browser 닫힘보다 약간 늦게 올 수 있음
+            await new Promise((r) => setTimeout(r, 700));
+            if (!stravaOAuthInProgress) return;
+            stravaOAuthInProgress = false;
+            showToast('Strava 로그인 취소됨');
+        });
+    }
+
+    try {
+        const launch = await App.getLaunchUrl();
+        if (launch?.url) {
+            const parsed = parseStravaOAuthUrl(launch.url);
+            if (parsed) {
+                console.log('[Strava OAuth] launchUrl', launch.url);
+                await closeStravaBrowser();
+                await completeStravaOAuth(parsed.code, parsed.error);
+            }
+        }
+    } catch (_) { /* no launch url */ }
+}
+
+function getStravaTokens() {
+    try { return JSON.parse(localStorage.getItem(STRAVA_TOKEN_KEY) || 'null'); } catch { return null; }
+}
+
+function saveStravaTokens(tokens) {
+    localStorage.setItem(STRAVA_TOKEN_KEY, JSON.stringify(tokens));
+}
+
+function saveStravaAthlete(athlete) {
+    localStorage.setItem(STRAVA_ATHLETE_KEY, JSON.stringify(athlete));
+}
+
+function getStravaAthlete() {
+    try { return JSON.parse(localStorage.getItem(STRAVA_ATHLETE_KEY) || 'null'); } catch { return null; }
+}
+
+async function startStravaLogin() {
+    const authUrl = buildStravaAuthUrl();
+    console.log('[Strava OAuth]', {
+        redirect_uri: STRAVA_REDIRECT_URI,
+        redirect_uri_ok: STRAVA_REDIRECT_URI === 'https://bada-go.vercel.app/api/strava/callback',
+        auth_url: authUrl,
+        native: isCapacitorNative(),
+    });
+
+    if (isCapacitorNative()) {
+        await setupStravaOAuthListeners();
+        const Browser = getCapPlugin('Browser');
+        if (!Browser) {
+            showToast('❌ Browser 플러그인을 사용할 수 없습니다');
+            return;
+        }
+        stravaOAuthInProgress = true;
+        await Browser.open({ url: authUrl, toolbarColor: '#1E7EC8' });
+        return;
+    }
+
+    window.location.href = authUrl;
+}
+
+async function exchangeStravaCode(code) {
+    const res = await fetch(`${getStravaApiBase()}/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirect_uri: STRAVA_REDIRECT_URI }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || 'Strava 인증 실패');
+    saveStravaTokens({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: data.expires_at,
+    });
+    if (data.athlete) saveStravaAthlete(data.athlete);
+    return data;
+}
+
+async function refreshStravaToken(refreshToken) {
+    const res = await fetch(`${getStravaApiBase()}/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || '토큰 갱신 실패');
+    saveStravaTokens({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: data.expires_at,
+    });
+    return data.access_token;
+}
+
+async function getStravaAccessToken() {
+    const tokens = getStravaTokens();
+    if (!tokens?.access_token) return null;
+    const now = Math.floor(Date.now() / 1000);
+    if (tokens.expires_at && now < tokens.expires_at - 120) return tokens.access_token;
+    if (!tokens.refresh_token) return null;
+    return refreshStravaToken(tokens.refresh_token);
+}
+
+function stravaLogout() {
+    localStorage.removeItem(STRAVA_TOKEN_KEY);
+    localStorage.removeItem(STRAVA_ATHLETE_KEY);
+    stravaActivities = [];
+    renderStravaUI();
+    showToast('스트라바 연결 해제됨');
+}
+
+function formatStravaDuration(seconds) {
+    if (!seconds && seconds !== 0) return '--';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function formatStravaDistance(meters) {
+    if (!meters && meters !== 0) return '--';
+    if (meters >= 1000) return `${(meters / 1000).toFixed(2)}km`;
+    return `${Math.round(meters)}m`;
+}
+
+function formatStravaPace(activity) {
+    const dist = activity.distance || 0;
+    const time = activity.moving_time || 0;
+    if (!dist || !time) return '--';
+    const secPer100m = time / (dist / 100);
+    const m = Math.floor(secPer100m / 60);
+    const s = Math.round(secPer100m % 60);
+    return `${m}:${String(s).padStart(2, '0')}/100m`;
+}
+
+function formatStravaDate(iso) {
+    if (!iso) return '--';
+    const d = new Date(iso);
+    return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
+}
+
+function formatStravaDateTime(iso) {
+    if (!iso) return '--';
+    const d = new Date(iso);
+    return d.toLocaleString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+async function fetchStravaAthlete(accessToken) {
+    const res = await fetch(`${STRAVA_API}/athlete`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) throw new Error('프로필 조회 실패');
+    const athlete = await res.json();
+    saveStravaAthlete(athlete);
+    return athlete;
+}
+
+async function fetchStravaSwimActivities(accessToken) {
+    const res = await fetch(`${STRAVA_API}/athlete/activities?per_page=50`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) throw new Error('활동 조회 실패');
+    const activities = await res.json();
+    return activities.filter(a => a.type === 'Swim' || a.sport_type === 'Swim');
+}
+
+function renderStravaUI() {
+    const tokens = getStravaTokens();
+    const panel = document.getElementById('tab-panel-2');
+    const recordHeader = document.getElementById('strava-record-header');
+    const authSection = document.getElementById('strava-auth-section');
+    const userBar = document.getElementById('strava-user-bar');
+    const listTitle = document.getElementById('strava-list-title');
+    const listEl = document.getElementById('strava-activity-list');
+    const emptyEl = document.getElementById('strava-empty');
+    const loadingEl = document.getElementById('strava-loading');
+
+    if (!tokens) {
+        panel.classList.add('strava-auth-mode');
+        recordHeader.style.display = 'none';
+        authSection.style.display = 'block';
+        userBar.style.display = 'none';
+        listTitle.style.display = 'none';
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+        loadingEl.style.display = 'none';
+        return;
+    }
+
+    panel.classList.remove('strava-auth-mode');
+    recordHeader.style.display = 'block';
+    authSection.style.display = 'none';
+    userBar.style.display = 'flex';
+    const athlete = getStravaAthlete();
+    if (athlete) {
+        document.getElementById('strava-user-name').textContent = `${athlete.firstname || ''} ${athlete.lastname || ''}`.trim() || 'Strava';
+        document.getElementById('strava-user-meta').textContent = `수영 ${stravaActivities.length}건`;
+        const avatar = document.getElementById('strava-avatar');
+        if (athlete.profile) {
+            avatar.src = athlete.profile;
+            avatar.style.display = 'block';
+        } else {
+            avatar.style.display = 'none';
+        }
+    }
+
+    loadingEl.style.display = 'none';
+    if (!stravaActivities.length) {
+        listTitle.style.display = 'none';
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+    }
+
+    emptyEl.style.display = 'none';
+    listTitle.style.display = 'block';
+    listEl.innerHTML = stravaActivities.map(a => `
+        <div class="strava-activity-card" onclick="openStravaDetail(${a.id})">
+            <div class="strava-act-top">
+                <div class="strava-act-name">${escapeHtml(a.name || '수영')}</div>
+                <div class="strava-act-date">${formatStravaDate(a.start_date_local)}</div>
+            </div>
+            <div class="strava-act-stats">
+                <div class="strava-stat">
+                    <div class="strava-stat-val">${formatStravaDistance(a.distance)}</div>
+                    <div class="strava-stat-label">거리</div>
+                </div>
+                <div class="strava-stat">
+                    <div class="strava-stat-val">${formatStravaDuration(a.moving_time)}</div>
+                    <div class="strava-stat-label">시간</div>
+                </div>
+                <div class="strava-stat">
+                    <div class="strava-stat-val">${formatStravaPace(a)}</div>
+                    <div class="strava-stat-label">페이스</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadStravaActivities() {
+    const loadingEl = document.getElementById('strava-loading');
+    loadingEl.style.display = 'block';
+    document.getElementById('strava-empty').style.display = 'none';
+    document.getElementById('strava-activity-list').innerHTML = '';
+
+    try {
+        const accessToken = await getStravaAccessToken();
+        if (!accessToken) throw new Error('not logged in');
+        await fetchStravaAthlete(accessToken);
+        stravaActivities = await fetchStravaSwimActivities(accessToken);
+        renderStravaUI();
+    } catch (err) {
+        loadingEl.style.display = 'none';
+        if (String(err.message).includes('not logged in')) {
+            renderStravaUI();
+        } else {
+            showToast('❌ Strava 데이터 로드 실패');
+            renderStravaUI();
+        }
+    }
+}
+
+async function initStravaTab() {
+    renderStravaUI();
+    if (!getStravaTokens()) return;
+    if (!stravaTabInitialized || !stravaActivities.length) {
+        stravaTabInitialized = true;
+        await loadStravaActivities();
+    }
+}
+
+async function completeStravaOAuth(code, error) {
+    if (error) {
+        showToast('❌ Strava 로그인 취소됨');
+        switchTab(2);
+        return;
+    }
+    if (!code) return;
+
+    showToast('Strava 연결 중...');
+    try {
+        await exchangeStravaCode(code);
+        stravaTabInitialized = false;
+        switchTab(2);
+        await loadStravaActivities();
+        showToast('✅ Strava 연결 완료!');
+    } catch (err) {
+        console.error('[Strava OAuth]', err);
+        switchTab(2);
+        showToast('❌ Strava 연결 실패');
+    }
+}
+
+function openStravaDetail(activityId) {
+    const activity = stravaActivities.find(a => a.id === activityId);
+    if (!activity) return;
+    document.getElementById('strava-detail-title').textContent = activity.name || '수영';
+    document.getElementById('strava-detail-body').innerHTML = `
+        <div class="strava-detail-row"><span class="strava-detail-label">날짜</span><span class="strava-detail-value">${formatStravaDateTime(activity.start_date_local)}</span></div>
+        <div class="strava-detail-row"><span class="strava-detail-label">거리</span><span class="strava-detail-value">${formatStravaDistance(activity.distance)}</span></div>
+        <div class="strava-detail-row"><span class="strava-detail-label">운동 시간</span><span class="strava-detail-value">${formatStravaDuration(activity.moving_time)}</span></div>
+        <div class="strava-detail-row"><span class="strava-detail-label">전체 시간</span><span class="strava-detail-value">${formatStravaDuration(activity.elapsed_time)}</span></div>
+        <div class="strava-detail-row"><span class="strava-detail-label">페이스</span><span class="strava-detail-value">${formatStravaPace(activity)}</span></div>
+        ${activity.average_heartrate ? `<div class="strava-detail-row"><span class="strava-detail-label">평균 심박</span><span class="strava-detail-value">${Math.round(activity.average_heartrate)} bpm</span></div>` : ''}
+        ${activity.calories ? `<div class="strava-detail-row"><span class="strava-detail-label">칼로리</span><span class="strava-detail-value">${activity.calories} kcal</span></div>` : ''}
+        ${activity.description ? `<div class="strava-detail-row"><span class="strava-detail-label">메모</span><span class="strava-detail-value">${escapeHtml(activity.description)}</span></div>` : ''}
+        <div class="strava-detail-map-placeholder">🗺️ 지도 경로는 곧 추가됩니다</div>
+    `;
+    document.getElementById('strava-detail-overlay').classList.add('show');
+}
+
+function closeStravaDetail() {
+    document.getElementById('strava-detail-overlay').classList.remove('show');
+}
+
+function handleStravaDetailOverlayClick(e) {
+    if (e.target === document.getElementById('strava-detail-overlay')) closeStravaDetail();
 }
 
 let toastT = null;
@@ -785,12 +1572,13 @@ function showToast(msg) {
 // =====================================================
 window.onload = function() {
     if (navigator.userAgent.includes('Android')) document.body.classList.add('android-app');
-    // 즐겨찾기에 기본값 보정
+    favorites = favorites.filter(id => ALL_BEACHES.some(b => b.id === id));
     if (favorites.length === 0) { favorites = ['haeundae']; saveFavorites(); }
-    currentLocationId = favorites[0];
+    currentLocationId = favorites.includes(currentLocationId) ? currentLocationId : favorites[0];
     renderLocationChips();
     fetchAllData();
     setInterval(fetchAllData, 5 * 60 * 1000);
+    setupStravaOAuthListeners();
 };
 </script>
 </body>

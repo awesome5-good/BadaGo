@@ -1,0 +1,4 @@
+.vercel
+node_modules/
+android/app/build/
+tmp_*.json

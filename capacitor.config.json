@@ -1,0 +1,13 @@
+{
+  "appId": "com.badago.app",
+  "appName": "BadaGo",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
