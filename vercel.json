@@ -1,10 +1,5 @@
 {
   "outputDirectory": "www",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "routes": [
     { "src": "/callback", "dest": "/api/strava/callback" }
   ]
