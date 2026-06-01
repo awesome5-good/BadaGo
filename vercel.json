@@ -1,6 +1,3 @@
 {
-  "outputDirectory": "www",
-  "rewrites": [
-    { "source": "/callback", "destination": "/api/strava/callback" }
-  ]
+  "outputDirectory": "www"
 }
