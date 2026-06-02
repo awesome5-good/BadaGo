@@ -268,7 +268,9 @@
             background: #fff;
             border-top: 1px solid #f1f5f9;
         }
-        .strava-detail-footer.is-hidden-for-capture { visibility: hidden; height: 0; padding: 0; margin: 0; border: none; overflow: hidden; }
+        .strava-detail-location { font-size: 13px; font-weight: 600; color: #64748b; margin-top: 4px; line-height: 1.35; }
+        .strava-detail-header-text { flex: 1; min-width: 0; }
+        .strava-detail-footer.is-hidden-for-capture { visibility: hidden; }
         .strava-detail-action-btn {
             flex: 1;
             padding: 13px 10px;
@@ -280,9 +282,7 @@
             font-weight: 700;
             cursor: pointer;
             font-family: var(--font-sans);
-            transition: transform 0.15s, opacity 0.15s;
         }
-        .strava-detail-action-btn:active { transform: scale(0.98); opacity: 0.9; }
         .strava-detail-action-btn:disabled { opacity: 0.55; cursor: wait; }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -514,7 +514,10 @@
                 <div class="loc-sheet-handle-area">
                     <div class="loc-sheet-handle"></div>
                     <div class="loc-sheet-header">
-                        <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
+                        <div class="strava-detail-header-text">
+                            <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
+                            <div class="strava-detail-location" id="strava-detail-location"></div>
+                        </div>
                         <button class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
                     </div>
                 </div>
@@ -1424,18 +1427,88 @@ function formatStravaDate(iso) {
     return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
 }
 
+/** start_date_local은 이미 현지시간 — UTC 변환 없이 표시 */
 function formatStravaDateTime(iso) {
     if (!iso) return '--';
+    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (m) {
+        return `${m[1]}년 ${Number(m[2])}월 ${Number(m[3])}일 ${m[4]}:${m[5]}`;
+    }
     const d = new Date(iso);
-    return d.toLocaleString('ko-KR', {
-        timeZone: 'Asia/Seoul',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    });
+    if (Number.isNaN(d.getTime())) return '--';
+    const y = d.getFullYear();
+    const mo = d.getMonth() + 1;
+    const day = d.getDate();
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}년 ${mo}월 ${day}일 ${h}:${min}`;
+}
+
+const STRAVA_CITY_KO = {
+    Busan: '부산', 'Busan-si': '부산', Seoul: '서울', 'Seoul-si': '서울',
+    Incheon: '인천', Daegu: '대구', Gwangju: '광주', Daejeon: '대전',
+    Ulsan: '울산', Jeju: '제주', 'Jeju City': '제주', Sokcho: '속초',
+    Gangneung: '강릉', Pohang: '포항', Changwon: '창원', Yeosu: '여수',
+    'South Korea': '대한민국', Korea: '대한민국', 'Korea, South': '대한민국',
+};
+
+const STRAVA_DISTRICT_KO = {
+    'Haeundae-gu': '해운대구', Haeundae: '해운대구', 'Suyeong-gu': '수영구',
+    'Haeundae-gu, Busan': '해운대구', 'Jung-gu': '중구', 'Seo-gu': '서구',
+    'Nam-gu': '남구', 'Dong-gu': '동구', 'Buk-gu': '북구',
+};
+
+function findNearestBeach(lat, lon, maxKm = 25) {
+    let nearest = null;
+    let minD = Infinity;
+    for (const beach of ALL_BEACHES) {
+        const d = haversineKm(lat, lon, beach.lat, beach.lon);
+        if (d < minD) {
+            minD = d;
+            nearest = beach;
+        }
+    }
+    if (!nearest || minD > maxKm) return null;
+    return { beach: nearest, distanceKm: minD };
+}
+
+function formatStravaLocation(activity) {
+    const city = (activity.location_city || '').trim();
+    const state = (activity.location_state || '').trim();
+    const country = (activity.location_country || '').trim();
+    const latlng = activity.start_latlng;
+
+    const regionKo = STRAVA_CITY_KO[state] || STRAVA_CITY_KO[city] ||
+        (country && /korea/i.test(country) ? null : STRAVA_CITY_KO[country]);
+
+    if (city) {
+        const districtKo = STRAVA_DISTRICT_KO[city] ||
+            (city.endsWith('-gu') ? city.replace(/-gu$/i, '구').replace(/-/g, '') : null) ||
+            STRAVA_CITY_KO[city] || city;
+        const parentKo = regionKo || STRAVA_CITY_KO[state] ||
+            (latlng?.length === 2 ? findNearestBeach(latlng[0], latlng[1])?.beach.region : null);
+        if (parentKo && districtKo !== parentKo) {
+            return `${districtKo}, ${parentKo}`;
+        }
+        return districtKo;
+    }
+
+    if (latlng?.length === 2) {
+        const hit = findNearestBeach(latlng[0], latlng[1]);
+        if (hit) {
+            const BEACH_GU_KO = {
+                해운대: '해운대구', 광안리: '수영구', 송정: '해운대구', 송도: '서구',
+                다대포: '사하구', 일광: '기장군', 경포: '강릉시', 속초: '속초시',
+            };
+            const district = BEACH_GU_KO[hit.beach.name] ||
+                (hit.distanceKm < 5 ? hit.beach.name : `${hit.beach.name} 인근`);
+            return `${district}, ${hit.beach.region}`;
+        }
+    }
+
+    if (state && regionKo) return regionKo;
+    if (country && /korea/i.test(country)) return '대한민국';
+    return '';
 }
 
 async function fetchStravaAthlete(accessToken) {
@@ -1692,7 +1765,8 @@ async function captureStravaDetail(mode) {
     if (stravaDetailMap) stravaDetailMap.invalidateSize();
     captureBtn.disabled = true;
     copyBtn.disabled = true;
-    footer.classList.add('is-hidden-for-capture');
+    const prevFooterVisibility = footer.style.visibility;
+    footer.style.visibility = 'hidden';
 
     try {
         await new Promise((r) => setTimeout(r, 200));
@@ -1702,8 +1776,6 @@ async function captureStravaDetail(mode) {
             scale: 2,
             backgroundColor: '#ffffff',
             logging: false,
-            scrollX: 0,
-            scrollY: -window.scrollY,
         });
 
         const blob = await new Promise((resolve, reject) => {
@@ -1731,9 +1803,12 @@ async function captureStravaDetail(mode) {
         }
     } catch (err) {
         console.error('[Strava capture]', err);
-        showToast(mode === 'copy' ? '❌ 클립보드 복사 실패' : '❌ 캡처 실패');
+        const msg = err?.message?.includes('clipboard')
+            ? '❌ 클립보드 복사에 실패했습니다'
+            : '❌ 화면 캡처에 실패했습니다';
+        showToast(msg);
     } finally {
-        footer.classList.remove('is-hidden-for-capture');
+        footer.style.visibility = prevFooterVisibility || 'visible';
         captureBtn.disabled = false;
         copyBtn.disabled = false;
     }
@@ -1750,6 +1825,15 @@ function openStravaDetail(activityId) {
         : '<div class="strava-detail-map-placeholder">🗺️ GPS 경로 없음</div>';
 
     document.getElementById('strava-detail-title').textContent = activity.name || '수영';
+    const locationText = formatStravaLocation(activity);
+    const locEl = document.getElementById('strava-detail-location');
+    if (locationText) {
+        locEl.textContent = `📍 ${locationText}`;
+        locEl.style.display = 'block';
+    } else {
+        locEl.textContent = '';
+        locEl.style.display = 'none';
+    }
     document.getElementById('strava-detail-body').innerHTML = `
         ${mapHtml}
         <div class="strava-detail-row"><span class="strava-detail-label">날짜</span><span class="strava-detail-value">${formatStravaDateTime(activity.start_date_local)}</span></div>
