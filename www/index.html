@@ -257,6 +257,33 @@
         .strava-detail-map-placeholder { background: #f1f5f9; border-radius: 14px; padding: 28px 16px; text-align: center; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
         .strava-detail-map { height: 200px; width: 100%; border-radius: 14px; margin-top: 8px; overflow: hidden; background: #e2e8f0; z-index: 0; }
         .strava-detail-map .leaflet-container { height: 200px; width: 100%; font-family: var(--font-sans); }
+        #strava-detail-overlay .loc-sheet { padding-bottom: 0; }
+        #strava-detail-overlay .loc-sheet-body { padding: 0 20px 16px; }
+        #strava-detail-capture-root { background: #fff; }
+        .strava-detail-footer {
+            flex-shrink: 0;
+            display: flex;
+            gap: 10px;
+            padding: 12px 20px calc(12px + var(--safe-bottom)) 20px;
+            background: #fff;
+            border-top: 1px solid #f1f5f9;
+        }
+        .strava-detail-footer.is-hidden-for-capture { visibility: hidden; height: 0; padding: 0; margin: 0; border: none; overflow: hidden; }
+        .strava-detail-action-btn {
+            flex: 1;
+            padding: 13px 10px;
+            border: none;
+            border-radius: 14px;
+            background: #1E7EC8;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            transition: transform 0.15s, opacity 0.15s;
+        }
+        .strava-detail-action-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .strava-detail-action-btn:disabled { opacity: 0.55; cursor: wait; }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
@@ -482,20 +509,27 @@
 
     <!-- Strava 활동 상세 바텀시트 -->
     <div class="loc-sheet-overlay" id="strava-detail-overlay" onclick="handleStravaDetailOverlayClick(event)">
-        <div class="loc-sheet">
-            <div class="loc-sheet-handle-area">
-                <div class="loc-sheet-handle"></div>
-                <div class="loc-sheet-header">
-                    <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
-                    <button class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
+        <div class="loc-sheet" id="strava-detail-sheet">
+            <div id="strava-detail-capture-root">
+                <div class="loc-sheet-handle-area">
+                    <div class="loc-sheet-handle"></div>
+                    <div class="loc-sheet-header">
+                        <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
+                        <button class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
+                    </div>
                 </div>
+                <div class="loc-sheet-body" id="strava-detail-body"></div>
             </div>
-            <div class="loc-sheet-body" id="strava-detail-body"></div>
+            <div class="strava-detail-footer" id="strava-detail-footer">
+                <button type="button" class="strava-detail-action-btn" id="strava-capture-btn" onclick="captureStravaDetail('download')">📸 캡처하기</button>
+                <button type="button" class="strava-detail-action-btn" id="strava-copy-btn" onclick="captureStravaDetail('copy')">📋 복사하기</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // =====================================================
 //  전국 해변 데이터베이스 (바다누리 BeachCode)
@@ -1393,7 +1427,15 @@ function formatStravaDate(iso) {
 function formatStravaDateTime(iso) {
     if (!iso) return '--';
     const d = new Date(iso);
-    return d.toLocaleString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
 }
 
 async function fetchStravaAthlete(accessToken) {
@@ -1631,6 +1673,70 @@ function renderStravaDetailMap(encodedPolyline) {
         stravaDetailMap.invalidateSize();
         setTimeout(() => stravaDetailMap?.invalidateSize(), 200);
     });
+}
+
+async function captureStravaDetail(mode) {
+    const captureRoot = document.getElementById('strava-detail-capture-root');
+    const footer = document.getElementById('strava-detail-footer');
+    const captureBtn = document.getElementById('strava-capture-btn');
+    const copyBtn = document.getElementById('strava-copy-btn');
+    if (!captureRoot || !footer) {
+        showToast('❌ 캡처할 영역이 없습니다');
+        return;
+    }
+    if (typeof html2canvas === 'undefined') {
+        showToast('❌ html2canvas 로드 실패');
+        return;
+    }
+
+    if (stravaDetailMap) stravaDetailMap.invalidateSize();
+    captureBtn.disabled = true;
+    copyBtn.disabled = true;
+    footer.classList.add('is-hidden-for-capture');
+
+    try {
+        await new Promise((r) => setTimeout(r, 200));
+        const canvas = await html2canvas(captureRoot, {
+            useCORS: true,
+            allowTaint: true,
+            scale: 2,
+            backgroundColor: '#ffffff',
+            logging: false,
+            scrollX: 0,
+            scrollY: -window.scrollY,
+        });
+
+        const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob failed'))), 'image/png');
+        });
+
+        const filename = `badago-strava-${Date.now()}.png`;
+
+        if (mode === 'download') {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showToast('✅ 이미지 저장됨');
+        } else {
+            if (!navigator.clipboard?.write) {
+                throw new Error('clipboard unsupported');
+            }
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            showToast('✅ 클립보드에 복사됨');
+        }
+    } catch (err) {
+        console.error('[Strava capture]', err);
+        showToast(mode === 'copy' ? '❌ 클립보드 복사 실패' : '❌ 캡처 실패');
+    } finally {
+        footer.classList.remove('is-hidden-for-capture');
+        captureBtn.disabled = false;
+        copyBtn.disabled = false;
+    }
 }
 
 function openStravaDetail(activityId) {
