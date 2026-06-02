@@ -255,7 +255,10 @@
         .strava-detail-label { font-size: 13px; font-weight: 600; color: #64748b; }
         .strava-detail-value { font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; }
         .strava-detail-map-placeholder { background: #f1f5f9; border-radius: 14px; padding: 28px 16px; text-align: center; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
+        .strava-detail-map { height: 200px; width: 100%; border-radius: 14px; margin-top: 8px; overflow: hidden; background: #e2e8f0; z-index: 0; }
+        .strava-detail-map .leaflet-container { height: 200px; width: 100%; font-family: var(--font-sans); }
     </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
 <div class="phone-frame">
@@ -492,6 +495,7 @@
     </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // =====================================================
 //  전국 해변 데이터베이스 (바다누리 BeachCode)
@@ -1543,11 +1547,105 @@ async function completeStravaOAuth(code, error) {
     }
 }
 
+let stravaDetailMap = null;
+
+/** Google/Strava encoded polyline → [[lat, lng], ...] */
+function decodeStravaPolyline(encoded, precision = 5) {
+    if (!encoded || typeof encoded !== 'string') return [];
+    const factor = Math.pow(10, precision);
+    const coords = [];
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+    while (index < encoded.length) {
+        let shift = 0;
+        let result = 0;
+        let b;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlat = (result & 1) ? ~(result >> 1) : (result >> 1);
+        lat += dlat;
+        shift = 0;
+        result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        const dlng = (result & 1) ? ~(result >> 1) : (result >> 1);
+        lng += dlng;
+        coords.push([lat / factor, lng / factor]);
+    }
+    return coords;
+}
+
+function destroyStravaDetailMap() {
+    if (stravaDetailMap) {
+        stravaDetailMap.remove();
+        stravaDetailMap = null;
+    }
+}
+
+function renderStravaDetailMap(encodedPolyline) {
+    destroyStravaDetailMap();
+    const container = document.getElementById('strava-detail-map');
+    if (!container) return;
+
+    if (typeof L === 'undefined') {
+        container.outerHTML = '<div class="strava-detail-map-placeholder">지도를 불러올 수 없습니다</div>';
+        return;
+    }
+
+    const latlngs = decodeStravaPolyline(encodedPolyline);
+    if (latlngs.length < 2) {
+        container.outerHTML = '<div class="strava-detail-map-placeholder">🗺️ GPS 경로 없음</div>';
+        return;
+    }
+
+    stravaDetailMap = L.map(container, {
+        zoomControl: false,
+        attributionControl: true,
+        dragging: true,
+        scrollWheelZoom: false,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(stravaDetailMap);
+
+    L.polyline(latlngs, {
+        color: '#1E7EC8',
+        weight: 4,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+    }).addTo(stravaDetailMap);
+
+    stravaDetailMap.fitBounds(L.latLngBounds(latlngs), { padding: [14, 14] });
+
+    requestAnimationFrame(() => {
+        stravaDetailMap.invalidateSize();
+        setTimeout(() => stravaDetailMap?.invalidateSize(), 200);
+    });
+}
+
 function openStravaDetail(activityId) {
     const activity = stravaActivities.find(a => a.id === activityId);
     if (!activity) return;
+    destroyStravaDetailMap();
+
+    const summaryPolyline = activity.map?.summary_polyline;
+    const mapHtml = summaryPolyline
+        ? '<div id="strava-detail-map" class="strava-detail-map"></div>'
+        : '<div class="strava-detail-map-placeholder">🗺️ GPS 경로 없음</div>';
+
     document.getElementById('strava-detail-title').textContent = activity.name || '수영';
     document.getElementById('strava-detail-body').innerHTML = `
+        ${mapHtml}
         <div class="strava-detail-row"><span class="strava-detail-label">날짜</span><span class="strava-detail-value">${formatStravaDateTime(activity.start_date_local)}</span></div>
         <div class="strava-detail-row"><span class="strava-detail-label">거리</span><span class="strava-detail-value">${formatStravaDistance(activity.distance)}</span></div>
         <div class="strava-detail-row"><span class="strava-detail-label">운동 시간</span><span class="strava-detail-value">${formatStravaDuration(activity.moving_time)}</span></div>
@@ -1556,12 +1654,18 @@ function openStravaDetail(activityId) {
         ${activity.average_heartrate ? `<div class="strava-detail-row"><span class="strava-detail-label">평균 심박</span><span class="strava-detail-value">${Math.round(activity.average_heartrate)} bpm</span></div>` : ''}
         ${activity.calories ? `<div class="strava-detail-row"><span class="strava-detail-label">칼로리</span><span class="strava-detail-value">${activity.calories} kcal</span></div>` : ''}
         ${activity.description ? `<div class="strava-detail-row"><span class="strava-detail-label">메모</span><span class="strava-detail-value">${escapeHtml(activity.description)}</span></div>` : ''}
-        <div class="strava-detail-map-placeholder">🗺️ 지도 경로는 곧 추가됩니다</div>
     `;
     document.getElementById('strava-detail-overlay').classList.add('show');
+
+    if (summaryPolyline) {
+        requestAnimationFrame(() => {
+            setTimeout(() => renderStravaDetailMap(summaryPolyline), 80);
+        });
+    }
 }
 
 function closeStravaDetail() {
+    destroyStravaDetailMap();
     document.getElementById('strava-detail-overlay').classList.remove('show');
 }
 
