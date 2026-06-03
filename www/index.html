@@ -295,6 +295,8 @@
             display: flex;
             gap: 10px;
             padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 16px));
+            min-height: calc(52px + env(safe-area-inset-bottom, 16px));
+            box-sizing: border-box;
             background: #fff;
             border-top: 1px solid #f1f5f9;
             box-shadow: 0 -6px 16px rgba(15, 23, 42, 0.08);
@@ -566,6 +568,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // =====================================================
 //  전국 해변 데이터베이스 (바다누리 BeachCode)
@@ -1820,77 +1823,110 @@ function renderStravaDetailMap(encodedPolyline) {
     });
 }
 
-function formatStravaShareText(activity) {
-    const lines = [
-        activity.name || '수영',
-        formatStravaDateTime(activity.start_date_local),
-        `거리 ${formatStravaDistance(activity.distance)}`,
-        `시간 ${formatStravaDuration(activity.moving_time)}`,
-        `페이스 ${formatStravaPace(activity)}`,
-    ];
-    if (activity.average_heartrate) {
-        lines.push(`심박 ${Math.round(activity.average_heartrate)} bpm`);
-    }
-    return lines.join('\n');
+function setStravaCaptureButtonsVisible(visible) {
+    const captureBtn = document.getElementById('strava-capture-btn');
+    const copyBtn = document.getElementById('strava-copy-btn');
+    if (captureBtn) captureBtn.style.display = visible ? '' : 'none';
+    if (copyBtn) copyBtn.style.display = visible ? '' : 'none';
 }
 
-function formatStravaCopyLine(activity) {
-    const parts = [
-        activity.name || '수영',
-        formatStravaDistance(activity.distance),
-        formatStravaDuration(activity.moving_time),
-        formatStravaPace(activity),
-    ];
-    if (activity.average_heartrate) {
-        parts.push(`${Math.round(activity.average_heartrate)}bpm`);
-    }
-    return parts.join(' | ');
+function canvasToPngBlob(canvas) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob failed'))), 'image/png');
+    });
 }
 
-function shareStravaActivity() {
-    const activity = stravaDetailActivity;
-    if (!activity) return;
+function canvasToBase64Png(canvas) {
+    const dataUrl = canvas.toDataURL('image/png');
+    return dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+}
 
-    const text = formatStravaShareText(activity);
-    const title = activity.name || '바다고 · 수영 기록';
-    const Share = getCapPlugin('Share');
+async function captureStravaSheetCanvas() {
+    const sheet = document.getElementById('strava-detail-sheet');
+    if (!sheet) throw new Error('sheet not found');
+    if (typeof html2canvas === 'undefined') throw new Error('html2canvas not loaded');
 
-    if (Share?.share) {
-        Share.share({ title, text, dialogTitle: '공유하기' }).catch((err) => {
-            console.error('[Strava share]', err);
-            showToast('❌ 공유에 실패했습니다');
+    if (stravaDetailMap) {
+        stravaDetailMap.invalidateSize();
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    }
+
+    setStravaCaptureButtonsVisible(false);
+    try {
+        await new Promise((r) => requestAnimationFrame(r));
+        return await html2canvas(sheet, {
+            useCORS: true,
+            allowTaint: true,
+            scale: 1,
+            backgroundColor: '#ffffff',
+            logging: false,
         });
-        return;
+    } finally {
+        setStravaCaptureButtonsVisible(true);
     }
-
-    if (navigator.share) {
-        navigator.share({ title, text }).catch((err) => {
-            if (err?.name === 'AbortError') return;
-            console.error('[Strava share]', err);
-            showToast('❌ 공유에 실패했습니다');
-        });
-        return;
-    }
-
-    showToast('❌ 공유를 사용할 수 없습니다');
 }
 
-function copyStravaActivity() {
-    const activity = stravaDetailActivity;
-    if (!activity) return;
+async function shareStravaActivity() {
+    try {
+        const canvas = await captureStravaSheetCanvas();
+        const base64 = canvasToBase64Png(canvas);
+        const filename = `badago-strava-${Date.now()}.png`;
+        const Filesystem = getCapPlugin('Filesystem');
+        const Share = getCapPlugin('Share');
 
-    const text = formatStravaCopyLine(activity);
-    showToast('📋 클립보드에 복사됨!');
+        if (Filesystem?.writeFile && Filesystem?.getUri && Share?.share) {
+            await Filesystem.writeFile({
+                path: filename,
+                data: base64,
+                directory: 'CACHE',
+            });
+            const { uri } = await Filesystem.getUri({ path: filename, directory: 'CACHE' });
+            await Share.share({
+                files: [uri],
+                dialogTitle: '바다고 · 수영 기록',
+                title: '바다고 · 수영 기록',
+            });
+            return;
+        }
 
-    if (!navigator.clipboard?.writeText) {
-        showToast('❌ 클립보드 복사에 실패했습니다');
-        return;
+        const blob = await canvasToPngBlob(canvas);
+        if (navigator.share && navigator.canShare?.({ files: [new File([blob], filename, { type: 'image/png' })] })) {
+            await navigator.share({
+                files: [new File([blob], filename, { type: 'image/png' })],
+                title: '바다고 · 수영 기록',
+            });
+            return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error('[Strava share]', err);
+        showToast('❌ 공유에 실패했습니다');
     }
+}
 
-    navigator.clipboard.writeText(text).catch((err) => {
+async function copyStravaActivity() {
+    try {
+        const canvas = await captureStravaSheetCanvas();
+        const blob = await canvasToPngBlob(canvas);
+
+        if (!navigator.clipboard?.write) {
+            throw new Error('clipboard unsupported');
+        }
+
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('📋 이미지 복사됨!');
+    } catch (err) {
         console.error('[Strava copy]', err);
         showToast('❌ 클립보드 복사에 실패했습니다');
-    });
+    }
 }
 
 const stravaSheetSwipe = { startY: 0, active: false };
