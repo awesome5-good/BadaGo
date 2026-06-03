@@ -4,6 +4,7 @@ const KMA_RPT_BASE = 'https://www.weather.go.kr/special/CRP/beach/rpt_beach_';
 const SURVEY_WATER_TEMP_API =
     'https://apis.data.go.kr/1192136/surveyWaterTemp/GetSurveyWaterTempApiService';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
+const SURVEY_FETCH_TIMEOUT_MS = 5000;
 const LOG_PREFIX = '[kma-beach]';
 const SURVEY_RESPONSE_LOG_MAX = 4000;
 
@@ -163,10 +164,30 @@ async function fetchSurveyWaterTemp(obsCode) {
     console.log(`${LOG_PREFIX} GetSurveyWaterTempApiService REQUEST`, {
         obsCode,
         url: maskServiceKeyInUrl(url),
+        timeoutMs: SURVEY_FETCH_TIMEOUT_MS,
     });
 
-    const res = await fetch(url);
-    const text = await res.text();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SURVEY_FETCH_TIMEOUT_MS);
+
+    let res;
+    let text;
+    try {
+        res = await fetch(url, { signal: controller.signal });
+        text = await res.text();
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            console.warn(`${LOG_PREFIX} GetSurveyWaterTempApiService TIMEOUT`, {
+                obsCode,
+                timeoutMs: SURVEY_FETCH_TIMEOUT_MS,
+            });
+            throw new Error(`Survey water temp timeout (${SURVEY_FETCH_TIMEOUT_MS}ms)`);
+        }
+        throw err;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+
     logSurveyResponse(res.status, text);
 
     let json;
