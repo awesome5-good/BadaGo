@@ -1224,12 +1224,50 @@ function setApiStatus(state, text) {
     document.getElementById('api-status-text').textContent = text;
 }
 
+function getCurrentTabIndex() {
+    for (let i = 0; i < 4; i++) {
+        if (document.getElementById(`tab${i}`)?.classList.contains('active')) return i;
+    }
+    return 0;
+}
+
+function isStravaDetailSheetOpen() {
+    return document.getElementById('strava-detail-overlay')?.classList.contains('show');
+}
+
+function isLocSheetOpen() {
+    return document.getElementById('loc-sheet-overlay')?.classList.contains('show');
+}
+
 function switchTab(idx) {
     for (let i = 0; i < 4; i++) {
         document.getElementById(`tab${i}`).className = i === idx ? 'tab-item active' : 'tab-item inactive';
         document.getElementById(`tab-panel-${i}`).className = i === idx ? 'tab-panel active' : 'tab-panel';
     }
     if (idx === 2) initStravaTab();
+}
+
+async function setupAndroidBackButton() {
+    if (!isCapacitorNative() || window.__androidBackReady) return;
+    const App = getCapPlugin('App');
+    if (!App?.addListener) return;
+    window.__androidBackReady = true;
+
+    await App.addListener('backButton', () => {
+        if (isStravaDetailSheetOpen()) {
+            closeStravaDetail();
+            return;
+        }
+        if (isLocSheetOpen()) {
+            closeLocSheet();
+            return;
+        }
+        if (getCurrentTabIndex() !== 0) {
+            switchTab(0);
+            return;
+        }
+        App.exitApp();
+    });
 }
 
 // =====================================================
@@ -1866,11 +1904,13 @@ async function captureStravaDetail(mode) {
         return;
     }
 
-    if (stravaDetailMap) stravaDetailMap.invalidateSize();
     setStravaCaptureButtonsBusy(true);
 
     try {
-        await new Promise((r) => setTimeout(r, 80));
+        if (stravaDetailMap) {
+            stravaDetailMap.invalidateSize();
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        }
         const canvas = await html2canvas(captureRoot, {
             useCORS: true,
             allowTaint: true,
@@ -1883,23 +1923,20 @@ async function captureStravaDetail(mode) {
         const filename = `badago-strava-${Date.now()}.png`;
         const native = isCapacitorNative();
 
-        if (native) {
-            if (mode === 'download') {
+        if (mode === 'download') {
+            if (native) {
                 await shareStravaImageNative(blob, filename);
-                showToast('📸 캡처 완료!');
             } else {
-                try {
-                    await copyStravaImageWeb(blob);
-                    showToast('📋 클립보드에 복사됨!');
-                } catch (clipErr) {
-                    console.warn('[Strava copy] clipboard failed, fallback to share', clipErr);
-                    await shareStravaImageNative(blob, filename);
-                    showToast('📸 캡처 완료!');
-                }
+                await downloadStravaImageWeb(blob, filename);
             }
-        } else if (mode === 'download') {
-            await downloadStravaImageWeb(blob, filename);
-            showToast('📸 캡처 완료!');
+        } else if (native) {
+            try {
+                await copyStravaImageWeb(blob);
+                showToast('📋 클립보드에 복사됨!');
+            } catch (clipErr) {
+                console.warn('[Strava copy] clipboard failed, fallback to share', clipErr);
+                await shareStravaImageNative(blob, filename);
+            }
         } else {
             await copyStravaImageWeb(blob);
             showToast('📋 클립보드에 복사됨!');
@@ -2033,6 +2070,7 @@ window.onload = function() {
     fetchAllData();
     setInterval(fetchAllData, 5 * 60 * 1000);
     setupStravaOAuthListeners();
+    setupAndroidBackButton();
     setupStravaSheetSwipe();
 };
 </script>
