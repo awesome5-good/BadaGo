@@ -819,6 +819,41 @@ function applyOpenMeteoWind(weather) {
     currentWindSpeed = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
 }
 
+/** KHOA 수온·풍속 적용. 관측소 불일치·null 필드는 Open-Meteo로 대체 */
+function applyKhoaWithOpenMeteoFallback(beach, khoa, marine, weather) {
+    if (!isKhoaObsAcceptable(beach, khoa.obs_post_name)) {
+        applyOpenMeteoWaterWind(marine, weather);
+        return {
+            usedKhoa: false,
+            statusText: `Open-Meteo 폴백 · ${getTimeStr()} 기준`,
+        };
+    }
+
+    let water = khoa.water_temp ?? null;
+    let wind = khoa.wind_speed ?? null;
+    const omWater = marine?.current?.sea_surface_temperature ?? null;
+    const windKmh = weather?.current?.wind_speed_10m ?? null;
+    const omWind = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
+
+    let usedOmFallback = false;
+    if (water === null && omWater !== null) {
+        water = omWater;
+        usedOmFallback = true;
+    }
+    if (wind === null && omWind !== null) {
+        wind = omWind;
+        usedOmFallback = true;
+    }
+
+    currentWaterTemp = water;
+    currentWindSpeed = wind;
+
+    let statusText = formatKhoaStatusText(beach.name, khoa.obs_post_name, khoa.obs_time);
+    if (usedOmFallback) statusText += ' · 일부 Open-Meteo';
+
+    return { usedKhoa: true, statusText };
+}
+
 async function fetchKhoaBeachData(beach) {
     let beachCode;
     let nearest = null;
@@ -884,10 +919,9 @@ async function fetchAllData() {
         } catch (_) { /* KHOA 실패 → NIFS/Open-Meteo */ }
 
         if (khoa) {
-            currentWaterTemp = khoa.water_temp ?? null;
-            currentWindSpeed = khoa.wind_speed ?? null;
-            statusText = formatKhoaStatusText(loc.name, khoa.obs_post_name, khoa.obs_time);
-            usedKhoaApi = true;
+            const khoaResult = applyKhoaWithOpenMeteoFallback(loc, khoa, marine, weather);
+            statusText = khoaResult.statusText;
+            usedKhoaApi = khoaResult.usedKhoa;
         } else if (loc.nifsStation && NIFS_SERVICE_KEY) {
             try {
                 const nifs = await fetchNifsObsData(loc.nifsStation);
