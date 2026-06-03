@@ -105,8 +105,12 @@ function setMemoryCached(key, payload) {
     });
 }
 
+function getSurveyEnvelope(json) {
+    return json?.response ?? json;
+}
+
 function parseSurveyItems(json) {
-    const items = json?.response?.body?.items?.item;
+    const items = getSurveyEnvelope(json)?.body?.items?.item;
     if (!items) return [];
     return Array.isArray(items) ? items : [items];
 }
@@ -115,12 +119,15 @@ function pickSurveyWaterTemp(rows) {
     if (!rows.length) return { water_temp: null, obs_time: null };
     const latest = rows[rows.length - 1] || rows[0];
     const temp =
+        latest?.wtem ??
         latest?.water_temp ??
         latest?.waterTemp ??
         latest?.wt ??
         latest?.TEMP ??
         null;
     const obsRaw =
+        latest?.obsrvnDt ??
+        latest?.obsvnDt ??
         latest?.obs_time ??
         latest?.obsTime ??
         latest?.record_time ??
@@ -198,7 +205,7 @@ async function fetchSurveyWaterTemp(obsCode) {
         throw new Error(`Survey water temp invalid JSON (HTTP ${res.status})`);
     }
 
-    const header = json?.response?.header;
+    const header = getSurveyEnvelope(json)?.header;
     const code = header?.resultCode ?? header?.resultcode;
     const msg = header?.resultMsg ?? header?.resultmsg ?? '';
     console.log(`${LOG_PREFIX} GetSurveyWaterTempApiService header`, { resultCode: code, resultMsg: msg });
