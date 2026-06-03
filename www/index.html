@@ -240,6 +240,8 @@
         .strava-act-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
         .strava-act-name { font-size: 15px; font-weight: 800; color: #1e293b; line-height: 1.35; flex: 1; }
         .strava-act-date { font-size: 11px; font-weight: 700; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+        .strava-act-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+        .strava-act-location { font-size: 10px; font-weight: 600; color: #94a3b8; text-align: right; max-width: 140px; line-height: 1.3; }
         .strava-act-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .strava-stat { background: #f8fafc; border-radius: 12px; padding: 10px 8px; text-align: center; }
         .strava-stat-val { font-size: 14px; font-weight: 800; color: #1e293b; line-height: 1.2; }
@@ -648,7 +650,12 @@ const ALL_BEACHES = [
     { id:'samcheok',   name:'삼척',       emoji:'⛰️', region:'강원', lat:37.443, lon:129.167, beachCode:'BCH009', kmaBeachId:'351' },
     { id:'mangsang',   name:'망상',       emoji:'🌅', region:'강원', lat:37.592, lon:129.085, beachCode:'BCH004', kmaBeachId:'176', nifsStation:'강릉', khoaObsAccept:['망상'] },
     { id:'goraebul',   name:'고래불',     emoji:'🐋', region:'강원', lat:36.578, lon:129.402, beachCode:'BCH048', kmaBeachId:'353' },
-    { id:'yeongildae', name:'영일대',     emoji:'🌇', region:'강원', lat:36.051, lon:129.378, beachCode:'BCH044', kmaBeachId:'354' },
+    // 경북 (포항)
+    { id:'yeongildae', name:'영일대',     emoji:'🌇', region:'경북', lat:36.051, lon:129.378, beachCode:'BCH044', kmaBeachId:'271', khoaObsAccept:['영일','영일대','포항'] },
+    { id:'wolpo',      name:'월포',       emoji:'🌙', region:'경북', lat:36.178, lon:129.373, beachCode:'BCH045', kmaBeachId:'273', khoaObsAccept:['월포','포항'] },
+    { id:'hwajin',     name:'화진',       emoji:'🏖️', region:'경북', lat:36.105, lon:129.432, beachCode:'BCH046', kmaBeachId:'274', khoaObsAccept:['화진','포항'] },
+    { id:'jangsa',     name:'장사',       emoji:'🌊', region:'경북', lat:36.139, lon:129.368, beachCode:'BCH047', kmaBeachId:'284', khoaObsAccept:['장사','포항'] },
+    { id:'chilpo',     name:'칠포',       emoji:'🏄', region:'경북', lat:36.302, lon:129.244, beachCode:'BCH072', kmaBeachId:'272', khoaObsAccept:['칠포','포항'] },
     // 충남
     { id:'daecheon',   name:'대천',       emoji:'🦀', region:'충남', lat:36.310, lon:126.513, beachCode:'BCH014', kmaBeachId:'43', nifsStation:'보령', khoaObsAccept:['대천'] },
     { id:'kkotji',     name:'꽃지',       emoji:'🌸', region:'충남', lat:36.273, lon:126.282, beachCode:'BCH015', kmaBeachId:'41', nifsStation:'보령', khoaObsAccept:['꽃지','보령'] },
@@ -1719,6 +1726,7 @@ function formatStravaLocation(activity) {
             const BEACH_GU_KO = {
                 해운대: '해운대구', 광안리: '수영구', 송정: '해운대구', 송도: '서구',
                 다대포: '사하구', 일광: '기장군', 경포: '강릉시', 속초: '속초시',
+                영일대: '북구', 월포: '북구', 화진: '북구', 장사: '북구', 칠포: '북구',
             };
             const district = BEACH_GU_KO[hit.beach.name] ||
                 (hit.distanceKm < 5 ? hit.beach.name : `${hit.beach.name} 인근`);
@@ -1800,11 +1808,16 @@ function renderStravaUI() {
 
     emptyEl.style.display = 'none';
     listTitle.style.display = 'block';
-    listEl.innerHTML = stravaActivities.map(a => `
+    listEl.innerHTML = stravaActivities.map(a => {
+        const locText = formatStravaLocation(a);
+        return `
         <div class="strava-activity-card" onclick="openStravaDetail(${a.id})">
             <div class="strava-act-top">
                 <div class="strava-act-name">${escapeHtml(a.name || '수영')}</div>
-                <div class="strava-act-date">${formatStravaDate(a.start_date_local)}</div>
+                <div class="strava-act-meta">
+                    <div class="strava-act-date">${formatStravaDate(a.start_date_local)}</div>
+                    ${locText ? `<div class="strava-act-location">${escapeHtml(locText)}</div>` : ''}
+                </div>
             </div>
             <div class="strava-act-stats">
                 <div class="strava-stat">
@@ -1821,7 +1834,8 @@ function renderStravaUI() {
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function escapeHtml(str) {
