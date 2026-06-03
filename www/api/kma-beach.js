@@ -4,9 +4,45 @@ const KMA_RPT_BASE = 'https://www.weather.go.kr/special/CRP/beach/rpt_beach_';
 const SURVEY_WATER_TEMP_API =
     'https://apis.data.go.kr/1192136/surveyWaterTemp/GetSurveyWaterTempApiService';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
+const LOG_PREFIX = '[kma-beach]';
+const SURVEY_RESPONSE_LOG_MAX = 4000;
 
 /** @type {Map<string, { expiresAt: number, payload: object }>} */
 const memoryCache = new Map();
+
+function maskServiceKeyInUrl(url) {
+    return String(url).replace(/([?&]serviceKey=)([^&]+)/gi, (_, prefix, key) => {
+        const k = decodeURIComponent(key);
+        if (k.length <= 8) return `${prefix}****`;
+        return `${prefix}${k.slice(0, 4)}...${k.slice(-4)}(len=${k.length})`;
+    });
+}
+
+/** Vercel 로그: DATA_GO_KR_SERVICE_KEY 로드 여부 (키 값은 마스킹) */
+function logDataGoKrKeyStatus(context) {
+    const raw = process.env.DATA_GO_KR_SERVICE_KEY;
+    const trimmed = raw != null ? String(raw).trim() : '';
+    const configured = trimmed.length > 0;
+    console.log(`${LOG_PREFIX} DATA_GO_KR_SERVICE_KEY check`, {
+        context,
+        configured,
+        length: configured ? trimmed.length : 0,
+        preview: configured ? `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}` : null,
+        typeof: raw === undefined ? 'undefined' : typeof raw,
+    });
+}
+
+function logSurveyResponse(status, text) {
+    const body =
+        text.length <= SURVEY_RESPONSE_LOG_MAX
+            ? text
+            : `${text.slice(0, SURVEY_RESPONSE_LOG_MAX)}…(truncated, total ${text.length} chars)`;
+    console.log(`${LOG_PREFIX} GetSurveyWaterTempApiService RESPONSE`, {
+        httpStatus: status,
+        bodyLength: text.length,
+        body,
+    });
+}
 
 function decodeEucKr(buffer) {
     try {
@@ -106,13 +142,17 @@ function pickSurveyWaterTemp(rows) {
 }
 
 async function fetchSurveyWaterTemp(obsCode) {
+    logDataGoKrKeyStatus('fetchSurveyWaterTemp');
+
     const serviceKey = process.env.DATA_GO_KR_SERVICE_KEY;
-    if (!serviceKey) {
+    const trimmedKey = serviceKey != null ? String(serviceKey).trim() : '';
+    if (!trimmedKey) {
+        console.warn(`${LOG_PREFIX} GetSurveyWaterTempApiService SKIP — DATA_GO_KR_SERVICE_KEY empty`);
         throw new Error('DATA_GO_KR_SERVICE_KEY not configured');
     }
 
     const q = new URLSearchParams({
-        serviceKey,
+        serviceKey: trimmedKey,
         type: 'json',
         obsCode,
         numOfRows: '10',
@@ -120,19 +160,28 @@ async function fetchSurveyWaterTemp(obsCode) {
         min: '60',
     });
     const url = `${SURVEY_WATER_TEMP_API}?${q.toString()}`;
+    console.log(`${LOG_PREFIX} GetSurveyWaterTempApiService REQUEST`, {
+        obsCode,
+        url: maskServiceKeyInUrl(url),
+    });
+
     const res = await fetch(url);
     const text = await res.text();
+    logSurveyResponse(res.status, text);
 
     let json;
     try {
         json = JSON.parse(text);
-    } catch (_) {
+    } catch (parseErr) {
+        console.error(`${LOG_PREFIX} GetSurveyWaterTempApiService JSON parse error`, parseErr.message);
         throw new Error(`Survey water temp invalid JSON (HTTP ${res.status})`);
     }
 
     const header = json?.response?.header;
     const code = header?.resultCode ?? header?.resultcode;
     const msg = header?.resultMsg ?? header?.resultmsg ?? '';
+    console.log(`${LOG_PREFIX} GetSurveyWaterTempApiService header`, { resultCode: code, resultMsg: msg });
+
     if (code && String(code) !== '00') {
         throw new Error(`Survey API ${code}: ${msg}`);
     }
@@ -142,6 +191,14 @@ async function fetchSurveyWaterTemp(obsCode) {
 
     const rows = parseSurveyItems(json);
     const { water_temp, obs_time } = pickSurveyWaterTemp(rows);
+    console.log(`${LOG_PREFIX} GetSurveyWaterTempApiService parsed`, {
+        obsCode,
+        rowCount: rows.length,
+        water_temp,
+        obs_time,
+        latestKeys: rows.length ? Object.keys(rows[rows.length - 1]) : [],
+    });
+
     if (water_temp == null || Number.isNaN(water_temp)) {
         throw new Error('조위관측소 실측 수온 데이터 없음');
     }
@@ -200,8 +257,18 @@ async function fetchBeachPayload(kmaBeachId, obsCode) {
             obs_time = survey.obs_time;
             surveyObsCode = survey.obsCode;
             source = 'khoa-survey';
-        } catch (_) {
-            /* KMA 폴백 */
+            console.log(`${LOG_PREFIX} survey OK → khoa-survey`, {
+                kmaBeachId,
+                obsCode,
+                water_temp,
+                obs_time,
+            });
+        } catch (err) {
+            console.warn(`${LOG_PREFIX} survey failed → KMA fallback`, {
+                kmaBeachId,
+                obsCode,
+                error: err?.message || String(err),
+            });
         }
     }
 
@@ -256,18 +323,37 @@ module.exports = async (req, res) => {
 
     const key = cacheKey(id, obsCode || null);
 
+    console.log(`${LOG_PREFIX} handler`, {
+        id,
+        obsCode: obsCode || null,
+        cacheKey: key,
+    });
+    logDataGoKrKeyStatus('handler');
+
     try {
         const cached = getMemoryCached(key);
         if (cached) {
+            console.log(`${LOG_PREFIX} cache HIT`, { cacheKey: key, source: cached.source });
             setCacheHeaders(res, true);
             return res.status(200).json(cached);
         }
 
         const payload = await fetchBeachPayload(id, obsCode || null);
+        console.log(`${LOG_PREFIX} payload OK`, {
+            cacheKey: key,
+            source: payload.source,
+            water_temp: payload.water_temp,
+            wave_height: payload.wave_height,
+        });
         setMemoryCached(key, payload);
         setCacheHeaders(res, false);
         return res.status(200).json(payload);
     } catch (err) {
+        console.error(`${LOG_PREFIX} handler error`, {
+            id,
+            obsCode: obsCode || null,
+            error: err?.message || String(err),
+        });
         return res.status(err.message.includes('찾을 수 없음') || err.message.includes('없음') ? 404 : 502).json({
             error: err.message || 'Beach data fetch failed',
             kmaBeachId: id,
