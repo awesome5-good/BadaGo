@@ -34,12 +34,53 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
-      - name: Build debug APK
+      - name: Prepare release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set. See repository docs / workflow comments."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
+          {
+            echo "storeFile=../release.keystore"
+            echo "storePassword=${ANDROID_KEYSTORE_PASSWORD}"
+            echo "keyAlias=${ANDROID_KEY_ALIAS}"
+            echo "keyPassword=${ANDROID_KEY_PASSWORD}"
+          } > android/keystore.properties
+          ls -la android/release.keystore android/keystore.properties
+
+      - name: Build signed release APK
         working-directory: android
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon -q
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          test -f app/build/outputs/apk/release/app-release.apk
+
+      - name: Verify release APK signature
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          echo "APK: $APK"
+          unzip -l "$APK" | head -5
+          if jarsigner -verify -verbose -certs "$APK" 2>&1 | tee /tmp/jarsigner.log | grep -q "jar verified"; then
+            echo "✓ jarsigner: release APK is signed"
+          else
+            echo "::error::APK is not signed (expected release keystore from ANDROID_KEYSTORE_BASE64)"
+            cat /tmp/jarsigner.log
+            exit 1
+          fi
+          if jarsigner -verify -verbose -certs "$APK" 2>&1 | grep -qi "CN=Android Debug"; then
+            echo "::error::APK signed with debug key — release signing did not apply"
+            exit 1
+          fi
+          echo "✓ not signed with Android Debug certificate"
 
       - name: Prepare release asset
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk "BadaGo-${{ github.run_number }}.apk"
+        run: cp android/app/build/outputs/apk/release/app-release.apk "BadaGo-${{ github.run_number }}.apk"
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
@@ -47,7 +88,7 @@ jobs:
           tag_name: apk-${{ github.run_number }}
           name: BadaGo APK #${{ github.run_number }}
           body: |
-            자동 빌드 APK (debug)
+            자동 빌드 APK (release, 고정 키 서명)
             - Run: ${{ github.run_number }}
             - Commit: ${{ github.sha }}
             - Branch: ${{ github.ref_name }}

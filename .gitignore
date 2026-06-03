@@ -1,4 +1,7 @@
 .vercel
 node_modules/
 android/app/build/
+android/release.keystore
+android/keystore.properties
+*.keystore
 tmp_*.json
