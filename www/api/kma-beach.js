@@ -1,6 +1,8 @@
 const { TextDecoder } = require('util');
 
 const KMA_RPT_BASE = 'https://www.weather.go.kr/special/CRP/beach/rpt_beach_';
+const SURVEY_WATER_TEMP_API =
+    'https://apis.data.go.kr/1192136/surveyWaterTemp/GetSurveyWaterTempApiService';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
 
 /** @type {Map<string, { expiresAt: number, payload: object }>} */
@@ -45,21 +47,106 @@ function setCacheHeaders(res, hit) {
     else res.setHeader('X-BadaGo-Cache', 'MISS');
 }
 
-function getMemoryCached(id) {
-    const entry = memoryCache.get(id);
+function cacheKey(id, obsCode) {
+    return obsCode ? `${id}:${obsCode}` : id;
+}
+
+function getMemoryCached(key) {
+    const entry = memoryCache.get(key);
     if (!entry) return null;
     if (Date.now() > entry.expiresAt) {
-        memoryCache.delete(id);
+        memoryCache.delete(key);
         return null;
     }
     return entry.payload;
 }
 
-function setMemoryCached(id, payload) {
-    memoryCache.set(id, {
+function setMemoryCached(key, payload) {
+    memoryCache.set(key, {
         expiresAt: Date.now() + CACHE_TTL_MS,
         payload: { ...payload, cached: true, cached_at: new Date().toISOString() },
     });
+}
+
+function parseSurveyItems(json) {
+    const items = json?.response?.body?.items?.item;
+    if (!items) return [];
+    return Array.isArray(items) ? items : [items];
+}
+
+function pickSurveyWaterTemp(rows) {
+    if (!rows.length) return { water_temp: null, obs_time: null };
+    const latest = rows[rows.length - 1] || rows[0];
+    const temp =
+        latest?.water_temp ??
+        latest?.waterTemp ??
+        latest?.wt ??
+        latest?.TEMP ??
+        null;
+    const obsRaw =
+        latest?.obs_time ??
+        latest?.obsTime ??
+        latest?.record_time ??
+        latest?.recordTime ??
+        latest?.datetime ??
+        null;
+    let obs_time = null;
+    if (obsRaw != null) {
+        const s = String(obsRaw).trim();
+        if (/^\d{12}$/.test(s)) {
+            obs_time = `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)} ${s.slice(8, 10)}:${s.slice(10, 12)}`;
+        } else {
+            obs_time = s.replace('T', ' ').slice(0, 16);
+        }
+    }
+    return {
+        water_temp: temp != null ? parseFloat(temp) : null,
+        obs_time,
+    };
+}
+
+async function fetchSurveyWaterTemp(obsCode) {
+    const serviceKey = process.env.DATA_GO_KR_SERVICE_KEY;
+    if (!serviceKey) {
+        throw new Error('DATA_GO_KR_SERVICE_KEY not configured');
+    }
+
+    const q = new URLSearchParams({
+        serviceKey,
+        type: 'json',
+        obsCode,
+        numOfRows: '10',
+        pageNo: '1',
+        min: '60',
+    });
+    const url = `${SURVEY_WATER_TEMP_API}?${q.toString()}`;
+    const res = await fetch(url);
+    const text = await res.text();
+
+    let json;
+    try {
+        json = JSON.parse(text);
+    } catch (_) {
+        throw new Error(`Survey water temp invalid JSON (HTTP ${res.status})`);
+    }
+
+    const header = json?.response?.header;
+    const code = header?.resultCode ?? header?.resultcode;
+    const msg = header?.resultMsg ?? header?.resultmsg ?? '';
+    if (code && String(code) !== '00') {
+        throw new Error(`Survey API ${code}: ${msg}`);
+    }
+    if (!res.ok) {
+        throw new Error(`Survey water temp HTTP ${res.status}`);
+    }
+
+    const rows = parseSurveyItems(json);
+    const { water_temp, obs_time } = pickSurveyWaterTemp(rows);
+    if (water_temp == null || Number.isNaN(water_temp)) {
+        throw new Error('조위관측소 실측 수온 데이터 없음');
+    }
+
+    return { water_temp, obs_time, obsCode };
 }
 
 async function fetchAndParseKma(id) {
@@ -89,11 +176,58 @@ async function fetchAndParseKma(id) {
     }
 
     return {
-        ok: true,
-        source: 'kma',
-        kmaBeachId: id,
         water_temp: parsed.water_temp,
         wave_height: parsed.wave_height,
+        obs_time,
+    };
+}
+
+/**
+ * 1순위: 조위관측소 실측 수온 API (obsCode + DATA_GO_KR_SERVICE_KEY)
+ * 2순위: KMA HTML (수온·파고, 실측 수온 실패 시 수온 폴백 / 파고 보완)
+ */
+async function fetchBeachPayload(kmaBeachId, obsCode) {
+    let water_temp = null;
+    let wave_height = null;
+    let obs_time = null;
+    let source = null;
+    let surveyObsCode = null;
+
+    if (obsCode && /^DT_\d{4}$/i.test(obsCode)) {
+        try {
+            const survey = await fetchSurveyWaterTemp(obsCode);
+            water_temp = survey.water_temp;
+            obs_time = survey.obs_time;
+            surveyObsCode = survey.obsCode;
+            source = 'khoa-survey';
+        } catch (_) {
+            /* KMA 폴백 */
+        }
+    }
+
+    try {
+        const kma = await fetchAndParseKma(kmaBeachId);
+        if (wave_height == null) wave_height = kma.wave_height;
+        if (water_temp == null) {
+            water_temp = kma.water_temp;
+            obs_time = obs_time || kma.obs_time;
+            source = 'kma';
+        }
+    } catch (err) {
+        if (water_temp == null) throw err;
+    }
+
+    if (water_temp == null) {
+        throw new Error('수온 데이터를 가져오지 못함');
+    }
+
+    return {
+        ok: true,
+        source,
+        kmaBeachId,
+        obsCode: surveyObsCode || obsCode || null,
+        water_temp,
+        wave_height,
         obs_time,
         cached: false,
     };
@@ -111,25 +245,33 @@ module.exports = async (req, res) => {
     }
 
     const id = String(req.query?.id || '').trim();
+    const obsCode = String(req.query?.obsCode || '').trim().toUpperCase();
+
     if (!id || !/^\d{1,4}$/.test(id)) {
         return res.status(400).json({ error: 'Missing or invalid id parameter' });
     }
+    if (obsCode && !/^DT_\d{4}$/.test(obsCode)) {
+        return res.status(400).json({ error: 'Invalid obsCode (expected DT_####)' });
+    }
+
+    const key = cacheKey(id, obsCode || null);
 
     try {
-        const cached = getMemoryCached(id);
+        const cached = getMemoryCached(key);
         if (cached) {
             setCacheHeaders(res, true);
             return res.status(200).json(cached);
         }
 
-        const payload = await fetchAndParseKma(id);
-        setMemoryCached(id, payload);
+        const payload = await fetchBeachPayload(id, obsCode || null);
+        setMemoryCached(key, payload);
         setCacheHeaders(res, false);
         return res.status(200).json(payload);
     } catch (err) {
-        return res.status(err.message.includes('찾을 수 없음') ? 404 : 502).json({
-            error: err.message || 'KMA fetch failed',
+        return res.status(err.message.includes('찾을 수 없음') || err.message.includes('없음') ? 404 : 502).json({
+            error: err.message || 'Beach data fetch failed',
             kmaBeachId: id,
+            obsCode: obsCode || null,
         });
     }
 };
