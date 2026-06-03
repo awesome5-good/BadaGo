@@ -123,7 +123,7 @@
         /* ===== 위치 관리 바텀시트 ===== */
         .loc-sheet-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 300; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .loc-sheet-overlay.show { opacity: 1; pointer-events: all; }
-        .loc-sheet { background: #fff; border-radius: 24px 24px 0 0; padding: 0; width: 100%; max-height: 85vh; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; }
+        .loc-sheet { background: #fff; border-radius: 24px 24px 0 0; padding: 0; padding-bottom: calc(20px + env(safe-area-inset-bottom, 16px)); width: 100%; max-height: 85vh; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; }
         .loc-sheet-overlay.show .loc-sheet { transform: translateY(0); }
 
         .loc-sheet-handle-area { padding: 14px 20px 0; flex-shrink: 0; }
@@ -139,7 +139,7 @@
         .loc-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 16px; pointer-events: none; }
 
         /* 섹션 */
-        .loc-sheet-body { flex: 1; overflow-y: auto; padding: 0 20px 20px; scrollbar-width: none; }
+        .loc-sheet-body { flex: 1; overflow-y: auto; padding: 0 20px calc(20px + env(safe-area-inset-bottom, 16px)); scrollbar-width: none; }
         .loc-sheet-body::-webkit-scrollbar { display: none; }
         .loc-section-title { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase; margin: 16px 0 8px; }
 
@@ -257,20 +257,25 @@
         .strava-detail-map-placeholder { background: #f1f5f9; border-radius: 14px; padding: 28px 16px; text-align: center; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
         .strava-detail-map { height: 200px; width: 100%; border-radius: 14px; margin-top: 8px; overflow: hidden; background: #e2e8f0; z-index: 0; }
         .strava-detail-map .leaflet-container { height: 200px; width: 100%; font-family: var(--font-sans); }
-        #strava-detail-overlay .loc-sheet { padding-bottom: 0; }
-        #strava-detail-overlay .loc-sheet-body { padding: 0 20px 16px; }
+        #strava-detail-overlay .loc-sheet {
+            padding-bottom: calc(20px + env(safe-area-inset-bottom, 16px));
+        }
+        #strava-detail-overlay .loc-sheet-body {
+            padding: 0 20px calc(20px + env(safe-area-inset-bottom, 16px));
+        }
         #strava-detail-capture-root { background: #fff; }
         .strava-detail-footer {
             flex-shrink: 0;
             display: flex;
             gap: 10px;
-            padding: 12px 20px calc(12px + var(--safe-bottom)) 20px;
+            padding: 12px 20px 0;
             background: #fff;
             border-top: 1px solid #f1f5f9;
+            transition: none;
         }
+        .strava-detail-footer.is-capturing { opacity: 0; pointer-events: none; }
         .strava-detail-location { font-size: 13px; font-weight: 600; color: #64748b; margin-top: 4px; line-height: 1.35; }
         .strava-detail-header-text { flex: 1; min-width: 0; }
-        .strava-detail-footer.is-hidden-for-capture { visibility: hidden; }
         .strava-detail-action-btn {
             flex: 1;
             padding: 13px 10px;
@@ -1765,19 +1770,29 @@ async function captureStravaDetail(mode) {
     if (stravaDetailMap) stravaDetailMap.invalidateSize();
     captureBtn.disabled = true;
     copyBtn.disabled = true;
-    const prevFooterVisibility = footer.style.visibility;
-    footer.style.visibility = 'hidden';
+    footer.classList.add('is-capturing');
 
+    let canvas;
     try {
         await new Promise((r) => setTimeout(r, 200));
-        const canvas = await html2canvas(captureRoot, {
+        canvas = await html2canvas(captureRoot, {
             useCORS: true,
             allowTaint: true,
             scale: 2,
             backgroundColor: '#ffffff',
             logging: false,
         });
+    } catch (err) {
+        console.error('[Strava capture]', err);
+        showToast('❌ 화면 캡처에 실패했습니다');
+        return;
+    } finally {
+        footer.classList.remove('is-capturing');
+        captureBtn.disabled = false;
+        copyBtn.disabled = false;
+    }
 
+    try {
         const blob = await new Promise((resolve, reject) => {
             canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob failed'))), 'image/png');
         });
@@ -1807,10 +1822,6 @@ async function captureStravaDetail(mode) {
             ? '❌ 클립보드 복사에 실패했습니다'
             : '❌ 화면 캡처에 실패했습니다';
         showToast(msg);
-    } finally {
-        footer.style.visibility = prevFooterVisibility || 'visible';
-        captureBtn.disabled = false;
-        copyBtn.disabled = false;
     }
 }
 
