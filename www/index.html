@@ -265,7 +265,7 @@
             display: flex;
             flex-direction: column;
         }
-        #strava-detail-capture-root {
+        #strava-detail-content {
             background: #fff;
             flex: 1;
             min-height: 0;
@@ -542,7 +542,7 @@
     <!-- Strava 활동 상세 바텀시트 -->
     <div class="loc-sheet-overlay" id="strava-detail-overlay" onclick="handleStravaDetailOverlayClick(event)">
         <div class="loc-sheet strava-detail-sheet" id="strava-detail-sheet">
-            <div id="strava-detail-capture-root">
+            <div id="strava-detail-content">
                 <div class="loc-sheet-handle-area" id="strava-sheet-swipe-zone">
                     <div class="loc-sheet-handle"></div>
                     <div class="loc-sheet-header">
@@ -558,15 +558,14 @@
                 </div>
             </div>
             <div class="strava-detail-footer" id="strava-detail-footer">
-                <button type="button" class="strava-detail-action-btn" id="strava-capture-btn" onclick="captureStravaDetail('download')">📸 캡처하기</button>
-                <button type="button" class="strava-detail-action-btn" id="strava-copy-btn" onclick="captureStravaDetail('copy')">📋 복사하기</button>
+                <button type="button" class="strava-detail-action-btn" id="strava-capture-btn" onclick="shareStravaActivity()">📸 캡처하기</button>
+                <button type="button" class="strava-detail-action-btn" id="strava-copy-btn" onclick="copyStravaActivity()">📋 복사하기</button>
             </div>
         </div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // =====================================================
 //  전국 해변 데이터베이스 (바다누리 BeachCode)
@@ -1283,6 +1282,7 @@ const STRAVA_TOKEN_KEY = 'bada_strava_tokens';
 const STRAVA_ATHLETE_KEY = 'bada_strava_athlete';
 
 let stravaActivities = [];
+let stravaDetailActivity = null;
 let stravaTabInitialized = false;
 let stravaOAuthInProgress = false;
 let stravaOAuthListenersReady = false;
@@ -1820,136 +1820,77 @@ function renderStravaDetailMap(encodedPolyline) {
     });
 }
 
-function setStravaCaptureButtonsBusy(busy) {
-    const captureBtn = document.getElementById('strava-capture-btn');
-    const copyBtn = document.getElementById('strava-copy-btn');
-    if (!captureBtn || !copyBtn) return;
-    captureBtn.disabled = busy;
-    copyBtn.disabled = busy;
-    captureBtn.style.opacity = busy ? '0.4' : '1';
-    copyBtn.style.opacity = busy ? '0.4' : '1';
+function formatStravaShareText(activity) {
+    const lines = [
+        activity.name || '수영',
+        formatStravaDateTime(activity.start_date_local),
+        `거리 ${formatStravaDistance(activity.distance)}`,
+        `시간 ${formatStravaDuration(activity.moving_time)}`,
+        `페이스 ${formatStravaPace(activity)}`,
+    ];
+    if (activity.average_heartrate) {
+        lines.push(`심박 ${Math.round(activity.average_heartrate)} bpm`);
+    }
+    return lines.join('\n');
 }
 
-function canvasToPngBlob(canvas) {
-    return new Promise((resolve, reject) => {
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob failed'))), 'image/png');
-    });
+function formatStravaCopyLine(activity) {
+    const parts = [
+        activity.name || '수영',
+        formatStravaDistance(activity.distance),
+        formatStravaDuration(activity.moving_time),
+        formatStravaPace(activity),
+    ];
+    if (activity.average_heartrate) {
+        parts.push(`${Math.round(activity.average_heartrate)}bpm`);
+    }
+    return parts.join(' | ');
 }
 
-function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
+function shareStravaActivity() {
+    const activity = stravaDetailActivity;
+    if (!activity) return;
 
-async function shareStravaImageNative(blob, filename) {
+    const text = formatStravaShareText(activity);
+    const title = activity.name || '바다고 · 수영 기록';
     const Share = getCapPlugin('Share');
-    if (!Share) throw new Error('Share plugin unavailable');
 
-    const Filesystem = getCapPlugin('Filesystem');
-    if (Filesystem?.writeFile && Filesystem?.getUri) {
-        const base64 = await blobToBase64(blob);
-        await Filesystem.writeFile({
-            path: filename,
-            data: base64,
-            directory: 'CACHE',
-        });
-        const { uri } = await Filesystem.getUri({ path: filename, directory: 'CACHE' });
-        await Share.share({
-            files: [uri],
-            dialogTitle: '바다고 · 수영 기록',
-            title: '바다고 · 수영 기록',
+    if (Share?.share) {
+        Share.share({ title, text, dialogTitle: '공유하기' }).catch((err) => {
+            console.error('[Strava share]', err);
+            showToast('❌ 공유에 실패했습니다');
         });
         return;
     }
 
-    const file = new File([blob], filename, { type: 'image/png' });
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: '바다고 · 수영 기록' });
-        return;
-    }
-
-    throw new Error('native share unsupported');
-}
-
-async function downloadStravaImageWeb(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-}
-
-async function copyStravaImageWeb(blob) {
-    if (!navigator.clipboard?.write) {
-        throw new Error('clipboard unsupported');
-    }
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-}
-
-async function captureStravaDetail(mode) {
-    const captureRoot = document.getElementById('strava-detail-capture-root');
-    if (!captureRoot) {
-        showToast('❌ 캡처할 영역이 없습니다');
-        return;
-    }
-    if (typeof html2canvas === 'undefined') {
-        showToast('❌ html2canvas 로드 실패');
-        return;
-    }
-
-    setStravaCaptureButtonsBusy(true);
-
-    try {
-        if (stravaDetailMap) {
-            stravaDetailMap.invalidateSize();
-            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-        }
-        const canvas = await html2canvas(captureRoot, {
-            useCORS: true,
-            allowTaint: true,
-            scale: 1,
-            imageTimeout: 0,
-            backgroundColor: '#ffffff',
-            logging: false,
+    if (navigator.share) {
+        navigator.share({ title, text }).catch((err) => {
+            if (err?.name === 'AbortError') return;
+            console.error('[Strava share]', err);
+            showToast('❌ 공유에 실패했습니다');
         });
-        const blob = await canvasToPngBlob(canvas);
-        const filename = `badago-strava-${Date.now()}.png`;
-        const native = isCapacitorNative();
-
-        if (mode === 'download') {
-            if (native) {
-                await shareStravaImageNative(blob, filename);
-            } else {
-                await downloadStravaImageWeb(blob, filename);
-            }
-        } else if (native) {
-            try {
-                await copyStravaImageWeb(blob);
-                showToast('📋 클립보드에 복사됨!');
-            } catch (clipErr) {
-                console.warn('[Strava copy] clipboard failed, fallback to share', clipErr);
-                await shareStravaImageNative(blob, filename);
-            }
-        } else {
-            await copyStravaImageWeb(blob);
-            showToast('📋 클립보드에 복사됨!');
-        }
-    } catch (err) {
-        console.error('[Strava capture]', err);
-        const msg = mode === 'copy'
-            ? '❌ 클립보드 복사에 실패했습니다'
-            : '❌ 화면 캡처에 실패했습니다';
-        showToast(msg);
-    } finally {
-        setStravaCaptureButtonsBusy(false);
+        return;
     }
+
+    showToast('❌ 공유를 사용할 수 없습니다');
+}
+
+function copyStravaActivity() {
+    const activity = stravaDetailActivity;
+    if (!activity) return;
+
+    const text = formatStravaCopyLine(activity);
+    showToast('📋 클립보드에 복사됨!');
+
+    if (!navigator.clipboard?.writeText) {
+        showToast('❌ 클립보드 복사에 실패했습니다');
+        return;
+    }
+
+    navigator.clipboard.writeText(text).catch((err) => {
+        console.error('[Strava copy]', err);
+        showToast('❌ 클립보드 복사에 실패했습니다');
+    });
 }
 
 const stravaSheetSwipe = { startY: 0, active: false };
@@ -2001,6 +1942,7 @@ function resetStravaSheetTransform() {
 function openStravaDetail(activityId) {
     const activity = stravaActivities.find(a => a.id === activityId);
     if (!activity) return;
+    stravaDetailActivity = activity;
     destroyStravaDetailMap();
 
     const summaryPolyline = activity.map?.summary_polyline;
@@ -2040,6 +1982,7 @@ function openStravaDetail(activityId) {
 }
 
 function closeStravaDetail() {
+    stravaDetailActivity = null;
     destroyStravaDetailMap();
     resetStravaSheetTransform();
     document.getElementById('strava-detail-overlay').classList.remove('show');
