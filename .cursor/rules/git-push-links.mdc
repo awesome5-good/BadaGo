@@ -1,0 +1,13 @@
+---
+description: git push 완료 후 GitHub 링크 출력
+alwaysApply: true
+---
+
+# Git push 후 링크 출력
+
+`git push` 또는 `npm run release`로 원격 푸시를 마친 뒤, 응답에 **항상** 아래 두 URL을 빠짐없이 포함한다:
+
+- https://github.com/awesome5-good/BadaGo/actions
+- https://github.com/awesome5-good/BadaGo/releases/latest
+
+원격 푸시는 가능하면 `npm run release`를 사용한다 (푸시 성공 시 터미널에도 동일 링크가 출력됨).

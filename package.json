@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "release": "git push origin main && node -e \"console.log('\\nLatest APK: https://github.com/awesome5-good/BadaGo/releases/latest\\n')\""
+    "test:khoa": "node scripts/test-khoa.js",
+    "release": "git push origin main && node scripts/print-push-links.js"
   },
   "keywords": [],
   "author": "",
