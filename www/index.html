@@ -257,21 +257,47 @@
         .strava-detail-map-placeholder { background: #f1f5f9; border-radius: 14px; padding: 28px 16px; text-align: center; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
         .strava-detail-map { height: 200px; width: 100%; border-radius: 14px; margin-top: 8px; overflow: hidden; background: #e2e8f0; z-index: 0; }
         .strava-detail-map .leaflet-container { height: 200px; width: 100%; font-family: var(--font-sans); }
-        #strava-detail-overlay .loc-sheet {
-            padding-bottom: calc(20px + env(safe-area-inset-bottom, 16px));
+        #strava-detail-overlay .strava-detail-sheet {
+            position: relative;
+            max-height: 85vh;
+            padding-bottom: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
-        #strava-detail-overlay .loc-sheet-body {
-            padding: 0 20px calc(20px + env(safe-area-inset-bottom, 16px));
+        #strava-detail-capture-root {
+            background: #fff;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        #strava-detail-capture-root { background: #fff; }
+        .strava-detail-scroll {
+            flex: 1;
+            min-height: 0;
+            max-height: calc(85vh - env(safe-area-inset-bottom, 16px));
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .strava-detail-scroll::-webkit-scrollbar { display: none; }
+        #strava-detail-overlay #strava-detail-body {
+            padding: 0 20px calc(80px + env(safe-area-inset-bottom, 16px));
+        }
         .strava-detail-footer {
-            flex-shrink: 0;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 5;
             display: flex;
             gap: 10px;
-            padding: 12px 20px 0;
+            padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 16px));
             background: #fff;
             border-top: 1px solid #f1f5f9;
-            transition: none;
+            box-shadow: 0 -6px 16px rgba(15, 23, 42, 0.08);
         }
         .strava-detail-location { font-size: 13px; font-weight: 600; color: #64748b; margin-top: 4px; line-height: 1.35; }
         .strava-detail-header-text { flex: 1; min-width: 0; }
@@ -515,19 +541,21 @@
 
     <!-- Strava 활동 상세 바텀시트 -->
     <div class="loc-sheet-overlay" id="strava-detail-overlay" onclick="handleStravaDetailOverlayClick(event)">
-        <div class="loc-sheet" id="strava-detail-sheet">
+        <div class="loc-sheet strava-detail-sheet" id="strava-detail-sheet">
             <div id="strava-detail-capture-root">
-                <div class="loc-sheet-handle-area">
+                <div class="loc-sheet-handle-area" id="strava-sheet-swipe-zone">
                     <div class="loc-sheet-handle"></div>
                     <div class="loc-sheet-header">
                         <div class="strava-detail-header-text">
                             <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
                             <div class="strava-detail-location" id="strava-detail-location"></div>
                         </div>
-                        <button class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
+                        <button type="button" class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
                     </div>
                 </div>
-                <div class="loc-sheet-body" id="strava-detail-body"></div>
+                <div class="strava-detail-scroll" id="strava-detail-scroll">
+                    <div class="loc-sheet-body" id="strava-detail-body"></div>
+                </div>
             </div>
             <div class="strava-detail-footer" id="strava-detail-footer">
                 <button type="button" class="strava-detail-action-btn" id="strava-capture-btn" onclick="captureStravaDetail('download')">📸 캡처하기</button>
@@ -1842,11 +1870,12 @@ async function captureStravaDetail(mode) {
     setStravaCaptureButtonsBusy(true);
 
     try {
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 80));
         const canvas = await html2canvas(captureRoot, {
             useCORS: true,
             allowTaint: true,
-            scale: 2,
+            scale: 1,
+            imageTimeout: 0,
             backgroundColor: '#ffffff',
             logging: false,
         });
@@ -1857,33 +1886,79 @@ async function captureStravaDetail(mode) {
         if (native) {
             if (mode === 'download') {
                 await shareStravaImageNative(blob, filename);
-                showToast('✅ 공유하기');
+                showToast('📸 캡처 완료!');
             } else {
                 try {
                     await copyStravaImageWeb(blob);
-                    showToast('✅ 클립보드에 복사됨');
+                    showToast('📋 클립보드에 복사됨!');
                 } catch (clipErr) {
                     console.warn('[Strava copy] clipboard failed, fallback to share', clipErr);
                     await shareStravaImageNative(blob, filename);
-                    showToast('✅ 공유하기');
+                    showToast('📸 캡처 완료!');
                 }
             }
         } else if (mode === 'download') {
             await downloadStravaImageWeb(blob, filename);
-            showToast('✅ 이미지 저장됨');
+            showToast('📸 캡처 완료!');
         } else {
             await copyStravaImageWeb(blob);
-            showToast('✅ 클립보드에 복사됨');
+            showToast('📋 클립보드에 복사됨!');
         }
     } catch (err) {
         console.error('[Strava capture]', err);
-        const msg = mode === 'copy' && !isCapacitorNative()
+        const msg = mode === 'copy'
             ? '❌ 클립보드 복사에 실패했습니다'
-            : (mode === 'copy' ? '❌ 복사·공유에 실패했습니다' : '❌ 화면 캡처에 실패했습니다');
+            : '❌ 화면 캡처에 실패했습니다';
         showToast(msg);
     } finally {
         setStravaCaptureButtonsBusy(false);
     }
+}
+
+const stravaSheetSwipe = { startY: 0, active: false };
+
+function setupStravaSheetSwipe() {
+    const sheet = document.getElementById('strava-detail-sheet');
+    const zone = document.getElementById('strava-sheet-swipe-zone');
+    if (!sheet || !zone || zone.dataset.swipeReady) return;
+    zone.dataset.swipeReady = '1';
+
+    const onStart = (e) => {
+        const scrollEl = document.getElementById('strava-detail-scroll');
+        if (scrollEl && scrollEl.scrollTop > 0) return;
+        const t = e.touches[0];
+        stravaSheetSwipe.startY = t.clientY;
+        stravaSheetSwipe.active = true;
+        sheet.style.transition = 'none';
+    };
+
+    const onMove = (e) => {
+        if (!stravaSheetSwipe.active) return;
+        const dy = Math.max(0, e.touches[0].clientY - stravaSheetSwipe.startY);
+        sheet.style.transform = `translateY(${dy}px)`;
+    };
+
+    const onEnd = (e) => {
+        if (!stravaSheetSwipe.active) return;
+        stravaSheetSwipe.active = false;
+        sheet.style.transition = '';
+        const dy = e.changedTouches[0].clientY - stravaSheetSwipe.startY;
+        sheet.style.transform = '';
+        if (dy >= 50) closeStravaDetail();
+    };
+
+    zone.addEventListener('touchstart', onStart, { passive: true });
+    zone.addEventListener('touchmove', onMove, { passive: true });
+    zone.addEventListener('touchend', onEnd);
+}
+
+function resetStravaSheetTransform() {
+    const sheet = document.getElementById('strava-detail-sheet');
+    if (sheet) {
+        sheet.style.transform = '';
+        sheet.style.transition = '';
+    }
+    stravaSheetSwipe.active = false;
 }
 
 function openStravaDetail(activityId) {
@@ -1917,6 +1992,7 @@ function openStravaDetail(activityId) {
         ${activity.calories ? `<div class="strava-detail-row"><span class="strava-detail-label">칼로리</span><span class="strava-detail-value">${activity.calories} kcal</span></div>` : ''}
         ${activity.description ? `<div class="strava-detail-row"><span class="strava-detail-label">메모</span><span class="strava-detail-value">${escapeHtml(activity.description)}</span></div>` : ''}
     `;
+    resetStravaSheetTransform();
     document.getElementById('strava-detail-overlay').classList.add('show');
 
     if (summaryPolyline) {
@@ -1928,6 +2004,7 @@ function openStravaDetail(activityId) {
 
 function closeStravaDetail() {
     destroyStravaDetailMap();
+    resetStravaSheetTransform();
     document.getElementById('strava-detail-overlay').classList.remove('show');
 }
 
@@ -1956,6 +2033,7 @@ window.onload = function() {
     fetchAllData();
     setInterval(fetchAllData, 5 * 60 * 1000);
     setupStravaOAuthListeners();
+    setupStravaSheetSwipe();
 };
 </script>
 </body>
