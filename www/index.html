@@ -579,12 +579,16 @@ const KHOA_SERVICE_KEY = 'asGG26KX5P9eLKZkroj0Kg==';
 const KHOA_BEACH_API = 'https://khoa.go.kr/oceandata/api/beach/search.do';
 const KMA_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/kma-beach';
 
+/** Vercel 웹만 상대 경로, 앱·로컬 file/capacitor는 Vercel 프록시 절대 URL */
 function getKmaApiBase() {
-    const host = window.location.hostname;
-    if (host === 'bada-go.vercel.app' || host === 'localhost' || host === '127.0.0.1') {
+    if (window.location.hostname === 'bada-go.vercel.app') {
         return '/api/kma-beach';
     }
     return KMA_REMOTE_API_BASE;
+}
+
+function logApiFetch(priority, label, url) {
+    console.log(`[BadaGo API] ${priority} ${label} → ${url}`);
 }
 // 국립수산과학원 실시간어장정보 (수온) — nifs.go.kr/openApi 신청 후 key 발급
 const NIFS_SERVICE_KEY = '';
@@ -710,14 +714,19 @@ function formatKmaStatusText(beachName, obsTime) {
     return `기상청 ${beachName} · ${t} 기준`;
 }
 
+function buildKmaBeachUrl(kmaBeachId) {
+    return `${getKmaApiBase()}?id=${encodeURIComponent(kmaBeachId)}`;
+}
+
 async function fetchKmaBeachData(kmaBeachId) {
-    const url = `${getKmaApiBase()}?id=${encodeURIComponent(kmaBeachId)}`;
+    const url = buildKmaBeachUrl(kmaBeachId);
+    logApiFetch('1순위', 'KMA 해수욕장', url);
     const res = await fetch(url);
     const json = await res.json();
     if (!res.ok || !json.ok) {
         throw new Error(json.error || `KMA HTTP ${res.status}`);
     }
-    console.log('[KMA]', kmaBeachId, { water_temp: json.water_temp, wave_height: json.wave_height });
+    console.log('[BadaGo API] KMA 응답 OK', { id: kmaBeachId, water_temp: json.water_temp, wave_height: json.wave_height });
     return json;
 }
 
@@ -903,10 +912,11 @@ async function fetchKhoaBeachData(beach) {
     }
 
     const url = `${KHOA_BEACH_API}?ServiceKey=${encodeURIComponent(KHOA_SERVICE_KEY)}&ResultType=json&BeachCode=${encodeURIComponent(beachCode)}`;
+    logApiFetch('2순위', `KHOA BeachCode=${beachCode}`, `${KHOA_BEACH_API}?BeachCode=${beachCode}&ResultType=json`);
     const res = await fetch(url);
     const json = await res.json();
     const meta = json.result?.meta || {};
-    console.log('[KHOA]', beach.name, '→', beachCode, nearest?.name ?? '(beachCode)', {
+    console.log('[BadaGo API] KHOA 응답', beach.name, '→', beachCode, nearest?.name ?? '(beachCode)', {
         beach_name: meta.beach_name,
         obs_post_name: meta.obs_post_name,
         distance_km: nearest ? Math.round(nearest.distanceKm * 10) / 10 : null,
@@ -936,10 +946,27 @@ async function fetchAllData() {
     setApiStatus('loading', '실시간 데이터 불러오는 중...');
 
     const loc = getCurrentLoc();
+    const kmaUrl = loc.kmaBeachId ? buildKmaBeachUrl(loc.kmaBeachId) : null;
+    console.log('[fetchAllData] 시작', {
+        beach: loc.name,
+        beachId: loc.id,
+        kmaBeachId: loc.kmaBeachId || null,
+        kmaApi: kmaUrl,
+        kmaApiBase: getKmaApiBase(),
+        hostname: window.location.hostname,
+        nativeApp: typeof isCapacitorNative === 'function' && isCapacitorNative(),
+        beachCode: loc.beachCode || null,
+    });
+
     try {
+        const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`;
+        logApiFetch('배경', 'Open-Meteo marine', marineUrl);
+        logApiFetch('배경', 'Open-Meteo weather', weatherUrl);
+
         const [marineRes, weatherRes] = await Promise.all([
-            fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`),
-            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`)
+            fetch(marineUrl),
+            fetch(weatherUrl),
         ]);
         const marine = await marineRes.json();
         const weather = await weatherRes.json();
@@ -950,16 +977,21 @@ async function fetchAllData() {
         window._weatherCode = weather?.current?.weather_code ?? 0;
 
         let statusText = null;
+        let dataSource = null;
 
+        // kmaBeachId 있으면 반드시 KMA를 먼저 시도 (성공 시 KHOA/NIFS 생략)
         if (loc.kmaBeachId) {
             try {
                 const kma = await fetchKmaBeachData(loc.kmaBeachId);
                 applyKmaBeachData(kma, marine, weather);
                 statusText = formatKmaStatusText(loc.name, kma.obs_time);
                 usedKmaApi = true;
+                dataSource = 'KMA';
             } catch (e) {
-                console.warn('[KMA] fallback to KHOA', e.message);
+                console.warn('[fetchAllData] KMA 실패 → KHOA/NIFS/Open-Meteo 폴백', e.message, { tried: kmaUrl });
             }
+        } else {
+            console.log('[fetchAllData] kmaBeachId 없음 → KHOA/NIFS/Open-Meteo만 사용', loc.name);
         }
 
         if (!usedKmaApi) {
@@ -972,22 +1004,40 @@ async function fetchAllData() {
                 const khoaResult = applyKhoaWithOpenMeteoFallback(loc, khoa, marine, weather);
                 statusText = khoaResult.statusText;
                 usedKhoaApi = khoaResult.usedKhoa;
+                dataSource = usedKhoaApi ? 'KHOA' : 'Open-Meteo(KHOA폴백)';
             } else if (loc.nifsStation && NIFS_SERVICE_KEY) {
+                logApiFetch('3순위', `NIFS station=${loc.nifsStation}`, NIFS_OBS_API);
                 try {
                     const nifs = await fetchNifsObsData(loc.nifsStation);
                     currentWaterTemp = nifs.water_temp;
                     applyOpenMeteoWind(weather);
                     statusText = formatNifsStatusText(nifs.sta_nam_kor, nifs.obs_time);
                     usedNifsApi = true;
+                    dataSource = 'NIFS';
                 } catch (_) {
+                    logApiFetch('폴백', 'Open-Meteo 수온·풍속', 'marine + forecast');
                     applyOpenMeteoWaterWind(marine, weather);
                     statusText = `Open-Meteo 폴백 · ${getTimeStr()} 기준`;
+                    dataSource = 'Open-Meteo';
                 }
             } else {
+                logApiFetch('폴백', 'Open-Meteo 수온·풍속', 'marine + forecast');
                 applyOpenMeteoWaterWind(marine, weather);
                 statusText = `Open-Meteo 폴백 · ${getTimeStr()} 기준`;
+                dataSource = 'Open-Meteo';
             }
         }
+
+        console.log('[fetchAllData] 완료', {
+            beach: loc.name,
+            dataSource,
+            usedKmaApi,
+            usedKhoaApi,
+            usedNifsApi,
+            waterTemp: currentWaterTemp,
+            waveHeight: currentWaveHeight,
+            windSpeed: currentWindSpeed,
+        });
 
         renderAll();
         setApiStatus('ok', statusText);
