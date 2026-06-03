@@ -273,7 +273,6 @@
             border-top: 1px solid #f1f5f9;
             transition: none;
         }
-        .strava-detail-footer.is-capturing { opacity: 0; pointer-events: none; }
         .strava-detail-location { font-size: 13px; font-weight: 600; color: #64748b; margin-top: 4px; line-height: 1.35; }
         .strava-detail-header-text { flex: 1; min-width: 0; }
         .strava-detail-action-btn {
@@ -287,8 +286,10 @@
             font-weight: 700;
             cursor: pointer;
             font-family: var(--font-sans);
+            opacity: 1;
+            transition: none;
         }
-        .strava-detail-action-btn:disabled { opacity: 0.55; cursor: wait; }
+        .strava-detail-action-btn:disabled { opacity: 0.4; cursor: wait; }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
@@ -1753,12 +1754,82 @@ function renderStravaDetailMap(encodedPolyline) {
     });
 }
 
-async function captureStravaDetail(mode) {
-    const captureRoot = document.getElementById('strava-detail-capture-root');
-    const footer = document.getElementById('strava-detail-footer');
+function setStravaCaptureButtonsBusy(busy) {
     const captureBtn = document.getElementById('strava-capture-btn');
     const copyBtn = document.getElementById('strava-copy-btn');
-    if (!captureRoot || !footer) {
+    if (!captureBtn || !copyBtn) return;
+    captureBtn.disabled = busy;
+    copyBtn.disabled = busy;
+    captureBtn.style.opacity = busy ? '0.4' : '1';
+    copyBtn.style.opacity = busy ? '0.4' : '1';
+}
+
+function canvasToPngBlob(canvas) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob failed'))), 'image/png');
+    });
+}
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function shareStravaImageNative(blob, filename) {
+    const Share = getCapPlugin('Share');
+    if (!Share) throw new Error('Share plugin unavailable');
+
+    const Filesystem = getCapPlugin('Filesystem');
+    if (Filesystem?.writeFile && Filesystem?.getUri) {
+        const base64 = await blobToBase64(blob);
+        await Filesystem.writeFile({
+            path: filename,
+            data: base64,
+            directory: 'CACHE',
+        });
+        const { uri } = await Filesystem.getUri({ path: filename, directory: 'CACHE' });
+        await Share.share({
+            files: [uri],
+            dialogTitle: '바다고 · 수영 기록',
+            title: '바다고 · 수영 기록',
+        });
+        return;
+    }
+
+    const file = new File([blob], filename, { type: 'image/png' });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: '바다고 · 수영 기록' });
+        return;
+    }
+
+    throw new Error('native share unsupported');
+}
+
+async function downloadStravaImageWeb(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function copyStravaImageWeb(blob) {
+    if (!navigator.clipboard?.write) {
+        throw new Error('clipboard unsupported');
+    }
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+}
+
+async function captureStravaDetail(mode) {
+    const captureRoot = document.getElementById('strava-detail-capture-root');
+    if (!captureRoot) {
         showToast('❌ 캡처할 영역이 없습니다');
         return;
     }
@@ -1768,60 +1839,50 @@ async function captureStravaDetail(mode) {
     }
 
     if (stravaDetailMap) stravaDetailMap.invalidateSize();
-    captureBtn.disabled = true;
-    copyBtn.disabled = true;
-    footer.classList.add('is-capturing');
+    setStravaCaptureButtonsBusy(true);
 
-    let canvas;
     try {
         await new Promise((r) => setTimeout(r, 200));
-        canvas = await html2canvas(captureRoot, {
+        const canvas = await html2canvas(captureRoot, {
             useCORS: true,
             allowTaint: true,
             scale: 2,
             backgroundColor: '#ffffff',
             logging: false,
         });
-    } catch (err) {
-        console.error('[Strava capture]', err);
-        showToast('❌ 화면 캡처에 실패했습니다');
-        return;
-    } finally {
-        footer.classList.remove('is-capturing');
-        captureBtn.disabled = false;
-        copyBtn.disabled = false;
-    }
-
-    try {
-        const blob = await new Promise((resolve, reject) => {
-            canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('blob failed'))), 'image/png');
-        });
-
+        const blob = await canvasToPngBlob(canvas);
         const filename = `badago-strava-${Date.now()}.png`;
+        const native = isCapacitorNative();
 
-        if (mode === 'download') {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
+        if (native) {
+            if (mode === 'download') {
+                await shareStravaImageNative(blob, filename);
+                showToast('✅ 공유하기');
+            } else {
+                try {
+                    await copyStravaImageWeb(blob);
+                    showToast('✅ 클립보드에 복사됨');
+                } catch (clipErr) {
+                    console.warn('[Strava copy] clipboard failed, fallback to share', clipErr);
+                    await shareStravaImageNative(blob, filename);
+                    showToast('✅ 공유하기');
+                }
+            }
+        } else if (mode === 'download') {
+            await downloadStravaImageWeb(blob, filename);
             showToast('✅ 이미지 저장됨');
         } else {
-            if (!navigator.clipboard?.write) {
-                throw new Error('clipboard unsupported');
-            }
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            await copyStravaImageWeb(blob);
             showToast('✅ 클립보드에 복사됨');
         }
     } catch (err) {
         console.error('[Strava capture]', err);
-        const msg = err?.message?.includes('clipboard')
+        const msg = mode === 'copy' && !isCapacitorNative()
             ? '❌ 클립보드 복사에 실패했습니다'
-            : '❌ 화면 캡처에 실패했습니다';
+            : (mode === 'copy' ? '❌ 복사·공유에 실패했습니다' : '❌ 화면 캡처에 실패했습니다');
         showToast(msg);
+    } finally {
+        setStravaCaptureButtonsBusy(false);
     }
 }
 
