@@ -53,6 +53,8 @@ jobs:
             echo "keyPassword=${ANDROID_KEY_PASSWORD}"
           } > android/keystore.properties
           ls -la android/release.keystore android/keystore.properties
+          echo "--- keystore.properties contents (passwords masked) ---"
+          sed 's/\(Password\|password\)=.*/\1=***/' android/keystore.properties
 
       - name: Build signed release APK
         working-directory: android
