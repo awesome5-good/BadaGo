@@ -47,14 +47,14 @@ jobs:
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
           {
-            echo "storeFile=../release.keystore"
+            echo "storeFile=../../android/release.keystore"
             echo "storePassword=${ANDROID_KEYSTORE_PASSWORD}"
             echo "keyAlias=${ANDROID_KEY_ALIAS}"
             echo "keyPassword=${ANDROID_KEY_PASSWORD}"
-          } > android/keystore.properties
-          ls -la android/release.keystore android/keystore.properties
+          } > keystore.properties
+          ls -la android/release.keystore keystore.properties
           echo "--- keystore.properties contents (passwords masked) ---"
-          sed '/[Pp]assword=/s/=.*/=***/' android/keystore.properties
+          sed '/[Pp]assword=/s/=.*/=***/' keystore.properties
 
       - name: Build signed release APK
         working-directory: android
