@@ -580,6 +580,7 @@
 const KHOA_SERVICE_KEY = 'asGG26KX5P9eLKZkroj0Kg==';
 const KHOA_BEACH_API = 'https://khoa.go.kr/oceandata/api/beach/search.do';
 const KMA_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/kma-beach';
+const KHOA_HOURLY_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/khoa-hourly';
 
 /** Vercel 웹만 상대 경로, 앱·로컬 file/capacitor는 Vercel 프록시 절대 URL */
 function getKmaApiBase() {
@@ -587,6 +588,55 @@ function getKmaApiBase() {
         return '/api/kma-beach';
     }
     return KMA_REMOTE_API_BASE;
+}
+
+function getKhoaHourlyApiBase() {
+    if (window.location.hostname === 'bada-go.vercel.app') {
+        return '/api/khoa-hourly';
+    }
+    return KHOA_HOURLY_REMOTE_API_BASE;
+}
+
+function getKstDateKey(date = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(date);
+}
+
+function getKstHourKey(date) {
+    const h = Number(new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Seoul',
+        hour: 'numeric',
+        hour12: false,
+    }).format(date));
+    return String(h).padStart(2, '0');
+}
+
+function isKstToday(date) {
+    return getKstDateKey(date) === getKstDateKey(new Date());
+}
+
+async function fetchKhoaHourlyData(obsCode) {
+    const code = String(obsCode).trim();
+    const url = `${getKhoaHourlyApiBase()}?obsCode=${encodeURIComponent(code)}`;
+    logApiFetch('배경', 'KHOA 조위관측소 시간별 실측 수온', url);
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok || !json.ok) {
+        throw new Error(json.error || `KHOA hourly HTTP ${res.status}`);
+    }
+    const map = {};
+    for (const item of json.hourly || []) {
+        if (item?.hour != null && item?.temp != null) {
+            map[String(item.hour).padStart(2, '0')] = Number(item.temp);
+        }
+    }
+    window._khoaHourlyMap = map;
+    console.log('[BadaGo API] KHOA hourly OK', { obsCode: code, hours: Object.keys(map).length });
+    return map;
 }
 
 function logApiFetch(priority, label, url) {
@@ -973,9 +1023,20 @@ async function fetchAllData() {
         logApiFetch('배경', 'Open-Meteo marine', marineUrl);
         logApiFetch('배경', 'Open-Meteo weather', weatherUrl);
 
+        window._khoaHourlyMap = null;
+        const obsCode = loc.obsCode != null ? String(loc.obsCode).trim() : '';
+        const khoaHourlyPromise = obsCode
+            ? fetchKhoaHourlyData(obsCode).catch((e) => {
+                console.warn('[fetchAllData] KHOA hourly 실패 → 예보 과거 구간 Open-Meteo 유지', e.message);
+                window._khoaHourlyMap = null;
+                return null;
+            })
+            : Promise.resolve(null);
+
         const [marineRes, weatherRes] = await Promise.all([
             fetch(marineUrl),
             fetch(weatherUrl),
+            khoaHourlyPromise,
         ]);
         const marine = await marineRes.json();
         const weather = await weatherRes.json();
@@ -1295,6 +1356,9 @@ function renderHourly() {
     container.innerHTML = '';
 
     const hourly = window._hourlyData;
+    const loc = getCurrentLoc();
+    const khoaHourlyMap = window._khoaHourlyMap;
+    const useKhoaHourly = !!(loc.obsCode && khoaHourlyMap);
     const now = new Date();
     now.setMinutes(0, 0, 0);
     const currentMs = now.getTime();
@@ -1325,7 +1389,17 @@ function renderHourly() {
                 if (w !== undefined) waterTemp = w.toFixed(1) + '°';
             }
         }
-        if (isNow && currentWaterTemp !== null) {
+
+        if (useKhoaHourly) {
+            if (isNow && currentWaterTemp !== null) {
+                waterTemp = currentWaterTemp.toFixed(1) + '°';
+            } else if (offset < 0 && isKstToday(slotDate)) {
+                const khoaTemp = khoaHourlyMap[getKstHourKey(slotDate)];
+                if (khoaTemp != null && !Number.isNaN(khoaTemp)) {
+                    waterTemp = khoaTemp.toFixed(1) + '°';
+                }
+            }
+        } else if (isNow && currentWaterTemp !== null) {
             waterTemp = currentWaterTemp.toFixed(1) + '°';
         }
 
