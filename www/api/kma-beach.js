@@ -279,6 +279,9 @@ async function fetchSeaObsBuoy(buoyCode) {
         timeoutMs: FETCH_TIMEOUT_MS,
     });
 
+    console.error('[buoy-key]', !!process.env.KMA_API_HUB_KEY, '길이:', process.env.KMA_API_HUB_KEY?.length);
+    console.error('[buoy-url]', url);
+
     const { res, text: rawText } = await fetchWithTimeout(url, 'sea_obs');
     console.error('[buoy] status:', res.status, 'text:', rawText.slice(0, 300));
     console.log(`${LOG_PREFIX} sea_obs RESPONSE`, {
