@@ -1,4 +1,6 @@
 const TIDE_OBS_TEMP_API = 'https://www.khoa.go.kr/api/oceangrid/tideObsTemp/search.do';
+const SURVEY_WATER_TEMP_API =
+    'https://apis.data.go.kr/1192136/surveyWaterTemp/GetSurveyWaterTempApiService';
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_TTL_SEC = 600;
 const FETCH_TIMEOUT_MS = 5000;
@@ -32,8 +34,9 @@ function kstDateYmd(date = new Date()) {
         .replace(/-/g, '');
 }
 
-function maskKeyInUrl(url) {
-    return String(url).replace(/([?&]ServiceKey=)([^&]+)/i, (_, prefix, key) => {
+function maskKeyInUrl(url, paramName = 'ServiceKey') {
+    const re = new RegExp(`([?&]${paramName}=)([^&]+)`, 'gi');
+    return String(url).replace(re, (_, prefix, key) => {
         const k = decodeURIComponent(key);
         if (k.length <= 8) return `${prefix}****`;
         return `${prefix}${k.slice(0, 4)}...${k.slice(-4)}(len=${k.length})`;
@@ -153,6 +156,87 @@ function setMemoryCached(key, payload) {
     });
 }
 
+function getSurveyEnvelope(json) {
+    return json?.response ?? json;
+}
+
+function parseSurveyItems(json) {
+    const items = getSurveyEnvelope(json)?.body?.items?.item;
+    if (!items) return [];
+    return Array.isArray(items) ? items : [items];
+}
+
+function parseSurveyHourlyTemps(json) {
+    const byHour = new Map();
+    for (const row of parseSurveyItems(json)) {
+        const tempRaw = row?.wtem ?? row?.water_temp ?? row?.waterTemp ?? row?.TEMP ?? null;
+        if (!isValidWaterTemp(tempRaw)) continue;
+        const hour = extractHour(
+            row?.obsrvnDt ?? row?.obsvnDt ?? row?.obs_time ?? row?.record_time ?? row?.datetime
+        );
+        if (!hour) continue;
+        byHour.set(hour, parseFloat(tempRaw));
+    }
+    return [...byHour.entries()]
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([hour, temp]) => ({ hour, temp }));
+}
+
+async function fetchSurveyHourly(obsCode, dateYmd) {
+    const serviceKey = process.env.DATA_GO_KR_SERVICE_KEY;
+    const trimmedKey = serviceKey != null ? String(serviceKey).trim() : '';
+    if (!trimmedKey) {
+        throw new Error('DATA_GO_KR_SERVICE_KEY not configured');
+    }
+
+    const q = new URLSearchParams({
+        serviceKey: trimmedKey,
+        type: 'json',
+        obsCode,
+        reqDate: dateYmd,
+        min: '60',
+        numOfRows: '300',
+        pageNo: '1',
+    });
+    const url = `${SURVEY_WATER_TEMP_API}?${q.toString()}`;
+    console.log(`${LOG_PREFIX} survey fallback REQUEST`, {
+        obsCode,
+        date: dateYmd,
+        url: maskKeyInUrl(url, 'serviceKey'),
+        timeoutMs: FETCH_TIMEOUT_MS,
+    });
+
+    const { res, text } = await fetchWithTimeout(url, 'surveyWaterTemp');
+    let json;
+    try {
+        json = JSON.parse(text);
+    } catch (_) {
+        throw new Error(`surveyWaterTemp invalid JSON (HTTP ${res.status})`);
+    }
+
+    const header = getSurveyEnvelope(json)?.header;
+    const code = header?.resultCode ?? header?.resultcode;
+    const msg = header?.resultMsg ?? header?.resultmsg ?? '';
+    if (code && String(code) !== '00') {
+        throw new Error(`Survey API ${code}: ${msg}`);
+    }
+    if (!res.ok) {
+        throw new Error(`surveyWaterTemp HTTP ${res.status}`);
+    }
+
+    const hourly = parseSurveyHourlyTemps(json);
+    if (!hourly.length) {
+        throw new Error('surveyWaterTemp hourly data empty');
+    }
+
+    console.log(`${LOG_PREFIX} survey fallback parsed`, {
+        obsCode,
+        date: dateYmd,
+        count: hourly.length,
+    });
+    return hourly;
+}
+
 async function fetchTideObsTempHourly(obsCode, dateYmd) {
     const serviceKey = process.env.DATA_GO_KR_SERVICE_KEY;
     const trimmedKey = serviceKey != null ? String(serviceKey).trim() : '';
@@ -235,13 +319,21 @@ module.exports = async (req, res) => {
             return res.status(200).json(cached);
         }
 
-        const hourly = await fetchTideObsTempHourly(obsCode, dateYmd);
+        let hourly;
+        let source = 'khoa-tideObsTemp';
+        try {
+            hourly = await fetchTideObsTempHourly(obsCode, dateYmd);
+        } catch (primaryErr) {
+            console.warn(`${LOG_PREFIX} tideObsTemp failed, trying survey fallback`, primaryErr.message);
+            hourly = await fetchSurveyHourly(obsCode, dateYmd);
+            source = 'khoa-survey-hourly';
+        }
         const payload = {
             ok: true,
             obsCode,
             date: dateYmd,
             hourly,
-            source: 'khoa-tideObsTemp',
+            source,
             cached: false,
         };
         setMemoryCached(cacheKey, payload);
