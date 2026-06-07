@@ -152,6 +152,16 @@ function isValidWaveHeight(raw) {
     return n >= 0 && n <= 20;
 }
 
+function findSeaObsHeaderLine(lines) {
+    for (const line of lines) {
+        const cols = line.split(/\s+/);
+        if (cols.includes('TW') && (cols.includes('TM') || cols.includes('STN'))) {
+            return line;
+        }
+    }
+    return lines[0] || '(응답 비어 있음)';
+}
+
 function parseSeaObsText(text, buoyCode) {
     const trimmed = String(text || '').trim();
     if (!trimmed) throw new Error('sea_obs empty response');
@@ -173,24 +183,31 @@ function parseSeaObsText(text, buoyCode) {
     const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     let headerIdx = -1;
     let headers = [];
+    let headerLine = '';
 
     for (let i = 0; i < lines.length; i++) {
         const cols = lines[i].split(/\s+/);
         if (cols.includes('TW') && (cols.includes('TM') || cols.includes('STN'))) {
             headers = cols;
             headerIdx = i;
+            headerLine = lines[i];
             break;
         }
     }
 
     if (headerIdx < 0) {
+        const fallbackHeader = findSeaObsHeaderLine(lines);
+        console.error('[buoy] TW 파싱 실패, 헤더라인:', fallbackHeader);
         throw new Error('sea_obs header(TW) not found');
     }
 
     const twIdx = headers.indexOf('TW');
     const whIdx = headers.indexOf('WH');
     const tmIdx = headers.indexOf('TM');
-    if (twIdx < 0) throw new Error('sea_obs TW column not found');
+    if (twIdx < 0) {
+        console.error('[buoy] TW 파싱 실패, 헤더라인:', headerLine);
+        throw new Error('sea_obs TW column not found');
+    }
 
     let latest = null;
     for (let i = headerIdx + 1; i < lines.length; i++) {
@@ -209,9 +226,11 @@ function parseSeaObsText(text, buoyCode) {
     }
 
     if (!latest) {
+        console.error('[buoy] TW 파싱 실패, 헤더라인:', headerLine);
         throw new Error('sea_obs TW data not found');
     }
 
+    console.error('[buoy] TW 파싱 성공:', latest.water_temp);
     return { ...latest, buoyCode };
 }
 
@@ -233,6 +252,7 @@ async function fetchWithTimeout(url, label) {
 }
 
 async function fetchSeaObsBuoy(buoyCode) {
+    console.error('[buoy] key 존재:', !!process.env.KMA_API_HUB_KEY);
     logKmaApiHubKeyStatus('fetchSeaObsBuoy');
 
     const authKey = process.env.KMA_API_HUB_KEY;
@@ -243,6 +263,8 @@ async function fetchSeaObsBuoy(buoyCode) {
     }
 
     const tm = kstObservationTm();
+    console.error('[buoy] 호출 시작 stn:', buoyCode, 'tm:', tm);
+
     const q = new URLSearchParams({
         authKey: trimmedKey,
         stn: String(buoyCode),
@@ -258,6 +280,7 @@ async function fetchSeaObsBuoy(buoyCode) {
     });
 
     const { res, text: rawText } = await fetchWithTimeout(url, 'sea_obs');
+    console.error('[buoy] status:', res.status, 'text:', rawText.slice(0, 300));
     console.log(`${LOG_PREFIX} sea_obs RESPONSE`, {
         httpStatus: res.status,
         bodyLength: rawText.length,
@@ -265,18 +288,12 @@ async function fetchSeaObsBuoy(buoyCode) {
     });
 
     if (!res.ok) {
-        console.error('[buoy-debug]', rawText.slice(0, 500));
         throw new Error(`sea_obs HTTP ${res.status}`);
     }
 
-    try {
-        const parsed = parseSeaObsText(rawText, buoyCode);
-        console.log(`${LOG_PREFIX} sea_obs parsed`, parsed);
-        return parsed;
-    } catch (parseErr) {
-        console.error('[buoy-debug]', rawText.slice(0, 500));
-        throw parseErr;
-    }
+    const parsed = parseSeaObsText(rawText, buoyCode);
+    console.log(`${LOG_PREFIX} sea_obs parsed`, parsed);
+    return parsed;
 }
 
 function getSurveyEnvelope(json) {
