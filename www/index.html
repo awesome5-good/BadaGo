@@ -435,6 +435,8 @@
         .settings-row-desc { font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 2px; line-height: 1.35; }
         .settings-row-value { font-size: 14px; font-weight: 700; color: #64748b; flex-shrink: 0; }
         .settings-row-link { font-size: 14px; font-weight: 700; color: var(--primary); text-decoration: none; flex-shrink: 0; }
+        .kakao-inquiry-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: none; border-radius: 12px; background: #FEE500; color: #191919; font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font-sans); flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .kakao-inquiry-btn:active { transform: scale(0.98); }
         .settings-row-danger { color: #dc2626; background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font-sans); padding: 0; }
         .settings-section-title { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase; margin: 8px 0 4px; }
         .toggle-switch { position: relative; display: inline-block; width: 48px; height: 28px; flex-shrink: 0; }
@@ -947,7 +949,7 @@
                 </div>
                 <div class="settings-row">
                     <div class="settings-row-label">문의하기</div>
-                    <a class="settings-row-link" href="mailto:badago.app@gmail.com">이메일 보내기</a>
+                    <button type="button" class="kakao-inquiry-btn" onclick="openKakaoInquiry()"><span>💬</span> 카카오채널 문의</button>
                 </div>
                 <div class="settings-row">
                     <div class="settings-row-label">데이터 초기화</div>
@@ -1156,6 +1158,9 @@ const DEFAULT_NICKNAME = '바다고 수영러';
 const NOTIF_SETTINGS_KEY = 'bada_notification_settings';
 const TEMP_UNIT_KEY = 'bada_temp_unit';
 const MAIN_BEACH_KEY = 'bada_main_beach';
+const MAIN_BEACH_CACHE_KEY = 'bada_main_beach_weather_cache';
+const BADA_DAILY_NOTIF_ID = 1001;
+const BADA_NOTIF_CHANNEL_ID = 'badago-daily';
 const PROFILE_REGIONS = ['부산', '경북', '강원', '충남', '제주'];
 const NOTIF_TIME_OPTIONS = ['05:00', '05:30', '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30'];
 let profileRegionTab = '부산';
@@ -1211,6 +1216,7 @@ function saveNotificationSettings() {
         notifyTime: timeEl ? timeEl.value : '07:00',
     };
     localStorage.setItem(NOTIF_SETTINGS_KEY, JSON.stringify(settings));
+    scheduleLocalNotifications().catch((e) => console.warn('[LocalNotifications] schedule failed', e));
 }
 
 function initNotifTimePills() {
@@ -1281,6 +1287,163 @@ function setMainBeach(id, e) {
     updateProfileMainBeachBanner();
     updateNotificationBeachLabel();
     renderProfileBeachList();
+    scheduleLocalNotifications().catch((err) => console.warn('[LocalNotifications] schedule failed', err));
+}
+
+function saveMainBeachWeatherCache(snapshot) {
+    const beach = getMainBeach();
+    localStorage.setItem(MAIN_BEACH_CACHE_KEY, JSON.stringify({
+        beachId: beach.id,
+        beachName: beach.name,
+        waveHeight: snapshot.waveHeight ?? null,
+        windSpeed: snapshot.windSpeed ?? null,
+        waterTemp: snapshot.waterTemp ?? null,
+        updatedAt: Date.now(),
+    }));
+}
+
+function getMainBeachWeatherCache() {
+    try {
+        const cache = JSON.parse(localStorage.getItem(MAIN_BEACH_CACHE_KEY) || 'null');
+        if (!cache || cache.beachId !== getMainBeachId()) return null;
+        return cache;
+    } catch {
+        return null;
+    }
+}
+
+async function refreshMainBeachWeatherCache() {
+    const mainId = getMainBeachId();
+    const loc = getBeachById(mainId);
+    if (!loc) return;
+
+    if (currentLocationId === mainId && currentWaterTemp !== null) {
+        saveMainBeachWeatherCache({
+            waveHeight: currentWaveHeight,
+            windSpeed: currentWindSpeed,
+            waterTemp: currentWaterTemp,
+        });
+        return;
+    }
+
+    try {
+        const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&timezone=Asia%2FSeoul`;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=wind_speed_10m&timezone=Asia%2FSeoul`;
+        const [marineRes, weatherRes] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
+        const marine = await marineRes.json();
+        const weather = await weatherRes.json();
+        saveMainBeachWeatherCache({
+            waveHeight: marine?.current?.wave_height ?? null,
+            windSpeed: weather?.current?.wind_speed_10m ?? null,
+            waterTemp: marine?.current?.sea_surface_temperature ?? null,
+        });
+    } catch (e) {
+        console.warn('[LocalNotifications] main beach cache refresh failed', e);
+    }
+}
+
+function buildNotificationContent() {
+    const settings = getNotificationSettings();
+    const cache = getMainBeachWeatherCache();
+    const beach = getMainBeach();
+    const month = new Date().getMonth() + 1;
+    const wt = cache?.waterTemp ?? (currentLocationId === getMainBeachId() ? currentWaterTemp : null) ?? 20;
+    const wave = cache?.waveHeight ?? (currentLocationId === getMainBeachId() ? currentWaveHeight : null);
+    const wind = cache?.windSpeed ?? (currentLocationId === getMainBeachId() ? currentWindSpeed : null);
+    const dangers = [];
+
+    if (settings.wave) {
+        const info = getWaveDetailInfo(wave);
+        if (info.level === 'danger') dangers.push(`🌊 파도 ${info.val} 위험`);
+    }
+    if (settings.wind) {
+        const info = getWindDetailInfo(wind);
+        if (info.level === 'danger') dangers.push(`💨 풍속 ${info.val} 강풍`);
+    }
+    if (settings.jellyfish) {
+        const info = getJellyfishDetailInfo(wt, month);
+        if (info.level === 'danger') dangers.push(`🪼 해파리 ${info.val}`);
+    }
+    if (settings.ttakkomi) {
+        const info = getTtakkomiDetailInfo(wt, month);
+        if (info.level === 'danger') dangers.push(`⚡ 따꼼이 ${info.val}`);
+    }
+
+    return {
+        title: `🏊 BadaGo — ${beach.name}`,
+        body: dangers.length ? dangers.join(' · ') : '오늘은 특별한 주의 항목이 없어요 ☀️',
+    };
+}
+
+async function scheduleLocalNotifications() {
+    const LN = getCapPlugin('LocalNotifications');
+    if (!LN?.schedule || !isCapacitorNative()) return;
+
+    const settings = getNotificationSettings();
+    const anyEnabled = settings.jellyfish || settings.ttakkomi || settings.wave || settings.wind;
+
+    try {
+        if (LN.cancel) {
+            await LN.cancel({ notifications: [{ id: BADA_DAILY_NOTIF_ID }] });
+        }
+    } catch (_) { /* ignore */ }
+
+    if (!anyEnabled) return;
+
+    await refreshMainBeachWeatherCache();
+    const { title, body } = buildNotificationContent();
+    const [hour, minute] = settings.notifyTime.split(':').map((v) => parseInt(v, 10));
+
+    await LN.schedule({
+        notifications: [{
+            id: BADA_DAILY_NOTIF_ID,
+            title,
+            body,
+            channelId: BADA_NOTIF_CHANNEL_ID,
+            schedule: {
+                on: { hour, minute },
+                repeats: true,
+                every: 'day',
+            },
+        }],
+    });
+}
+
+async function initLocalNotifications() {
+    const LN = getCapPlugin('LocalNotifications');
+    if (!LN || !isCapacitorNative()) return;
+
+    try {
+        if (LN.createChannel) {
+            await LN.createChannel({
+                id: BADA_NOTIF_CHANNEL_ID,
+                name: 'BadaGo 일일 알림',
+                importance: 4,
+                visibility: 1,
+            });
+        }
+        if (LN.checkPermissions && LN.requestPermissions) {
+            const perm = await LN.checkPermissions();
+            if (perm.display !== 'granted') {
+                await LN.requestPermissions();
+            }
+        }
+        await scheduleLocalNotifications();
+    } catch (e) {
+        console.warn('[LocalNotifications] init failed', e);
+    }
+}
+
+function openKakaoInquiry() {
+    const url = 'http://pf.kakao.com/_YAdnX/chat';
+    if (isCapacitorNative()) {
+        const Browser = getCapPlugin('Browser');
+        if (Browser?.open) {
+            Browser.open({ url });
+            return;
+        }
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function openNotificationSheet() {
@@ -1938,6 +2101,14 @@ async function fetchAllData() {
         renderAll();
         setApiStatus('ok', statusText);
         showToast(`🌊 ${loc.name} 실시간 데이터 갱신 완료!`);
+        if (loc.id === getMainBeachId()) {
+            saveMainBeachWeatherCache({
+                waveHeight: currentWaveHeight,
+                windSpeed: currentWindSpeed,
+                waterTemp: currentWaterTemp,
+            });
+        }
+        scheduleLocalNotifications().catch((e) => console.warn('[LocalNotifications] schedule failed', e));
     } catch (err) {
         if (currentWaterTemp === null) currentWaterTemp = 20;
         if (currentWaveHeight === null) currentWaveHeight = 0.5;
@@ -3389,6 +3560,7 @@ window.onload = function() {
     setupStravaOAuthListeners();
     setupAndroidBackButton();
     setupStravaSheetSwipe();
+    initLocalNotifications();
 };
 </script>
 </body>
