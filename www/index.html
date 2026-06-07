@@ -2141,6 +2141,8 @@ async function captureStravaSheetCanvas() {
         scrollHeight: scroll?.style.height ?? '',
         bodyPadding: body?.style.padding ?? '',
         targetPadding: target.style.padding ?? '',
+        targetOverflow: target.style.overflow ?? '',
+        targetHeight: target.style.height ?? '',
         headerPadding: header?.style.padding ?? '',
         headerMarginBottom: header?.style.marginBottom ?? '',
         closeVisibility: closeBtn?.style.visibility ?? '',
@@ -2157,6 +2159,7 @@ async function captureStravaSheetCanvas() {
         scroll.style.maxHeight = 'none';
         scroll.style.height = 'auto';
     }
+    target.style.overflow = 'visible';
     target.style.padding = '8px 12px 12px';
     if (header) {
         header.style.padding = '0 0';
@@ -2166,6 +2169,10 @@ async function captureStravaSheetCanvas() {
 
     try {
         await new Promise((r) => requestAnimationFrame(r));
+        target.style.height = `${target.scrollHeight}px`;
+        await new Promise((r) => requestAnimationFrame(r));
+        const captureHeight = target.scrollHeight;
+        const captureWidth = target.scrollWidth;
         return await html2canvas(target, {
             useCORS: true,
             allowTaint: true,
@@ -2176,8 +2183,10 @@ async function captureStravaSheetCanvas() {
             y: 0,
             scrollX: 0,
             scrollY: 0,
-            windowWidth: target.scrollWidth,
-            windowHeight: target.scrollHeight,
+            width: captureWidth,
+            height: captureHeight,
+            windowWidth: captureWidth,
+            windowHeight: captureHeight,
         });
     } finally {
         if (scroll) {
@@ -2185,6 +2194,8 @@ async function captureStravaSheetCanvas() {
             scroll.style.maxHeight = saved.scrollMaxHeight;
             scroll.style.height = saved.scrollHeight;
         }
+        target.style.overflow = saved.targetOverflow;
+        target.style.height = saved.targetHeight;
         target.style.padding = saved.targetPadding;
         if (header) {
             header.style.padding = saved.headerPadding;
