@@ -117,12 +117,13 @@ function setMemoryCached(key, payload) {
     });
 }
 
-function kstObservationTm(date = new Date()) {
-    const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+/** sea_obs.php tm — KST 기준 1시간 전 정각 (YYYYMMDDHH) */
+function kstSeaObsTm(date = new Date()) {
+    const kstOneHourAgo = new Date(date.getTime() + 9 * 60 * 60 * 1000 - 60 * 60 * 1000);
     const p = (n) => String(n).padStart(2, '0');
     return (
-        `${kst.getUTCFullYear()}${p(kst.getUTCMonth() + 1)}${p(kst.getUTCDate())}` +
-        `${p(kst.getUTCHours())}00`
+        `${kstOneHourAgo.getUTCFullYear()}${p(kstOneHourAgo.getUTCMonth() + 1)}${p(kstOneHourAgo.getUTCDate())}` +
+        `${p(kstOneHourAgo.getUTCHours())}`
     );
 }
 
@@ -262,7 +263,7 @@ async function fetchSeaObsBuoy(buoyCode) {
         throw new Error('KMA_API_HUB_KEY not configured');
     }
 
-    const tm = kstObservationTm();
+    const tm = kstSeaObsTm();
     console.error('[buoy] 호출 시작 stn:', buoyCode, 'tm:', tm);
 
     const q = new URLSearchParams({
