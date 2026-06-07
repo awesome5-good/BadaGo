@@ -94,7 +94,9 @@
         /* 정보 카드 */
         .info-cards-stack { display: flex; flex-direction: column; gap: 12px; }
         .info-card { background: #fff; border-radius: 18px; padding: 14px 18px; display: flex; align-items: center; box-shadow: 0 4px 16px rgba(0,80,160,0.08); transition: transform 0.2s; }
+        .info-card-clickable { cursor: pointer; }
         .info-card:active { transform: scale(0.98); }
+        .card-chevron { font-size: 18px; font-weight: 700; color: #94a3b8; margin-left: 4px; flex-shrink: 0; line-height: 1; }
         .card-icon-container { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex-shrink: 0; }
         .icon-wave { background: linear-gradient(135deg, #38bdf8, #0284c7); }
         .icon-jelly { background: linear-gradient(135deg, #c084fc, #db2777); }
@@ -133,8 +135,9 @@
         .weather-metric-divider { height: 1px; background: rgba(30,126,200,0.12); margin: 10px 0 8px; }
         .weather-metric-note { font-size: 12px; font-weight: 500; color: #94a3b8; line-height: 1.45; }
         .sun-times-row { display: flex; justify-content: space-between; gap: 12px; }
-        .sun-time-item { text-align: center; flex: 1; background: rgba(255,255,255,0.5); border-radius: 12px; padding: 12px 10px; }
-        .sun-time-icon { font-size: 26px; margin-bottom: 6px; line-height: 1; }
+        .sun-time-item { text-align: center; flex: 1; background: rgba(255,255,255,0.5); border-radius: 12px; padding: 10px 8px 12px; overflow: hidden; }
+        .sun-scene-wrap { border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+        .sun-scene-svg { width: 100%; height: auto; display: block; aspect-ratio: 150 / 110; }
         .sun-time-label { font-size: 11px; font-weight: 600; color: #64748b; }
         .sun-time-val { font-size: 20px; font-weight: 800; color: #1e293b; margin-top: 4px; }
 
@@ -439,7 +442,7 @@
 
         <!-- 정보 카드 -->
         <div class="info-cards-stack">
-            <div class="info-card">
+            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-wave-card')">
                 <div class="card-icon-container icon-wave">
                     <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M2 13c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
@@ -450,8 +453,9 @@
                 <div class="flex-space"></div>
                 <span class="card-val" id="val-wave">--</span>
                 <span class="status-badge status-green" id="badge-wave">⏳</span>
+                <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card">
+            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-jelly-card')">
                 <div class="card-icon-container icon-jelly">
                     <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M6 11a6 6 0 0 1 12 0c0 .5-.5 1-1 1s-.75-.5-1-.5-.5.5-1 .5-.5-.5-1-.5s-.5.5-1 .5-.5-.5-1-.5-.5.5-1 .5c-.5 0-1-.5-1-1z" fill="rgba(255,255,255,0.2)"/>
@@ -462,8 +466,9 @@
                 <div class="flex-space"></div>
                 <span class="card-val" id="val-jelly">--</span>
                 <span class="status-badge status-green" id="badge-jelly">⏳</span>
+                <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card">
+            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-wind-card')">
                 <div class="card-icon-container icon-wind">
                     <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M2 10h15a3 3 0 1 0-3-3"/>
@@ -475,6 +480,7 @@
                 <div class="flex-space"></div>
                 <span class="card-val" id="val-wind">--</span>
                 <span class="status-badge status-green" id="badge-wind">⏳</span>
+                <span class="card-chevron" aria-hidden="true">›</span>
             </div>
         </div>
         </div>
@@ -500,12 +506,47 @@
             <div class="weather-metric-card weather-sun-card">
                 <div class="sun-times-row">
                     <div class="sun-time-item">
-                        <div class="sun-time-icon">🌅</div>
+                        <div class="sun-scene-wrap">
+                            <svg class="sun-scene-svg" viewBox="0 0 150 110" aria-hidden="true">
+                                <rect width="150" height="72" fill="#1a3a6e"/>
+                                <g stroke="#FFE066" stroke-width="3" stroke-linecap="round">
+                                    <line x1="75" y1="26" x2="75" y2="14"/>
+                                    <line x1="92" y1="36" x2="100" y2="28"/>
+                                    <line x1="58" y1="36" x2="50" y2="28"/>
+                                    <line x1="100" y1="56" x2="112" y2="56"/>
+                                    <line x1="50" y1="56" x2="38" y2="56"/>
+                                </g>
+                                <circle cx="75" cy="58" r="20" fill="#FFE066"/>
+                                <rect x="62" y="76" width="26" height="7" fill="#FFE066" opacity="0.35" rx="2"/>
+                                <path d="M0 78 Q37.5 72 75 78 T150 78 L150 110 L0 110 Z" fill="#1a4a8a"/>
+                                <path d="M0 84 Q37.5 78 75 84 T150 84 L150 110 L0 110 Z" fill="#1a5a9a"/>
+                                <path d="M0 90 Q37.5 84 75 90 T150 90 L150 110 L0 110 Z" fill="#1e6aaa"/>
+                            </svg>
+                        </div>
                         <div class="sun-time-label">일출</div>
                         <div class="sun-time-val" id="weather-sunrise">--:--</div>
                     </div>
                     <div class="sun-time-item">
-                        <div class="sun-time-icon">🌇</div>
+                        <div class="sun-scene-wrap">
+                            <svg class="sun-scene-svg" viewBox="0 0 150 110" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="sunsetSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#8a3a4e"/>
+                                        <stop offset="50%" stop-color="#4a1a6e"/>
+                                        <stop offset="100%" stop-color="#1a1a4e"/>
+                                    </linearGradient>
+                                </defs>
+                                <rect width="150" height="72" fill="url(#sunsetSkyGrad)"/>
+                                <ellipse cx="48" cy="42" rx="22" ry="10" fill="#c45a6a" opacity="0.55"/>
+                                <ellipse cx="88" cy="36" rx="28" ry="12" fill="#b84a5a" opacity="0.5"/>
+                                <ellipse cx="112" cy="46" rx="18" ry="9" fill="#a84a62" opacity="0.6"/>
+                                <circle cx="75" cy="58" r="20" fill="#FF6B35"/>
+                                <rect x="62" y="76" width="26" height="7" fill="#FF6B35" opacity="0.4" rx="2"/>
+                                <path d="M0 78 Q37.5 72 75 78 T150 78 L150 110 L0 110 Z" fill="#1a2a6a"/>
+                                <path d="M0 84 Q37.5 78 75 84 T150 84 L150 110 L0 110 Z" fill="#1a3a7a"/>
+                                <path d="M0 90 Q37.5 84 75 90 T150 90 L150 110 L0 110 Z" fill="#1e4a8a"/>
+                            </svg>
+                        </div>
                         <div class="sun-time-label">일몰</div>
                         <div class="sun-time-val" id="weather-sunset">--:--</div>
                     </div>
@@ -1329,7 +1370,7 @@ function renderLocationChips() {
 function selectLocation(id) {
     if (id === currentLocationId) return;
     currentLocationId = id;
-    currentWaterTemp = null; currentWaveHeight = null; currentWindSpeed = null; currentWindDirection = null; currentAirTemp = null;
+    currentWaterTemp = null; currentWaterTempIsSatellite = false; currentWaveHeight = null; currentWindSpeed = null; currentWindDirection = null; currentAirTemp = null;
     renderLocationChips();
     fetchAllData();
 }
@@ -1471,7 +1512,10 @@ function getSvgFallback(temp) {
 function renderCharTemp() {
     const temp = currentWaterTemp ?? 20;
     const cInfo = getCharInfo(temp);
-    document.getElementById('main-temp-val').innerHTML = `${temp.toFixed(1)}<span>°C</span>`;
+    const satelliteTag = currentWaterTempIsSatellite
+        ? '<span class="temp-satellite-tag">(위성추정)</span>'
+        : '';
+    document.getElementById('main-temp-val').innerHTML = `${temp.toFixed(1)}<span>°C</span>${satelliteTag}`;
     document.getElementById('main-suit-text').textContent = cInfo.text;
     document.getElementById('main-sub-text').textContent = cInfo.sub;
     document.getElementById('char-image-container').innerHTML =
