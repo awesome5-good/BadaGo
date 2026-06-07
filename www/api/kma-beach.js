@@ -1,25 +1,26 @@
 const { TextDecoder } = require('util');
 
 const KMA_RPT_BASE = 'https://www.weather.go.kr/special/CRP/beach/rpt_beach_';
+const SEA_OBS_API = 'https://apihub.kma.go.kr/api/typ01/url/sea_obs.php';
 const SURVEY_WATER_TEMP_API =
     'https://apis.data.go.kr/1192136/surveyWaterTemp/GetSurveyWaterTempApiService';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
-const SURVEY_FETCH_TIMEOUT_MS = 5000;
+const FETCH_TIMEOUT_MS = 5000;
 const LOG_PREFIX = '[kma-beach]';
 const SURVEY_RESPONSE_LOG_MAX = 4000;
 
 /** @type {Map<string, { expiresAt: number, payload: object }>} */
 const memoryCache = new Map();
 
-function maskServiceKeyInUrl(url) {
-    return String(url).replace(/([?&]serviceKey=)([^&]+)/gi, (_, prefix, key) => {
+function maskKeyInUrl(url, paramName) {
+    const re = new RegExp(`([?&]${paramName}=)([^&]+)`, 'gi');
+    return String(url).replace(re, (_, prefix, key) => {
         const k = decodeURIComponent(key);
         if (k.length <= 8) return `${prefix}****`;
         return `${prefix}${k.slice(0, 4)}...${k.slice(-4)}(len=${k.length})`;
     });
 }
 
-/** Vercel 로그: DATA_GO_KR_SERVICE_KEY 로드 여부 (키 값은 마스킹) */
 function logDataGoKrKeyStatus(context) {
     const raw = process.env.DATA_GO_KR_SERVICE_KEY;
     const trimmed = raw != null ? String(raw).trim() : '';
@@ -29,7 +30,18 @@ function logDataGoKrKeyStatus(context) {
         configured,
         length: configured ? trimmed.length : 0,
         preview: configured ? `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}` : null,
-        typeof: raw === undefined ? 'undefined' : typeof raw,
+    });
+}
+
+function logKmaApiHubKeyStatus(context) {
+    const raw = process.env.KMA_API_HUB_KEY;
+    const trimmed = raw != null ? String(raw).trim() : '';
+    const configured = trimmed.length > 0;
+    console.log(`${LOG_PREFIX} KMA_API_HUB_KEY check`, {
+        context,
+        configured,
+        length: configured ? trimmed.length : 0,
+        preview: configured ? `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}` : null,
     });
 }
 
@@ -84,8 +96,8 @@ function setCacheHeaders(res, hit) {
     else res.setHeader('X-BadaGo-Cache', 'MISS');
 }
 
-function cacheKey(id, obsCode) {
-    return obsCode ? `${id}:${obsCode}` : id;
+function cacheKey(id, buoyCode, obsCode) {
+    return [id, buoyCode || '', obsCode || ''].join(':');
 }
 
 function getMemoryCached(key) {
@@ -103,6 +115,162 @@ function setMemoryCached(key, payload) {
         expiresAt: Date.now() + CACHE_TTL_MS,
         payload: { ...payload, cached: true, cached_at: new Date().toISOString() },
     });
+}
+
+function kstObservationTm(date = new Date()) {
+    const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    const p = (n) => String(n).padStart(2, '0');
+    return (
+        `${kst.getUTCFullYear()}${p(kst.getUTCMonth() + 1)}${p(kst.getUTCDate())}` +
+        `${p(kst.getUTCHours())}00`
+    );
+}
+
+function formatKmaHubTm(tm) {
+    const s = String(tm || '').trim();
+    if (/^\d{12}$/.test(s)) {
+        return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)} ${s.slice(8, 10)}:${s.slice(10, 12)}`;
+    }
+    return null;
+}
+
+function isValidSeaValue(raw) {
+    if (raw == null || raw === '' || raw === '-' || raw === '-9' || raw === '-99') return false;
+    const n = parseFloat(raw);
+    return !Number.isNaN(n) && n > -90;
+}
+
+function isValidWaterTemp(raw) {
+    if (!isValidSeaValue(raw)) return false;
+    const n = parseFloat(raw);
+    return n >= 5 && n <= 40;
+}
+
+function isValidWaveHeight(raw) {
+    if (!isValidSeaValue(raw)) return false;
+    const n = parseFloat(raw);
+    return n >= 0 && n <= 20;
+}
+
+function parseSeaObsText(text, buoyCode) {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) throw new Error('sea_obs empty response');
+
+    if (trimmed.startsWith('{')) {
+        let json;
+        try {
+            json = JSON.parse(trimmed);
+        } catch (_) {
+            throw new Error('sea_obs invalid JSON');
+        }
+        const status = json?.result?.status;
+        const message = json?.result?.message || 'sea_obs API error';
+        if (status && Number(status) !== 200) {
+            throw new Error(`sea_obs ${status}: ${message}`);
+        }
+    }
+
+    const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    let headerIdx = -1;
+    let headers = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split(/\s+/);
+        if (cols.includes('TW') && (cols.includes('TM') || cols.includes('STN'))) {
+            headers = cols;
+            headerIdx = i;
+            break;
+        }
+    }
+
+    if (headerIdx < 0) {
+        throw new Error('sea_obs header(TW) not found');
+    }
+
+    const twIdx = headers.indexOf('TW');
+    const whIdx = headers.indexOf('WH');
+    const tmIdx = headers.indexOf('TM');
+    if (twIdx < 0) throw new Error('sea_obs TW column not found');
+
+    let latest = null;
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.startsWith('#') || /^=+$/.test(line)) continue;
+        const cols = line.split(/\s+/);
+        if (cols.length < headers.length) continue;
+        const tw = cols[twIdx];
+        if (!isValidWaterTemp(tw)) continue;
+        latest = {
+            water_temp: parseFloat(tw),
+            wave_height: whIdx >= 0 && isValidWaveHeight(cols[whIdx]) ? parseFloat(cols[whIdx]) : null,
+            obs_time: tmIdx >= 0 ? formatKmaHubTm(cols[tmIdx]) : null,
+            tm: tmIdx >= 0 ? cols[tmIdx] : null,
+        };
+    }
+
+    if (!latest) {
+        throw new Error('sea_obs TW data not found');
+    }
+
+    return { ...latest, buoyCode };
+}
+
+async function fetchWithTimeout(url, label) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        const text = await res.text();
+        return { res, text };
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            throw new Error(`${label} timeout (${FETCH_TIMEOUT_MS}ms)`);
+        }
+        throw err;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+async function fetchSeaObsBuoy(buoyCode) {
+    logKmaApiHubKeyStatus('fetchSeaObsBuoy');
+
+    const authKey = process.env.KMA_API_HUB_KEY;
+    const trimmedKey = authKey != null ? String(authKey).trim() : '';
+    if (!trimmedKey) {
+        console.warn(`${LOG_PREFIX} sea_obs SKIP — KMA_API_HUB_KEY empty`);
+        throw new Error('KMA_API_HUB_KEY not configured');
+    }
+
+    const tm = kstObservationTm();
+    const q = new URLSearchParams({
+        authKey: trimmedKey,
+        stn: String(buoyCode),
+        tm,
+        help: '0',
+    });
+    const url = `${SEA_OBS_API}?${q.toString()}`;
+    console.log(`${LOG_PREFIX} sea_obs REQUEST`, {
+        buoyCode,
+        tm,
+        url: maskKeyInUrl(url, 'authKey'),
+        timeoutMs: FETCH_TIMEOUT_MS,
+    });
+
+    const { res, text } = await fetchWithTimeout(url, 'sea_obs');
+    console.log(`${LOG_PREFIX} sea_obs RESPONSE`, {
+        httpStatus: res.status,
+        bodyLength: text.length,
+        body: text.length <= SURVEY_RESPONSE_LOG_MAX ? text : `${text.slice(0, SURVEY_RESPONSE_LOG_MAX)}…`,
+    });
+
+    if (!res.ok) {
+        throw new Error(`sea_obs HTTP ${res.status}`);
+    }
+
+    const parsed = parseSeaObsText(text, buoyCode);
+    console.log(`${LOG_PREFIX} sea_obs parsed`, parsed);
+    return parsed;
 }
 
 function getSurveyEnvelope(json) {
@@ -170,31 +338,11 @@ async function fetchSurveyWaterTemp(obsCode) {
     const url = `${SURVEY_WATER_TEMP_API}?${q.toString()}`;
     console.log(`${LOG_PREFIX} GetSurveyWaterTempApiService REQUEST`, {
         obsCode,
-        url: maskServiceKeyInUrl(url),
-        timeoutMs: SURVEY_FETCH_TIMEOUT_MS,
+        url: maskKeyInUrl(url, 'serviceKey'),
+        timeoutMs: FETCH_TIMEOUT_MS,
     });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), SURVEY_FETCH_TIMEOUT_MS);
-
-    let res;
-    let text;
-    try {
-        res = await fetch(url, { signal: controller.signal });
-        text = await res.text();
-    } catch (err) {
-        if (err.name === 'AbortError') {
-            console.warn(`${LOG_PREFIX} GetSurveyWaterTempApiService TIMEOUT`, {
-                obsCode,
-                timeoutMs: SURVEY_FETCH_TIMEOUT_MS,
-            });
-            throw new Error(`Survey water temp timeout (${SURVEY_FETCH_TIMEOUT_MS}ms)`);
-        }
-        throw err;
-    } finally {
-        clearTimeout(timeoutId);
-    }
-
+    const { res, text } = await fetchWithTimeout(url, 'Survey water temp');
     logSurveyResponse(res.status, text);
 
     let json;
@@ -268,17 +416,43 @@ async function fetchAndParseKma(id) {
 }
 
 /**
- * 1순위: 조위관측소 실측 수온 API (obsCode + DATA_GO_KR_SERVICE_KEY)
- * 2순위: KMA HTML (수온·파고, 실측 수온 실패 시 수온 폴백 / 파고 보완)
+ * 1순위: KMA API허브 해양기상부이 (buoyCode + KMA_API_HUB_KEY, TW)
+ * 2순위: 조위관측소 실측 수온 API (obsCode + DATA_GO_KR_SERVICE_KEY)
+ * 3순위: KMA HTML (수온·파고 폴백 / 파고 보완)
  */
-async function fetchBeachPayload(kmaBeachId, obsCode) {
+async function fetchBeachPayload(kmaBeachId, buoyCode, obsCode) {
     let water_temp = null;
     let wave_height = null;
     let obs_time = null;
     let source = null;
+    let resolvedBuoyCode = null;
     let surveyObsCode = null;
 
-    if (obsCode && /^DT_\d{4}$/i.test(obsCode)) {
+    if (buoyCode && /^\d{4,6}$/.test(String(buoyCode))) {
+        try {
+            const buoy = await fetchSeaObsBuoy(buoyCode);
+            water_temp = buoy.water_temp;
+            wave_height = buoy.wave_height;
+            obs_time = buoy.obs_time;
+            resolvedBuoyCode = buoy.buoyCode;
+            source = 'kma-buoy';
+            console.log(`${LOG_PREFIX} buoy OK → kma-buoy`, {
+                kmaBeachId,
+                buoyCode,
+                water_temp,
+                wave_height,
+                obs_time,
+            });
+        } catch (err) {
+            console.warn(`${LOG_PREFIX} buoy failed → survey/KMA fallback`, {
+                kmaBeachId,
+                buoyCode,
+                error: err?.message || String(err),
+            });
+        }
+    }
+
+    if (water_temp == null && obsCode && /^DT_\d{4}$/i.test(obsCode)) {
         try {
             const survey = await fetchSurveyWaterTemp(obsCode);
             water_temp = survey.water_temp;
@@ -292,7 +466,7 @@ async function fetchBeachPayload(kmaBeachId, obsCode) {
                 obs_time,
             });
         } catch (err) {
-            console.warn(`${LOG_PREFIX} survey failed → KMA fallback`, {
+            console.warn(`${LOG_PREFIX} survey failed → KMA HTML fallback`, {
                 kmaBeachId,
                 obsCode,
                 error: err?.message || String(err),
@@ -320,6 +494,7 @@ async function fetchBeachPayload(kmaBeachId, obsCode) {
         ok: true,
         source,
         kmaBeachId,
+        buoyCode: resolvedBuoyCode || buoyCode || null,
         obsCode: surveyObsCode || obsCode || null,
         water_temp,
         wave_height,
@@ -340,22 +515,28 @@ module.exports = async (req, res) => {
     }
 
     const id = String(req.query?.id || '').trim();
+    const buoyCode = String(req.query?.buoyCode || '').trim();
     const obsCode = String(req.query?.obsCode || '').trim().toUpperCase();
 
     if (!id || !/^\d{1,4}$/.test(id)) {
         return res.status(400).json({ error: 'Missing or invalid id parameter' });
     }
+    if (buoyCode && !/^\d{4,6}$/.test(buoyCode)) {
+        return res.status(400).json({ error: 'Invalid buoyCode (expected 4–6 digit station number)' });
+    }
     if (obsCode && !/^DT_\d{4}$/.test(obsCode)) {
         return res.status(400).json({ error: 'Invalid obsCode (expected DT_####)' });
     }
 
-    const key = cacheKey(id, obsCode || null);
+    const key = cacheKey(id, buoyCode || null, obsCode || null);
 
     console.log(`${LOG_PREFIX} handler`, {
         id,
+        buoyCode: buoyCode || null,
         obsCode: obsCode || null,
         cacheKey: key,
     });
+    logKmaApiHubKeyStatus('handler');
     logDataGoKrKeyStatus('handler');
 
     try {
@@ -366,7 +547,7 @@ module.exports = async (req, res) => {
             return res.status(200).json(cached);
         }
 
-        const payload = await fetchBeachPayload(id, obsCode || null);
+        const payload = await fetchBeachPayload(id, buoyCode || null, obsCode || null);
         console.log(`${LOG_PREFIX} payload OK`, {
             cacheKey: key,
             source: payload.source,
@@ -379,12 +560,14 @@ module.exports = async (req, res) => {
     } catch (err) {
         console.error(`${LOG_PREFIX} handler error`, {
             id,
+            buoyCode: buoyCode || null,
             obsCode: obsCode || null,
             error: err?.message || String(err),
         });
         return res.status(err.message.includes('찾을 수 없음') || err.message.includes('없음') ? 404 : 502).json({
             error: err.message || 'Beach data fetch failed',
             kmaBeachId: id,
+            buoyCode: buoyCode || null,
             obsCode: obsCode || null,
         });
     }
