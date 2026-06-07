@@ -101,6 +101,7 @@
         .icon-wave { background: linear-gradient(135deg, #38bdf8, #0284c7); }
         .icon-jelly { background: linear-gradient(135deg, #c084fc, #db2777); }
         .icon-wind { background: linear-gradient(135deg, #4ade80, #15803d); }
+        .icon-ttakkomi { background: linear-gradient(135deg, #fb923c, #92400e); }
         .card-icon-svg { width: 22px; height: 22px; }
         .card-title { font-size: 15px; font-weight: 700; color: #1e293b; }
         .flex-space { flex: 1; }
@@ -440,7 +441,7 @@
             <div class="hourly-scroll" id="hourly-scroll-container"></div>
         </div>
 
-        <!-- 정보 카드 -->
+        <!-- 정보 카드: 파도 → 풍속 → 해파리 → 따꼼이 -->
         <div class="info-cards-stack">
             <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-wave-card')">
                 <div class="card-icon-container icon-wave">
@@ -453,6 +454,20 @@
                 <div class="flex-space"></div>
                 <span class="card-val" id="val-wave">--</span>
                 <span class="status-badge status-green" id="badge-wave">⏳</span>
+                <span class="card-chevron" aria-hidden="true">›</span>
+            </div>
+            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-wind-card')">
+                <div class="card-icon-container icon-wind">
+                    <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 10h15a3 3 0 1 0-3-3"/>
+                        <path d="M4 14h14a3 3 0 1 1-3 3"/>
+                        <path d="M2 18h9a2 2 0 1 0-2-2"/>
+                    </svg>
+                </div>
+                <span class="card-title">풍속</span>
+                <div class="flex-space"></div>
+                <span class="card-val" id="val-wind">--</span>
+                <span class="status-badge status-green" id="badge-wind">⏳</span>
                 <span class="card-chevron" aria-hidden="true">›</span>
             </div>
             <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-jelly-card')">
@@ -468,18 +483,20 @@
                 <span class="status-badge status-green" id="badge-jelly">⏳</span>
                 <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-wind-card')">
-                <div class="card-icon-container icon-wind">
-                    <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M2 10h15a3 3 0 1 0-3-3"/>
-                        <path d="M4 14h14a3 3 0 1 1-3 3"/>
-                        <path d="M2 18h9a2 2 0 1 0-2-2"/>
+            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-ttakkomi-card')">
+                <div class="card-icon-container icon-ttakkomi">
+                    <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="12" cy="13" rx="7" ry="4" fill="rgba(255,255,255,0.25)"/>
+                        <path d="M5 13c0-3 3-5 7-5s7 2 7 5"/>
+                        <path d="M8 16v2M12 16v2M16 16v2"/>
+                        <circle cx="9" cy="12" r="0.8" fill="#fff"/>
+                        <circle cx="15" cy="12" r="0.8" fill="#fff"/>
                     </svg>
                 </div>
-                <span class="card-title">풍속</span>
+                <span class="card-title">따꼼이 (바다물벼룩)</span>
                 <div class="flex-space"></div>
-                <span class="card-val" id="val-wind">--</span>
-                <span class="status-badge status-green" id="badge-wind">⏳</span>
+                <span class="card-val" id="val-ttakkomi">--</span>
+                <span class="status-badge status-green" id="badge-ttakkomi">⏳</span>
                 <span class="card-chevron" aria-hidden="true">›</span>
             </div>
         </div>
@@ -574,6 +591,25 @@
                     <p class="weather-metric-note">너울이 심하면 예상치 못한 방향에서 파도가 올 수 있어 위험합니다.</p>
                 </div>
 
+                <div class="weather-metric-card" id="weather-wind-card">
+                    <div class="weather-metric-top">
+                        <span class="weather-metric-emoji">💨</span>
+                        <div class="weather-metric-body">
+                            <div class="weather-metric-label">풍속 · 풍향</div>
+                            <div class="weather-metric-value-row">
+                                <span class="weather-metric-val" id="weather-wind-val">--</span>
+                                <span class="weather-metric-badge weather-badge-safe" id="weather-wind-badge">⏳</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="weather-metric-bar-track">
+                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wind-bar" style="width:0%"></div>
+                    </div>
+                    <p class="weather-metric-desc" id="weather-wind-desc">데이터 불러오는 중...</p>
+                    <div class="weather-metric-divider"></div>
+                    <p class="weather-metric-note">해풍(바다→육지)은 파도를 높이고, 육풍은 수면을 잔잔하게 합니다.</p>
+                </div>
+
                 <div class="weather-metric-card" id="weather-jelly-card">
                     <div class="weather-metric-top">
                         <span class="weather-metric-emoji">🪼</span>
@@ -593,23 +629,23 @@
                     <p class="weather-metric-note">수온 25℃ 이상·7~9월 집중 출현 · 쏘였을 때 바닷물로 씻고 촉수 제거 후 즉시 119</p>
                 </div>
 
-                <div class="weather-metric-card" id="weather-wind-card">
+                <div class="weather-metric-card" id="weather-ttakkomi-card">
                     <div class="weather-metric-top">
-                        <span class="weather-metric-emoji">💨</span>
+                        <span class="weather-metric-emoji">🦐</span>
                         <div class="weather-metric-body">
-                            <div class="weather-metric-label">풍속 · 풍향</div>
+                            <div class="weather-metric-label">따꼼이 (바다물벼룩)</div>
                             <div class="weather-metric-value-row">
-                                <span class="weather-metric-val" id="weather-wind-val">--</span>
-                                <span class="weather-metric-badge weather-badge-safe" id="weather-wind-badge">⏳</span>
+                                <span class="weather-metric-val" id="weather-ttakkomi-val">--</span>
+                                <span class="weather-metric-badge weather-badge-safe" id="weather-ttakkomi-badge">⏳</span>
                             </div>
                         </div>
                     </div>
                     <div class="weather-metric-bar-track">
-                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wind-bar" style="width:0%"></div>
+                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-ttakkomi-bar" style="width:0%"></div>
                     </div>
-                    <p class="weather-metric-desc" id="weather-wind-desc">데이터 불러오는 중...</p>
+                    <p class="weather-metric-desc" id="weather-ttakkomi-desc">데이터 불러오는 중...</p>
                     <div class="weather-metric-divider"></div>
-                    <p class="weather-metric-note">해풍(바다→육지)은 파도를 높이고, 육풍은 수면을 잔잔하게 합니다.</p>
+                    <p class="weather-metric-note">수영인들이 '따꼼이'라 부르는 바다물벼룩(단각류)입니다. 해파리가 아닌 새우와 비슷한 작은 갑각류로 크기는 수mm~수cm. 독성은 없지만 피부를 깨물어 따끔한 통증을 유발합니다. 수온 23℃ 이상 여름철 개체수 급증, 수온이 낮아지면 감소. 국립수산과학원에 따르면 전세계 해역에 서식하는 일반적인 생물군입니다. 따꼼이가 많은 날은 래시가드·수트 착용 권장.</p>
                 </div>
             </div>
         </div>
@@ -1670,6 +1706,19 @@ function getWaveDetailInfo(height) {
     return { val: `${h.toFixed(1)}m`, level: 'danger', badge: '위험', desc: '파도 위험, 입수 자제', meterPct };
 }
 
+function getTtakkomiDetailInfo(wt, month) {
+    if (wt >= 26 && month >= 7 && month <= 8) {
+        return { val: '다수 출현', level: 'danger', badge: '위험', desc: '위험 · 다수 출현', meterPct: 88 };
+    }
+    if (wt >= 23 && wt < 26) {
+        return { val: '출현 가능', level: 'caution', badge: '주의', desc: '주의 · 출현 가능', meterPct: 52 };
+    }
+    if (wt >= 26) {
+        return { val: '출현 가능', level: 'caution', badge: '주의', desc: '주의 · 출현 가능', meterPct: 65 };
+    }
+    return { val: '거의 없음', level: 'safe', badge: '안전', desc: '안전 · 거의 없음', meterPct: 12 };
+}
+
 function getJellyfishDetailInfo(wt, month) {
     if (wt >= 25 && month >= 7 && month <= 9) {
         return { val: '위험', level: 'danger', badge: '위험', desc: '해파리 출현 위험, 입수 자제', meterPct: 90 };
@@ -1736,10 +1785,10 @@ function renderWeatherTab() {
         badgeEl.textContent = `${getWeatherEmoji(wCode)} ${currentAirTemp !== null ? Math.round(currentAirTemp) + '°C' : '--°C'}`;
     }
 
-    applyWeatherMetricCard('weather-wave-val', 'weather-wave-badge', 'weather-wave-bar', 'weather-wave-desc', getWaveDetailInfo(currentWaveHeight));
-
     const month = new Date().getMonth() + 1;
-    applyWeatherMetricCard('weather-jelly-val', 'weather-jelly-badge', 'weather-jelly-bar', 'weather-jelly-desc', getJellyfishDetailInfo(currentWaterTemp ?? 20, month));
+    const wt = currentWaterTemp ?? 20;
+
+    applyWeatherMetricCard('weather-wave-val', 'weather-wave-badge', 'weather-wave-bar', 'weather-wave-desc', getWaveDetailInfo(currentWaveHeight));
 
     const wind = getWindDetailInfo(currentWindSpeed);
     const windDir = getWindDirectionLabel(currentWindDirection);
@@ -1747,6 +1796,10 @@ function renderWeatherTab() {
         ? wind.desc
         : `${wind.desc} · 풍향 ${windDir}`;
     applyWeatherMetricCard('weather-wind-val', 'weather-wind-badge', 'weather-wind-bar', 'weather-wind-desc', wind);
+
+    applyWeatherMetricCard('weather-jelly-val', 'weather-jelly-badge', 'weather-jelly-bar', 'weather-jelly-desc', getJellyfishDetailInfo(wt, month));
+
+    applyWeatherMetricCard('weather-ttakkomi-val', 'weather-ttakkomi-badge', 'weather-ttakkomi-bar', 'weather-ttakkomi-desc', getTtakkomiDetailInfo(wt, month));
 
     const daily = window._dailyData || {};
     const todayKey = getKstDateKey(new Date());
@@ -1772,14 +1825,6 @@ function renderInfoCards() {
         else if (currentWaveHeight <= 1.5) { waveBadge.className='status-badge status-orange'; waveBadge.innerHTML='⚠ 주의'; }
         else                               { waveBadge.className='status-badge status-red';    waveBadge.innerHTML='⚠ 위험'; }
     }
-    // 해파리
-    const jellyVal = document.getElementById('val-jelly');
-    const jellyBadge = document.getElementById('badge-jelly');
-    const month = new Date().getMonth() + 1;
-    const wt = currentWaterTemp ?? 20;
-    if (wt >= 25 && month >= 7 && month <= 9)      { jellyVal.textContent='경보'; jellyBadge.className='status-badge status-red';    jellyBadge.innerHTML='⚠ 위험'; }
-    else if (wt >= 22 && month >= 6 && month <= 9) { jellyVal.textContent='주의'; jellyBadge.className='status-badge status-orange'; jellyBadge.innerHTML='⚠ 보름달'; }
-    else                                            { jellyVal.textContent='안전'; jellyBadge.className='status-badge status-green';  jellyBadge.innerHTML='✓ 없음'; }
     // 풍속
     const windVal = document.getElementById('val-wind');
     const windBadge = document.getElementById('badge-wind');
@@ -1788,6 +1833,31 @@ function renderInfoCards() {
         if (currentWindSpeed <= 4)      { windBadge.className='status-badge status-green';  windBadge.innerHTML='✓ 잔잔'; }
         else if (currentWindSpeed <= 8) { windBadge.className='status-badge status-orange'; windBadge.innerHTML='⚠ 보통'; }
         else                            { windBadge.className='status-badge status-red';    windBadge.innerHTML='⚠ 강풍'; }
+    }
+    // 해파리
+    const jellyVal = document.getElementById('val-jelly');
+    const jellyBadge = document.getElementById('badge-jelly');
+    const month = new Date().getMonth() + 1;
+    const wt = currentWaterTemp ?? 20;
+    if (wt >= 25 && month >= 7 && month <= 9)      { jellyVal.textContent='경보'; jellyBadge.className='status-badge status-red';    jellyBadge.innerHTML='⚠ 위험'; }
+    else if (wt >= 22 && month >= 6 && month <= 9) { jellyVal.textContent='주의'; jellyBadge.className='status-badge status-orange'; jellyBadge.innerHTML='⚠ 보름달'; }
+    else                                            { jellyVal.textContent='안전'; jellyBadge.className='status-badge status-green';  jellyBadge.innerHTML='✓ 없음'; }
+    // 따꼼이
+    const ttakkomi = getTtakkomiDetailInfo(wt, month);
+    const ttakkomiVal = document.getElementById('val-ttakkomi');
+    const ttakkomiBadge = document.getElementById('badge-ttakkomi');
+    if (ttakkomiVal) ttakkomiVal.textContent = ttakkomi.val;
+    if (ttakkomiBadge) {
+        if (ttakkomi.level === 'danger') {
+            ttakkomiBadge.className = 'status-badge status-red';
+            ttakkomiBadge.innerHTML = '⚠ 위험';
+        } else if (ttakkomi.level === 'caution') {
+            ttakkomiBadge.className = 'status-badge status-orange';
+            ttakkomiBadge.innerHTML = '⚠ 주의';
+        } else {
+            ttakkomiBadge.className = 'status-badge status-green';
+            ttakkomiBadge.innerHTML = '✓ 안전';
+        }
     }
 }
 
@@ -1820,6 +1890,25 @@ function switchTab(idx) {
         document.getElementById(`tab-panel-${i}`).className = i === idx ? 'tab-panel active' : 'tab-panel';
     }
     if (idx === 2) initStravaTab();
+}
+
+function goToWeatherSection(sectionId) {
+    switchTab(1);
+    const scrollEl = document.querySelector('.content-scroll');
+    const scrollToTarget = () => {
+        const target = document.getElementById(sectionId);
+        if (!target || !scrollEl) return;
+        const top = target.getBoundingClientRect().top
+            - scrollEl.getBoundingClientRect().top
+            + scrollEl.scrollTop
+            - 12;
+        scrollEl.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    };
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            setTimeout(scrollToTarget, 100);
+        });
+    });
 }
 
 async function setupAndroidBackButton() {
