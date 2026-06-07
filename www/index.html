@@ -107,6 +107,34 @@
         .status-orange { background: #fff7ed; color: #ea580c; }
         .status-red { background: #fef2f2; color: #dc2626; }
 
+        /* 날씨 탭 */
+        .weather-tab-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .weather-tab-title { font-size: 28px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: -0.5px; }
+        .weather-cards-stack { display: flex; flex-direction: column; gap: 12px; }
+        .weather-detail-card { background: #fff; border-radius: 18px; padding: 16px 18px; box-shadow: 0 4px 16px rgba(0,80,160,0.08); }
+        .weather-detail-top { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+        .weather-detail-main { flex: 1; min-width: 0; }
+        .weather-detail-title { font-size: 15px; font-weight: 700; color: #1e293b; }
+        .weather-detail-value { font-size: 22px; font-weight: 800; color: #1e293b; }
+        .weather-detail-value-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+        .weather-detail-sub { font-size: 13px; font-weight: 600; color: #64748b; margin-top: 2px; }
+        .weather-detail-desc { font-size: 13px; font-weight: 600; color: #475569; line-height: 1.5; margin-bottom: 6px; }
+        .weather-detail-note { font-size: 12px; font-weight: 500; color: #94a3b8; line-height: 1.45; }
+        .weather-detail-list { margin: 8px 0 0; padding: 0; list-style: none; }
+        .weather-detail-list li { font-size: 12px; font-weight: 500; color: #64748b; line-height: 1.5; padding: 3px 0 3px 14px; position: relative; }
+        .weather-detail-list li::before { content: '•'; position: absolute; left: 0; color: #94a3b8; }
+        .sun-times-row { display: flex; justify-content: space-around; gap: 10px; margin-top: 10px; }
+        .sun-time-item { text-align: center; flex: 1; background: #f8fafc; border-radius: 14px; padding: 14px 10px; }
+        .sun-time-icon { font-size: 28px; margin-bottom: 6px; line-height: 1; }
+        .sun-time-label { font-size: 11px; font-weight: 600; color: #94a3b8; }
+        .sun-time-val { font-size: 18px; font-weight: 800; color: #1e293b; margin-top: 4px; }
+        .daily-forecast-row { display: flex; gap: 8px; margin-top: 10px; }
+        .daily-forecast-item { flex: 1; text-align: center; background: #f8fafc; border-radius: 14px; padding: 12px 6px; }
+        .daily-day { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+        .daily-icon { font-size: 22px; margin-bottom: 4px; line-height: 1; }
+        .daily-temp { font-size: 13px; font-weight: 800; color: #1e293b; line-height: 1.3; }
+        .daily-temp-lo { font-size: 11px; font-weight: 600; color: #94a3b8; }
+
         /* 하단 탭 */
         .bottom-tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: var(--tab-bar-height); background: #fff; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-around; align-items: stretch; padding-top: 0; padding-bottom: var(--safe-bottom); z-index: 100; }
         .tab-item { display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; width: 25%; position: relative; padding-top: 6px; gap: 2px; transition: color 0.2s; }
@@ -450,10 +478,109 @@
 
         <!-- ===== 날씨 탭 ===== -->
         <div id="tab-panel-1" class="tab-panel">
-            <div class="tab-placeholder">
-                <div class="tab-placeholder-icon">🌤️</div>
-                <div class="tab-placeholder-title">날씨</div>
-                <div class="tab-placeholder-desc">곧 업데이트될 예정이에요</div>
+            <div class="weather-tab-header">
+                <span class="weather-tab-title" id="weather-tab-loc">--</span>
+                <div class="weather-badge" id="weather-tab-badge">⏳ 로딩 중...</div>
+            </div>
+
+            <div class="hourly-card">
+                <div class="hourly-header">
+                    <span class="hourly-title">오늘의 예보</span>
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="dot-yellow"></span>기온</div>
+                        <div class="legend-item"><span class="dot-white"></span>수온(예측)</div>
+                    </div>
+                </div>
+                <div class="hourly-scroll" id="weather-hourly-scroll-container"></div>
+            </div>
+
+            <div class="weather-cards-stack">
+                <div class="weather-detail-card" id="weather-wave-card">
+                    <div class="weather-detail-top">
+                        <div class="card-icon-container icon-wave">
+                            <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 13c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
+                                <path d="M2 18c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
+                            </svg>
+                        </div>
+                        <div class="weather-detail-main">
+                            <div class="weather-detail-title">파도 높이</div>
+                            <div class="weather-detail-value-row">
+                                <span class="weather-detail-value" id="weather-wave-val">--</span>
+                                <span class="status-badge status-green" id="weather-wave-badge">⏳</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="weather-detail-desc" id="weather-wave-desc">데이터 불러오는 중...</p>
+                    <p class="weather-detail-note">너울이 심하면 예상치 못한 방향에서 파도가 올 수 있어 위험합니다.</p>
+                </div>
+
+                <div class="weather-detail-card" id="weather-jelly-card">
+                    <div class="weather-detail-top">
+                        <div class="card-icon-container icon-jelly">
+                            <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6 11a6 6 0 0 1 12 0c0 .5-.5 1-1 1s-.75-.5-1-.5-.5.5-1 .5-.5-.5-1-.5s-.5.5-1 .5-.5-.5-1-.5-.5.5-1 .5c-.5 0-1-.5-1-1z" fill="rgba(255,255,255,0.2)"/>
+                                <path d="M9 13v6M12 12v7M15 13v5"/>
+                            </svg>
+                        </div>
+                        <div class="weather-detail-main">
+                            <div class="weather-detail-title">해파리</div>
+                            <div class="weather-detail-value-row">
+                                <span class="weather-detail-value" id="weather-jelly-val">--</span>
+                                <span class="status-badge status-green" id="weather-jelly-badge">⏳</span>
+                            </div>
+                        </div>
+                    </div>
+                    <ul class="weather-detail-list">
+                        <li>수온 25℃ 이상, 7~9월에 집중 출현</li>
+                        <li>노무라입깃해파리(대형), 작은부레관해파리(맹독) 주의</li>
+                        <li>해파리 특보 발령 시 즉시 입수 금지</li>
+                    </ul>
+                    <p class="weather-detail-note" style="margin-top:10px;">쏘였을 때: 바닷물로 씻고 촉수 제거 후 즉시 119</p>
+                </div>
+
+                <div class="weather-detail-card" id="weather-wind-card">
+                    <div class="weather-detail-top">
+                        <div class="card-icon-container icon-wind">
+                            <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 10h15a3 3 0 1 0-3-3"/>
+                                <path d="M4 14h14a3 3 0 1 1-3 3"/>
+                                <path d="M2 18h9a2 2 0 1 0-2-2"/>
+                            </svg>
+                        </div>
+                        <div class="weather-detail-main">
+                            <div class="weather-detail-title">풍속 · 풍향</div>
+                            <div class="weather-detail-value-row">
+                                <span class="weather-detail-value" id="weather-wind-val">--</span>
+                                <span class="status-badge status-green" id="weather-wind-badge">⏳</span>
+                            </div>
+                            <div class="weather-detail-sub" id="weather-wind-dir">풍향 --</div>
+                        </div>
+                    </div>
+                    <p class="weather-detail-desc" id="weather-wind-desc">데이터 불러오는 중...</p>
+                    <p class="weather-detail-note">해풍(바다→육지 방향)은 파도를 높이고, 육풍은 수면을 잔잔하게 합니다.</p>
+                </div>
+
+                <div class="weather-detail-card">
+                    <div class="weather-detail-title">일출 · 일몰</div>
+                    <div class="sun-times-row">
+                        <div class="sun-time-item">
+                            <div class="sun-time-icon">🌅</div>
+                            <div class="sun-time-label">일출</div>
+                            <div class="sun-time-val" id="weather-sunrise">--:--</div>
+                        </div>
+                        <div class="sun-time-item">
+                            <div class="sun-time-icon">🌇</div>
+                            <div class="sun-time-label">일몰</div>
+                            <div class="sun-time-val" id="weather-sunset">--:--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="weather-detail-card">
+                    <div class="weather-detail-title">3일 예보</div>
+                    <div class="daily-forecast-row" id="weather-daily-forecast"></div>
+                </div>
             </div>
         </div>
 
@@ -727,6 +854,7 @@ let currentLocationId = favorites[0] || 'haeundae';
 let currentWaterTemp = null;
 let currentWaveHeight = null;
 let currentWindSpeed = null;
+let currentWindDirection = null;
 let currentAirTemp = null;
 let isLoading = false;
 let usedKhoaApi = false;
@@ -934,15 +1062,19 @@ async function fetchNifsObsData(stationKeyword) {
     };
 }
 
-function applyOpenMeteoWaterWind(marine, weather) {
-    currentWaterTemp = marine?.current?.sea_surface_temperature ?? null;
+function applyOpenMeteoWindFromWeather(weather) {
     const windKmh = weather?.current?.wind_speed_10m ?? null;
     currentWindSpeed = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
+    currentWindDirection = weather?.current?.wind_direction_10m ?? null;
+}
+
+function applyOpenMeteoWaterWind(marine, weather) {
+    currentWaterTemp = marine?.current?.sea_surface_temperature ?? null;
+    applyOpenMeteoWindFromWeather(weather);
 }
 
 function applyOpenMeteoWind(weather) {
-    const windKmh = weather?.current?.wind_speed_10m ?? null;
-    currentWindSpeed = windKmh !== null ? Math.round(windKmh / 3.6 * 10) / 10 : null;
+    applyOpenMeteoWindFromWeather(weather);
 }
 
 /** KHOA 수온·풍속 적용. 관측소 불일치·null 필드는 Open-Meteo로 대체 */
@@ -1035,7 +1167,7 @@ async function fetchAllData() {
 
     try {
         const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`;
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=Asia%2FSeoul&past_days=1&forecast_days=3`;
         logApiFetch('배경', 'Open-Meteo marine', marineUrl);
         logApiFetch('배경', 'Open-Meteo weather', weatherUrl);
 
@@ -1060,7 +1192,9 @@ async function fetchAllData() {
         currentWaveHeight = marine?.current?.wave_height ?? null;
         currentAirTemp    = weather?.current?.temperature_2m ?? null;
         window._hourlyData = { marine: marine?.hourly || {}, weather: weather?.hourly || {} };
+        window._dailyData = weather?.daily || {};
         window._weatherCode = weather?.current?.weather_code ?? 0;
+        currentWindDirection = weather?.current?.wind_direction_10m ?? null;
 
         let statusText = null;
         let dataSource = null;
@@ -1155,8 +1289,10 @@ function renderAll() {
     const wCode = window._weatherCode ?? 0;
     document.getElementById('weather-badge-text').textContent = `${getWeatherEmoji(wCode)} ${currentAirTemp !== null ? Math.round(currentAirTemp)+'°C' : '--°C'}`;
     renderCharTemp();
-    renderHourly();
+    renderHourly('hourly-scroll-container');
+    renderHourly('weather-hourly-scroll-container');
     renderInfoCards();
+    renderWeatherTab();
     renderLocationChips();
 }
 
@@ -1187,7 +1323,7 @@ function renderLocationChips() {
 function selectLocation(id) {
     if (id === currentLocationId) return;
     currentLocationId = id;
-    currentWaterTemp = null; currentWaveHeight = null; currentWindSpeed = null; currentAirTemp = null;
+    currentWaterTemp = null; currentWaveHeight = null; currentWindSpeed = null; currentWindDirection = null; currentAirTemp = null;
     renderLocationChips();
     fetchAllData();
 }
@@ -1376,8 +1512,9 @@ function getMarineWaterTempAtIso(isoTime) {
     return w !== undefined ? w : null;
 }
 
-function renderHourly() {
-    const container = document.getElementById('hourly-scroll-container');
+function renderHourly(containerId = 'hourly-scroll-container') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     container.innerHTML = '';
 
     const hourly = window._hourlyData;
@@ -1456,6 +1593,128 @@ function renderHourly() {
 
     if (nowCol) {
         setTimeout(() => nowCol.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 100);
+    }
+}
+
+function getWaveDetailInfo(height) {
+    if (height === null || Number.isNaN(height)) {
+        return { val: '--', badgeClass: 'status-badge status-green', badge: '⏳', desc: '데이터 없음' };
+    }
+    const h = height;
+    if (h <= 0.5) {
+        return { val: `${h.toFixed(1)}m`, badgeClass: 'status-badge status-green', badge: '✓ 안전', desc: '잔잔한 바다, 수영하기 최적' };
+    }
+    if (h <= 1.0) {
+        return { val: `${h.toFixed(1)}m`, badgeClass: 'status-badge status-orange', badge: '⚠ 주의', desc: '약한 너울, 초보자는 주의' };
+    }
+    if (h <= 1.5) {
+        return { val: `${h.toFixed(1)}m`, badgeClass: 'status-badge status-orange', badge: '⚠ 주의', desc: '너울 심함, 숙련자만 권장' };
+    }
+    return { val: `${h.toFixed(1)}m`, badgeClass: 'status-badge status-red', badge: '⚠ 위험', desc: '파도 위험, 입수 자제' };
+}
+
+function getJellyfishDetailInfo(wt, month) {
+    if (wt >= 25 && month >= 7 && month <= 9) {
+        return { val: '위험', badgeClass: 'status-badge status-red', badge: '⚠ 위험' };
+    }
+    if (wt >= 22 && month >= 6 && month <= 9) {
+        return { val: '주의', badgeClass: 'status-badge status-orange', badge: '⚠ 주의' };
+    }
+    return { val: '없음', badgeClass: 'status-badge status-green', badge: '✓ 없음' };
+}
+
+function getWindDetailInfo(speed) {
+    if (speed === null || Number.isNaN(speed)) {
+        return { val: '--', badgeClass: 'status-badge status-green', badge: '⏳', desc: '데이터 없음' };
+    }
+    if (speed <= 5) {
+        return { val: `${speed}m/s`, badgeClass: 'status-badge status-green', badge: '✓ 안전', desc: '바람 약함, 수영 영향 없음' };
+    }
+    if (speed <= 10) {
+        return { val: `${speed}m/s`, badgeClass: 'status-badge status-orange', badge: '⚠ 주의', desc: '바람 보통, 파도 영향 가능' };
+    }
+    return { val: `${speed}m/s`, badgeClass: 'status-badge status-red', badge: '⚠ 위험', desc: '강풍, 수영 위험' };
+}
+
+function getWindDirectionLabel(deg) {
+    if (deg == null || Number.isNaN(deg)) return '--';
+    const dirs = ['북', '북동', '동', '남동', '남', '남서', '서', '북서'];
+    return dirs[Math.round(deg / 45) % 8];
+}
+
+function formatSunTime(isoStr) {
+    if (!isoStr) return '--:--';
+    const m = String(isoStr).match(/T(\d{2}):(\d{2})/);
+    if (m) return `${m[1]}:${m[2]}`;
+    const d = new Date(isoStr);
+    if (Number.isNaN(d.getTime())) return '--:--';
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderWeatherTab() {
+    const loc = getCurrentLoc();
+    const wCode = window._weatherCode ?? 0;
+    const locEl = document.getElementById('weather-tab-loc');
+    const badgeEl = document.getElementById('weather-tab-badge');
+    if (locEl) locEl.textContent = loc.name;
+    if (badgeEl) {
+        badgeEl.textContent = `${getWeatherEmoji(wCode)} ${currentAirTemp !== null ? Math.round(currentAirTemp) + '°C' : '--°C'}`;
+    }
+
+    const wave = getWaveDetailInfo(currentWaveHeight);
+    const waveVal = document.getElementById('weather-wave-val');
+    const waveBadge = document.getElementById('weather-wave-badge');
+    const waveDesc = document.getElementById('weather-wave-desc');
+    if (waveVal) waveVal.textContent = wave.val;
+    if (waveBadge) { waveBadge.className = wave.badgeClass; waveBadge.innerHTML = wave.badge; }
+    if (waveDesc) waveDesc.textContent = wave.desc;
+
+    const month = new Date().getMonth() + 1;
+    const jelly = getJellyfishDetailInfo(currentWaterTemp ?? 20, month);
+    const jellyVal = document.getElementById('weather-jelly-val');
+    const jellyBadge = document.getElementById('weather-jelly-badge');
+    if (jellyVal) jellyVal.textContent = jelly.val;
+    if (jellyBadge) { jellyBadge.className = jelly.badgeClass; jellyBadge.innerHTML = jelly.badge; }
+
+    const wind = getWindDetailInfo(currentWindSpeed);
+    const windVal = document.getElementById('weather-wind-val');
+    const windBadge = document.getElementById('weather-wind-badge');
+    const windDesc = document.getElementById('weather-wind-desc');
+    const windDir = document.getElementById('weather-wind-dir');
+    if (windVal) windVal.textContent = wind.val;
+    if (windBadge) { windBadge.className = wind.badgeClass; windBadge.innerHTML = wind.badge; }
+    if (windDesc) windDesc.textContent = wind.desc;
+    if (windDir) windDir.textContent = `풍향 ${getWindDirectionLabel(currentWindDirection)}`;
+
+    const daily = window._dailyData || {};
+    const dayLabels = ['오늘', '내일', '모레'];
+    const todayKey = getKstDateKey(new Date());
+    let startIdx = daily.time?.indexOf(todayKey) ?? -1;
+    if (startIdx < 0) startIdx = 0;
+
+    const sunriseEl = document.getElementById('weather-sunrise');
+    const sunsetEl = document.getElementById('weather-sunset');
+    if (sunriseEl) sunriseEl.textContent = formatSunTime(daily.sunrise?.[startIdx]);
+    if (sunsetEl) sunsetEl.textContent = formatSunTime(daily.sunset?.[startIdx]);
+
+    const dailyContainer = document.getElementById('weather-daily-forecast');
+    if (dailyContainer) {
+        dailyContainer.innerHTML = '';
+        for (let i = 0; i < 3; i++) {
+            const idx = startIdx + i;
+            const code = daily.weather_code?.[idx] ?? 0;
+            const hi = daily.temperature_2m_max?.[idx];
+            const lo = daily.temperature_2m_min?.[idx];
+            const item = document.createElement('div');
+            item.className = 'daily-forecast-item';
+            item.innerHTML = `
+                <div class="daily-day">${dayLabels[i]}</div>
+                <div class="daily-icon">${getWeatherEmoji(code)}</div>
+                <div class="daily-temp">${hi !== undefined ? Math.round(hi) + '°' : '--'}</div>
+                <div class="daily-temp-lo">${lo !== undefined ? Math.round(lo) + '°' : '--'}</div>
+            `;
+            dailyContainer.appendChild(item);
+        }
     }
 }
 
