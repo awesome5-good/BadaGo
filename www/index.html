@@ -240,29 +240,31 @@
             width: 100%;
             padding: 16px 24px 40px;
         }
-        .strava-login-btn {
+        .strava-connect-btn {
             flex-shrink: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 11px;
-            min-width: 240px;
+            gap: 8px;
+            min-width: 220px;
             max-width: min(300px, calc(100% - 48px));
-            padding: 15px 32px;
+            padding: 14px 28px;
             border: none;
-            border-radius: 20px;
-            background: #fff;
-            color: #FC4C02;
-            font-size: 16px;
+            border-radius: 16px;
+            background: #FC4C02;
+            color: #fff;
+            font-size: 15px;
             font-weight: 800;
             line-height: 1.2;
             cursor: pointer;
-            box-shadow: 0 4px 16px rgba(0,80,160,0.12);
+            box-shadow: 0 4px 16px rgba(252,76,2,0.28);
             transition: transform 0.2s;
             font-family: var(--font-sans);
         }
-        .strava-login-btn:active { transform: scale(0.98); }
-        .strava-login-btn svg { width: 26px; height: 26px; flex-shrink: 0; fill: #FC4C02; }
+        .strava-connect-btn:active { transform: scale(0.98); }
+        .strava-auth-prompt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; width: 100%; max-width: 300px; }
+        .strava-auth-emoji { font-size: 48px; line-height: 1; }
+        .strava-auth-desc { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.5; margin: 0; }
         .strava-user-bar { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.18); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 12px 14px; margin-bottom: 16px; }
         .strava-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.5); flex-shrink: 0; background: #fff; }
         .strava-user-info { flex: 1; min-width: 0; }
@@ -411,6 +413,9 @@
         .profile-strava-dot.connected { background: #4ade80; }
         .profile-strava-dot.disconnected { background: #94a3b8; }
         .profile-strava-status-text { font-size: 14px; font-weight: 700; color: #1e293b; }
+        .profile-strava-connect-btn { width: 100%; max-width: none; margin-top: 4px; }
+        .profile-strava-disconnect { border: none; background: none; color: #dc2626; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; margin: -6px 0 14px; font-family: var(--font-sans); text-decoration: underline; display: block; }
+        .profile-strava-disconnect:active { opacity: 0.75; }
         .profile-guide-list { display: flex; flex-direction: column; gap: 10px; }
         .profile-guide-item { padding: 12px 14px; border-radius: 14px; background: #f8fafc; border: 1px solid #f1f5f9; }
         .profile-guide-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
@@ -731,10 +736,11 @@
                 <div class="record-subtitle">Strava에서 수영 활동을 불러옵니다</div>
             </div>
             <div id="strava-auth-section">
-                <button type="button" class="strava-login-btn" onclick="startStravaLogin()">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h3.065L5.704 0 0 10.172h3.066l2.836-5.599z"/></svg>
-                    <span>스트라바 로그인</span>
-                </button>
+                <div class="strava-auth-prompt">
+                    <div class="strava-auth-emoji">🏃</div>
+                    <p class="strava-auth-desc">Strava를 연동하면 바다 수영 기록을 확인할 수 있어요</p>
+                    <button type="button" class="strava-connect-btn" onclick="startStravaLogin()">Strava 연동하기</button>
+                </div>
             </div>
             <div id="strava-user-bar" style="display:none;">
                 <img class="strava-avatar" id="strava-avatar" src="" alt="">
@@ -778,24 +784,34 @@
                 <div class="profile-beach-list" id="profile-beach-list"></div>
             </div>
 
-            <div class="profile-card">
+            <div class="profile-card" id="profile-strava-card">
                 <div class="profile-section-title">Strava 연동</div>
-                <div class="profile-strava-status">
-                    <span class="profile-strava-dot disconnected" id="profile-strava-dot"></span>
-                    <span class="profile-strava-status-text" id="profile-strava-status-text">미연동</span>
+                <div id="profile-strava-disconnected">
+                    <div class="profile-strava-status">
+                        <span class="profile-strava-dot disconnected"></span>
+                        <span class="profile-strava-status-text">Strava 연동되지 않음</span>
+                    </div>
+                    <button type="button" class="strava-connect-btn profile-strava-connect-btn" onclick="startStravaLogin()">Strava 연동하기</button>
                 </div>
-                <div class="profile-guide-list">
-                    <div class="profile-guide-item">
-                        <div class="profile-guide-label">갤럭시워치</div>
-                        <div class="profile-guide-desc">삼성 헬스 앱 → 앱 연결 → Strava 연동 후 BadaGo에서 기록 확인</div>
+                <div id="profile-strava-connected" style="display:none;">
+                    <div class="profile-strava-status">
+                        <span class="profile-strava-dot connected" id="profile-strava-dot"></span>
+                        <span class="profile-strava-status-text" id="profile-strava-status-text">연동됨</span>
                     </div>
-                    <div class="profile-guide-item">
-                        <div class="profile-guide-label">애플워치</div>
-                        <div class="profile-guide-desc">애플 피트니스 앱 → Strava 연동 후 BadaGo에서 기록 확인</div>
-                    </div>
-                    <div class="profile-guide-item">
-                        <div class="profile-guide-label">가민</div>
-                        <div class="profile-guide-desc">Garmin Connect → Strava 연동 후 BadaGo에서 기록 확인</div>
+                    <button type="button" class="profile-strava-disconnect" onclick="stravaLogout()">연동 해제</button>
+                    <div class="profile-guide-list">
+                        <div class="profile-guide-item">
+                            <div class="profile-guide-label">갤럭시워치</div>
+                            <div class="profile-guide-desc">삼성 헬스 앱 → 앱 연결 → Strava 연동 후 BadaGo에서 기록 확인</div>
+                        </div>
+                        <div class="profile-guide-item">
+                            <div class="profile-guide-label">애플워치</div>
+                            <div class="profile-guide-desc">애플 피트니스 앱 → Strava 연동 후 BadaGo에서 기록 확인</div>
+                        </div>
+                        <div class="profile-guide-item">
+                            <div class="profile-guide-label">가민</div>
+                            <div class="profile-guide-desc">Garmin Connect → Strava 연동 후 BadaGo에서 기록 확인</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1486,17 +1502,21 @@ function toggleProfileFavorite(id, checked) {
 
 function updateProfileStravaStatus() {
     const tokens = getStravaTokens();
+    const disconnected = document.getElementById('profile-strava-disconnected');
+    const connected = document.getElementById('profile-strava-connected');
     const dot = document.getElementById('profile-strava-dot');
     const text = document.getElementById('profile-strava-status-text');
-    if (!dot || !text) return;
+    if (!disconnected || !connected) return;
     if (tokens?.access_token) {
-        dot.className = 'profile-strava-dot connected';
+        disconnected.style.display = 'none';
+        connected.style.display = 'block';
+        if (dot) dot.className = 'profile-strava-dot connected';
         const athlete = getStravaAthlete();
         const name = athlete ? `${athlete.firstname || ''} ${athlete.lastname || ''}`.trim() : '';
-        text.textContent = name ? `연동됨 · ${name}` : '연동됨';
+        if (text) text.textContent = name ? `연동됨 · ${name}` : '연동됨';
     } else {
-        dot.className = 'profile-strava-dot disconnected';
-        text.textContent = '미연동';
+        disconnected.style.display = 'block';
+        connected.style.display = 'none';
     }
 }
 
