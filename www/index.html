@@ -426,8 +426,12 @@
         .app-sheet-body { flex: 1; overflow-y: auto; padding: 0 20px calc(20px + env(safe-area-inset-bottom, 16px)); scrollbar-width: none; }
         .app-sheet-body::-webkit-scrollbar { display: none; }
         .notif-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
+        .notif-beach-banner-clickable { cursor: pointer; transition: transform 0.2s, background 0.2s; }
+        .notif-beach-banner-clickable:active { transform: scale(0.99); background: #dbeafe; }
         .notif-beach-label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 4px; }
-        .notif-beach-name { font-size: 16px; font-weight: 800; color: #1e293b; }
+        .notif-beach-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .notif-beach-name { font-size: 16px; font-weight: 800; color: #1e293b; flex: 1; min-width: 0; }
+        .notif-beach-chevron { font-size: 20px; font-weight: 700; color: #94a3b8; flex-shrink: 0; line-height: 1; }
         .notif-beach-hint { font-size: 11px; font-weight: 600; color: #64748b; margin-top: 6px; line-height: 1.4; }
         .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
         .settings-row:last-child { border-bottom: none; }
@@ -899,9 +903,12 @@
                 </div>
             </div>
             <div class="app-sheet-body">
-                <div class="notif-beach-banner">
+                <div class="notif-beach-banner notif-beach-banner-clickable" onclick="goToMainBeachFromNotif()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')goToMainBeachFromNotif()">
                     <div class="notif-beach-label">메인 바다</div>
-                    <div class="notif-beach-name" id="notif-beach-name">--</div>
+                    <div class="notif-beach-name-row">
+                        <div class="notif-beach-name" id="notif-beach-name">--</div>
+                        <span class="notif-beach-chevron" aria-hidden="true">›</span>
+                    </div>
                     <div class="notif-beach-hint">알림은 메인 바다 기준으로 발송됩니다</div>
                 </div>
                 <div class="settings-section-title">알림 항목</div>
@@ -1165,8 +1172,8 @@ const BADA_DAILY_NOTIF_ID = 1001;
 const BADA_NOTIF_CHANNEL_ID = 'badago-daily';
 const PROFILE_REGIONS = ['부산', '경북', '강원', '충남', '제주'];
 const NOTIF_TIME_GROUPS = [
-    { label: '오전', times: ['05:00', '06:00', '07:00', '08:00', '09:00'] },
-    { label: '오후', times: ['12:00', '13:00', '14:00', '15:00'] },
+    { label: '오전', times: ['05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00'] },
+    { label: '오후', times: ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] },
 ];
 const NOTIF_TIME_OPTIONS = NOTIF_TIME_GROUPS.flatMap((g) => g.times);
 let profileRegionTab = '부산';
@@ -1462,6 +1469,11 @@ function openKakaoInquiry() {
         }
     }
     window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function goToMainBeachFromNotif() {
+    closeNotificationSheet();
+    switchTab(3);
 }
 
 function openNotificationSheet() {
