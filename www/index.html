@@ -413,7 +413,7 @@
         .profile-strava-dot.connected { background: #4ade80; }
         .profile-strava-dot.disconnected { background: #94a3b8; }
         .profile-strava-status-text { font-size: 14px; font-weight: 700; color: #1e293b; }
-        .profile-strava-connect-btn { width: 100%; max-width: none; margin-top: 4px; }
+        .profile-strava-connect-btn { width: 100%; max-width: none; margin-top: 4px; margin-bottom: 14px; }
         .profile-strava-disconnect { border: none; background: none; color: #dc2626; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; margin: -6px 0 14px; font-family: var(--font-sans); text-decoration: underline; display: block; }
         .profile-strava-disconnect:active { opacity: 0.75; }
         .profile-guide-list { display: flex; flex-direction: column; gap: 10px; }
@@ -792,13 +792,6 @@
                         <span class="profile-strava-status-text">Strava 연동되지 않음</span>
                     </div>
                     <button type="button" class="strava-connect-btn profile-strava-connect-btn" onclick="startStravaLogin()">Strava 연동하기</button>
-                </div>
-                <div id="profile-strava-connected" style="display:none;">
-                    <div class="profile-strava-status">
-                        <span class="profile-strava-dot connected" id="profile-strava-dot"></span>
-                        <span class="profile-strava-status-text" id="profile-strava-status-text">연동됨</span>
-                    </div>
-                    <button type="button" class="profile-strava-disconnect" onclick="stravaLogout()">연동 해제</button>
                     <div class="profile-guide-list">
                         <div class="profile-guide-item">
                             <div class="profile-guide-label">갤럭시워치</div>
@@ -813,6 +806,13 @@
                             <div class="profile-guide-desc">Garmin Connect → Strava 연동 후 BadaGo에서 기록 확인</div>
                         </div>
                     </div>
+                </div>
+                <div id="profile-strava-connected" style="display:none;">
+                    <div class="profile-strava-status">
+                        <span class="profile-strava-dot connected" id="profile-strava-dot"></span>
+                        <span class="profile-strava-status-text" id="profile-strava-status-text">연동됨</span>
+                    </div>
+                    <button type="button" class="profile-strava-disconnect" onclick="stravaLogout()">연동 해제</button>
                 </div>
             </div>
         </div>
