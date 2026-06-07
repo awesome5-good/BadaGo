@@ -1109,17 +1109,22 @@ const ALL_BEACHES = [
     { id:'ilgwang',    name:'일광',       emoji:'🐚', region:'부산', lat:35.245, lon:129.228, beachCode:'BCH008', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'310', nifsStation:'해운대', khoaObsAccept:['일광','임랑'] },
     // 경남
     { id:'sangju',     name:'상주은모래', emoji:'✨', region:'경남', lat:34.837, lon:128.422, beachCode:'BCH041', obsCode:null, kmaBeachId:'122' },
-    { id:'hakdong',    name:'학동몽돌',   emoji:'🪨', region:'경남', lat:34.727, lon:128.431, beachCode:'BCH042', obsCode:null, kmaBeachId:'136' },
+    { id:'hakdong',    name:'학동(몽돌)', emoji:'🪨', region:'경남', lat:34.77, lon:128.67, beachCode:'BCH042', obsCode:null, kmaBeachId:'325' },
     { id:'jinha',      name:'진하',       emoji:'🌅', region:'경남', lat:35.403, lon:129.324, beachCode:'BCH006', obsCode:'DT_0005', kmaBeachId:'311' },
+    { id:'gujora',     name:'구조라',     emoji:'🏖️', region:'경남', lat:34.80, lon:128.70, kmaBeachId:'323' },
+    { id:'mangchi',    name:'망치',       emoji:'🌊', region:'경남', lat:34.82, lon:128.72, kmaBeachId:'321' },
+    { id:'deokpo',     name:'덕포',       emoji:'⛵', region:'경남', lat:35.08, lon:128.97, kmaBeachId:'318' },
     // 강원
     { id:'gyeongpo',   name:'경포대',     emoji:'🌲', region:'강원', lat:37.803, lon:128.910, beachCode:'BCH031', obsCode:null, kmaBeachId:'176', nifsStation:'강릉', khoaObsAccept:['경포','강릉'] },
     { id:'naksan',     name:'낙산',       emoji:'🏯', region:'강원', lat:38.115, lon:128.635, beachCode:'BCH005', obsCode:null, kmaBeachId:'262', nifsStation:'속초', khoaObsAccept:['낙산'] },
     { id:'sokcho',     name:'속초',       emoji:'🏖️', region:'강원', lat:38.192, lon:128.588, beachCode:'BCH003', obsCode:null, kmaBeachId:'201', nifsStation:'속초', khoaObsAccept:['속초'] },
-    { id:'hajodae',    name:'하조대',     emoji:'🌊', region:'강원', lat:38.085, lon:128.642, beachCode:'BCH007', obsCode:null, kmaBeachId:'249', nifsStation:'속초', khoaObsAccept:['하조대','낙산'] },
+    { id:'hajodae',    name:'하조대',     emoji:'🌊', region:'강원', lat:38.21, lon:128.60, beachCode:'BCH007', obsCode:null, kmaBeachId:'249', nifsStation:'속초', khoaObsAccept:['하조대','낙산'] },
     { id:'jeongdongjin', name:'정동진',   emoji:'🌄', region:'강원', lat:37.682, lon:129.049, beachCode:'BCH050', obsCode:null, kmaBeachId:'349', nifsStation:'강릉', khoaObsAccept:['정동진','망상'] },
     { id:'maengbang',  name:'맹방',       emoji:'🏖️', region:'강원', lat:37.584, lon:129.117, beachCode:'BCH049', obsCode:null, kmaBeachId:'350' },
     { id:'samcheok',   name:'삼척',       emoji:'⛰️', region:'강원', lat:37.443, lon:129.167, beachCode:'BCH009', obsCode:null, kmaBeachId:'351' },
-    { id:'mangsang',   name:'망상',       emoji:'🌅', region:'강원', lat:37.592, lon:129.085, beachCode:'BCH004', obsCode:null, nifsStation:'강릉', khoaObsAccept:['망상'] },
+    { id:'mangsang',   name:'망상',       emoji:'🌅', region:'강원', lat:37.57, lon:129.12, beachCode:'BCH004', obsCode:null, kmaBeachId:'198', nifsStation:'강릉', khoaObsAccept:['망상'] },
+    { id:'gangmun',    name:'강문',       emoji:'🏖️', region:'강원', lat:37.77, lon:128.94, kmaBeachId:'172' },
+    { id:'anmok',      name:'안목',       emoji:'🌅', region:'강원', lat:37.78, lon:128.95, kmaBeachId:'174' },
     { id:'goraebul',   name:'고래불',     emoji:'🐋', region:'경북', lat:36.578, lon:129.402, beachCode:'BCH048', obsCode:null, kmaBeachId:'288' },
     // 경북 (포항) — obsCode: 포항 조위관측소 DT_0009
     { id:'yeongildae', name:'영일대',     emoji:'🌇', region:'경북', lat:36.051, lon:129.378, beachCode:'BCH044', obsCode:'DT_0009', kmaBeachId:'271', khoaObsAccept:['영일','영일대','포항'] },
@@ -1129,21 +1134,26 @@ const ALL_BEACHES = [
     { id:'chilpo',     name:'칠포',       emoji:'🏄', region:'경북', lat:36.302, lon:129.244, beachCode:'BCH072', obsCode:'DT_0009', kmaBeachId:'272', khoaObsAccept:['칠포','포항'] },
     // 충남
     { id:'daecheon',   name:'대천',       emoji:'🦀', region:'충남', lat:36.310, lon:126.513, beachCode:'BCH014', obsCode:null, kmaBeachId:'41', nifsStation:'보령', khoaObsAccept:['대천'] },
-    { id:'kkotji',     name:'꽃지',       emoji:'🌸', region:'충남', lat:36.273, lon:126.282, beachCode:'BCH015', obsCode:null, nifsStation:'보령', khoaObsAccept:['꽃지','보령'] },
-    { id:'mallipo',    name:'만리포',     emoji:'🐟', region:'충남', lat:36.788, lon:126.148, beachCode:'BCH033', obsCode:null, kmaBeachId:'44', nifsStation:'보령', khoaObsAccept:['만리포','안흥'] },
+    { id:'kkotji',     name:'꽃지',       emoji:'🌸', region:'충남', lat:36.65, lon:126.30, beachCode:'BCH015', obsCode:null, kmaBeachId:'44', nifsStation:'보령', khoaObsAccept:['꽃지','보령'] },
+    { id:'mallipo',    name:'만리포',     emoji:'🐟', region:'충남', lat:36.77, lon:126.13, beachCode:'BCH033', obsCode:null, kmaBeachId:'70', nifsStation:'보령', khoaObsAccept:['만리포','안흥'] },
     { id:'muchangpo',  name:'무창포',     emoji:'🌊', region:'충남', lat:36.251, lon:126.453, beachCode:'BCH035', obsCode:null, kmaBeachId:'45', nifsStation:'보령', khoaObsAccept:['무창포','대천'] },
-    { id:'chunjangdae', name:'춘장대',    emoji:'🪨', region:'충남', lat:36.107, lon:126.345, beachCode:'BCH036', obsCode:null, kmaBeachId:'91' },
+    { id:'chunjangdae', name:'춘장대',    emoji:'🪨', region:'충남', lat:36.32, lon:126.57, beachCode:'BCH036', obsCode:null, kmaBeachId:'43' },
     { id:'anmyeon',    name:'안면',       emoji:'🏝️', region:'충남', lat:36.525, lon:126.338, beachCode:'BCH011', obsCode:null, kmaBeachId:'46', nifsStation:'보령', khoaObsAccept:['안면','보령'] },
     // 제주
     { id:'hyeopjae',   name:'협재',       emoji:'🟦', region:'제주', lat:33.394, lon:126.239, beachCode:'BCH020', obsCode:null, kmaBeachId:'346', nifsStation:'제주', khoaObsAccept:['협재','제주서부'] },
-    { id:'gwakji',     name:'곽지',       emoji:'🐠', region:'제주', lat:33.451, lon:126.304, beachCode:'BCH021', obsCode:null, kmaBeachId:'343', nifsStation:'제주', khoaObsAccept:['곽지','제주서부'] },
-    { id:'jungmun',    name:'중문',       emoji:'🏝️', region:'제주', lat:33.244, lon:126.412, beachCode:'BCH017', obsCode:null, nifsStation:'제주', khoaObsAccept:['중문'] },
+    { id:'gwakji',     name:'곽지',       emoji:'🐠', region:'제주', lat:33.45, lon:126.30, beachCode:'BCH021', obsCode:null, kmaBeachId:'345', nifsStation:'제주', khoaObsAccept:['곽지','제주서부'] },
+    { id:'jungmun',    name:'중문',       emoji:'🏝️', region:'제주', lat:33.24, lon:126.41, beachCode:'BCH017', obsCode:null, kmaBeachId:'347', nifsStation:'제주', khoaObsAccept:['중문'] },
+    { id:'sinyang',    name:'신양',       emoji:'🌊', region:'제주', lat:33.52, lon:126.92, kmaBeachId:'344' },
+    { id:'hwasun',     name:'화순',       emoji:'🏖️', region:'제주', lat:33.24, lon:126.32, kmaBeachId:'343' },
     { id:'hamdeok',    name:'함덕',       emoji:'🌺', region:'제주', lat:33.543, lon:126.670, beachCode:'BCH024', obsCode:null, kmaBeachId:'352', nifsStation:'제주', khoaObsAccept:['함덕','제주'] },
     { id:'gimnyeong',  name:'김녕',       emoji:'🐚', region:'제주', lat:33.559, lon:126.764, beachCode:'BCH025', obsCode:null, kmaBeachId:'355', nifsStation:'제주', khoaObsAccept:['김녕','성산'] },
     { id:'woljeongri', name:'월정리',     emoji:'🌙', region:'제주', lat:33.556, lon:126.794, beachCode:'BCH026', obsCode:null, kmaBeachId:'356', nifsStation:'제주', khoaObsAccept:['월정','성산'] },
     { id:'pyoseon',    name:'표선',       emoji:'🌾', region:'제주', lat:33.323, lon:126.838, beachCode:'BCH018', obsCode:null, kmaBeachId:'172', nifsStation:'제주', khoaObsAccept:['표선','성산'] },
     // 전남
     { id:'manseongri', name:'만성리',     emoji:'🌊', region:'전남', lat:34.722, lon:127.559, beachCode:'BCH040', obsCode:null, kmaBeachId:'122' },
+    { id:'sinjimyeongsa', name:'신지명사십리', emoji:'🌅', region:'전남', lat:34.42, lon:126.81, kmaBeachId:'136' },
+    { id:'yulpo',      name:'율포',       emoji:'🏖️', region:'전남', lat:34.63, lon:126.98, kmaBeachId:'122' },
+    { id:'myeongsa',   name:'명사',       emoji:'🌊', region:'전남', lat:34.68, lon:127.46, kmaBeachId:'323' },
 ];
 
 // =====================================================
@@ -1190,7 +1200,7 @@ const MAIN_BEACH_KEY = 'bada_main_beach';
 const MAIN_BEACH_CACHE_KEY = 'bada_main_beach_weather_cache';
 const BADA_DAILY_NOTIF_ID = 1001;
 const BADA_NOTIF_CHANNEL_ID = 'badago-daily';
-const PROFILE_REGIONS = ['부산', '경북', '강원', '충남', '제주'];
+const PROFILE_REGIONS = ['부산', '경북', '경남', '강원', '충남', '전남', '제주'];
 const NOTIF_TIME_GROUPS = [
     { label: '오전', times: ['05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00'] },
     { label: '오후', times: ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] },
