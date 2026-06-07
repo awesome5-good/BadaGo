@@ -89,6 +89,9 @@
         .hour-air { font-size: 12px; font-weight: 700; color: var(--accent-yellow); line-height: 1; margin-bottom: 8px; }
         .hour-divider { width: 16px; height: 1px; background: rgba(255,255,255,0.25); margin-bottom: 8px; flex-shrink: 0; }
         .hour-water { font-size: 11px; font-weight: 700; color: #fff; line-height: 1; margin-top: 0; }
+        .hour-water-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .hour-water-tag { font-size: 8px; font-weight: 600; color: rgba(255,255,255,0.55); line-height: 1; }
+        .hourly-title-sub { font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.65); }
 
         /* 정보 카드 */
         .info-cards-stack { display: flex; flex-direction: column; gap: 12px; }
@@ -383,10 +386,10 @@
         <!-- 시간별 예보 -->
         <div class="hourly-card">
             <div class="hourly-header">
-                <span class="hourly-title">오늘의 예보</span>
+                <span class="hourly-title">오늘의 예보 <span class="hourly-title-sub">(수온: 예측값)</span></span>
                 <div class="chart-legend">
                     <div class="legend-item"><span class="dot-yellow"></span>기온</div>
-                    <div class="legend-item"><span class="dot-white"></span>수온</div>
+                    <div class="legend-item"><span class="dot-white"></span>수온·예측</div>
                 </div>
             </div>
             <div class="hourly-scroll" id="hourly-scroll-container"></div>
@@ -1328,12 +1331,15 @@ function renderHourly() {
 
         const col = document.createElement('div');
         col.className = `hour-column${isNow ? ' now' : ''}`;
+        const waterForecastHtml = waterTemp !== '--'
+            ? `<div class="hour-water-wrap"><div class="hour-water">${waterTemp}</div><div class="hour-water-tag">예측</div></div>`
+            : `<div class="hour-water">${waterTemp}</div>`;
         col.innerHTML = `
             <div class="hour-time">${timeStr}</div>
             <div class="hour-icon">${getWeatherEmoji(wCode)}</div>
             <div class="hour-air">${airTemp}</div>
             <div class="hour-divider"></div>
-            <div class="hour-water">${waterTemp}</div>
+            ${waterForecastHtml}
         `;
         container.appendChild(col);
         if (isNow) nowCol = col;
