@@ -37,38 +37,27 @@ jobs:
       - name: Prepare release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set. See repository docs / workflow comments."
             exit 1
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
-          {
-            echo "storeFile=release.keystore"
-            echo "storePassword=${ANDROID_KEYSTORE_PASSWORD}"
-            echo "keyAlias=${ANDROID_KEY_ALIAS}"
-            echo "keyPassword=${ANDROID_KEY_PASSWORD}"
-          } > android/keystore.properties
-          ls -la android/release.keystore android/keystore.properties
-          echo "--- keystore paths (android/ root 기준) ---"
-          echo "keystore.properties → android/keystore.properties"
-          echo "release.keystore    → android/release.keystore"
-          echo "build.gradle reads  → rootProject.file('keystore.properties') = android/keystore.properties"
-          echo "build.gradle store  → rootProject.file(storeFile) = android/release.keystore"
-          echo "--- keystore.properties (keyAlias 그대로, 비밀번호만 마스킹) ---"
-          grep '^storeFile=' android/keystore.properties
-          grep '^keyAlias=' android/keystore.properties
-          grep 'Password=' android/keystore.properties | sed 's/=.*/=***/'
+          ls -la android/release.keystore
+          echo "keystore file → $(pwd)/android/release.keystore"
+          echo "keyAlias=${ANDROID_KEY_ALIAS}"
+          echo "signing → Gradle injected params (-Pandroid.injected.signing.*)"
 
       - name: Build signed release APK
-        working-directory: android
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-          test -f app/build/outputs/apk/release/app-release.apk
+          chmod +x android/gradlew
+          android/gradlew -p android assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="$(pwd)/android/release.keystore" \
+            -Pandroid.injected.signing.store.password="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            -Pandroid.injected.signing.key.alias="${{ secrets.ANDROID_KEY_ALIAS }}" \
+            -Pandroid.injected.signing.key.password="${{ secrets.ANDROID_KEY_PASSWORD }}"
+          test -f android/app/build/outputs/apk/release/app-release.apk
 
       - name: Verify release APK signature
         run: |
