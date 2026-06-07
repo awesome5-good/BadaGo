@@ -277,6 +277,19 @@
             flex-direction: column;
             overflow: hidden;
         }
+        .strava-sheet-handle-only { padding-bottom: 0; }
+        #strava-detail-capture-root {
+            background: #fff;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #strava-detail-capture-root .loc-sheet-header {
+            padding: 0 20px;
+            margin-bottom: 16px;
+        }
         .strava-detail-scroll {
             flex: 1;
             min-height: 0;
@@ -549,8 +562,10 @@
     <div class="loc-sheet-overlay" id="strava-detail-overlay" onclick="handleStravaDetailOverlayClick(event)">
         <div class="loc-sheet strava-detail-sheet" id="strava-detail-sheet">
             <div id="strava-detail-content">
-                <div class="loc-sheet-handle-area" id="strava-sheet-swipe-zone">
+                <div class="loc-sheet-handle-area strava-sheet-handle-only" id="strava-sheet-swipe-zone">
                     <div class="loc-sheet-handle"></div>
+                </div>
+                <div id="strava-detail-capture-root">
                     <div class="loc-sheet-header">
                         <div class="strava-detail-header-text">
                             <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
@@ -558,9 +573,9 @@
                         </div>
                         <button type="button" class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
                     </div>
-                </div>
-                <div class="strava-detail-scroll" id="strava-detail-scroll">
-                    <div class="loc-sheet-body" id="strava-detail-body"></div>
+                    <div class="strava-detail-scroll" id="strava-detail-scroll">
+                        <div class="loc-sheet-body" id="strava-detail-body"></div>
+                    </div>
                 </div>
             </div>
             <div class="strava-detail-footer" id="strava-detail-footer">
@@ -1351,6 +1366,15 @@ function formatHourlyIso(date) {
     return `${y}-${m}-${d}T${h}:00`;
 }
 
+function getMarineWaterTempAtIso(isoTime) {
+    const hourly = window._hourlyData;
+    if (!hourly?.marine?.time) return null;
+    const idx = hourly.marine.time.indexOf(isoTime);
+    if (idx === -1) return null;
+    const w = hourly.marine.sea_surface_temperature?.[idx];
+    return w !== undefined ? w : null;
+}
+
 function renderHourly() {
     const container = document.getElementById('hourly-scroll-container');
     container.innerHTML = '';
@@ -1362,6 +1386,12 @@ function renderHourly() {
     const now = new Date();
     now.setMinutes(0, 0, 0);
     const currentMs = now.getTime();
+    const nowIso = formatHourlyIso(now);
+    const omCurrentWater = getMarineWaterTempAtIso(nowIso);
+    const waterTempOffset =
+        currentWaterTemp !== null && omCurrentWater !== null
+            ? currentWaterTemp - omCurrentWater
+            : null;
     let nowCol = null;
 
     for (let offset = -24; offset <= 24; offset++) {
@@ -1401,6 +1431,13 @@ function renderHourly() {
             }
         } else if (isNow && currentWaterTemp !== null) {
             waterTemp = currentWaterTemp.toFixed(1) + '°';
+        }
+
+        if (offset > 0 && waterTempOffset !== null) {
+            const omFuture = getMarineWaterTempAtIso(isoTime);
+            if (omFuture !== null) {
+                waterTemp = (omFuture + waterTempOffset).toFixed(1) + '°';
+            }
         }
 
         const col = document.createElement('div');
@@ -2084,8 +2121,10 @@ function canvasToBase64Png(canvas) {
 }
 
 async function captureStravaSheetCanvas() {
-    const sheet = document.getElementById('strava-detail-sheet');
-    if (!sheet) throw new Error('sheet not found');
+    const target = document.getElementById('strava-detail-capture-root');
+    const scroll = document.getElementById('strava-detail-scroll');
+    const body = document.getElementById('strava-detail-body');
+    if (!target) throw new Error('capture target not found');
     if (typeof html2canvas === 'undefined') throw new Error('html2canvas not loaded');
 
     if (stravaDetailMap) {
@@ -2093,10 +2132,24 @@ async function captureStravaSheetCanvas() {
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     }
 
+    const saved = {
+        scrollOverflow: scroll?.style.overflow ?? '',
+        scrollMaxHeight: scroll?.style.maxHeight ?? '',
+        scrollHeight: scroll?.style.height ?? '',
+        bodyPaddingBottom: body?.style.paddingBottom ?? '',
+    };
+
     setStravaCaptureButtonsVisible(false);
+    if (scroll) {
+        scroll.style.overflow = 'visible';
+        scroll.style.maxHeight = 'none';
+        scroll.style.height = 'auto';
+    }
+    if (body) body.style.paddingBottom = '16px';
+
     try {
         await new Promise((r) => requestAnimationFrame(r));
-        return await html2canvas(sheet, {
+        return await html2canvas(target, {
             useCORS: true,
             allowTaint: true,
             scale: 1,
@@ -2104,6 +2157,12 @@ async function captureStravaSheetCanvas() {
             logging: false,
         });
     } finally {
+        if (scroll) {
+            scroll.style.overflow = saved.scrollOverflow;
+            scroll.style.maxHeight = saved.scrollMaxHeight;
+            scroll.style.height = saved.scrollHeight;
+        }
+        if (body) body.style.paddingBottom = saved.bodyPaddingBottom;
         setStravaCaptureButtonsVisible(true);
     }
 }
