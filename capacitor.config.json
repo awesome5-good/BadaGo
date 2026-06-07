@@ -8,6 +8,14 @@
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#4BBDE8",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
     }
   }
 }
