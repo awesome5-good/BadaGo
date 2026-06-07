@@ -4,7 +4,9 @@ const KMA_RPT_BASE = 'https://www.weather.go.kr/special/CRP/beach/rpt_beach_';
 const SEA_OBS_API = 'https://apihub.kma.go.kr/api/typ01/url/sea_obs.php';
 const SURVEY_WATER_TEMP_API =
     'https://apis.data.go.kr/1192136/surveyWaterTemp/GetSurveyWaterTempApiService';
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10분
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10분 (KMA HTML·부이)
+const KHOA_SURVEY_CACHE_TTL_MS = 10 * 60 * 1000; // 조위관측소 실측 수온 10분
+const KHOA_SURVEY_CACHE_SEC = 600;
 const FETCH_TIMEOUT_MS = 5000;
 const LOG_PREFIX = '[kma-beach]';
 const SURVEY_RESPONSE_LOG_MAX = 4000;
@@ -90,8 +92,20 @@ function cors(res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-function setCacheHeaders(res, hit) {
-    res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=120');
+function cacheTtlMs(source) {
+    if (source === 'khoa-survey') return KHOA_SURVEY_CACHE_TTL_MS;
+    return CACHE_TTL_MS;
+}
+
+function setCacheHeaders(res, hit, source) {
+    if (source === 'khoa-survey') {
+        res.setHeader(
+            'Cache-Control',
+            `public, s-maxage=${KHOA_SURVEY_CACHE_SEC}, max-age=${KHOA_SURVEY_CACHE_SEC}`
+        );
+    } else {
+        res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=120');
+    }
     if (hit) res.setHeader('X-BadaGo-Cache', 'HIT');
     else res.setHeader('X-BadaGo-Cache', 'MISS');
 }
@@ -111,8 +125,9 @@ function getMemoryCached(key) {
 }
 
 function setMemoryCached(key, payload) {
+    const ttlMs = cacheTtlMs(payload?.source);
     memoryCache.set(key, {
-        expiresAt: Date.now() + CACHE_TTL_MS,
+        expiresAt: Date.now() + ttlMs,
         payload: { ...payload, cached: true, cached_at: new Date().toISOString() },
     });
 }
@@ -571,7 +586,7 @@ module.exports = async (req, res) => {
         const cached = getMemoryCached(key);
         if (cached) {
             console.log(`${LOG_PREFIX} cache HIT`, { cacheKey: key, source: cached.source });
-            setCacheHeaders(res, true);
+            setCacheHeaders(res, true, cached.source);
             return res.status(200).json(cached);
         }
 
@@ -581,9 +596,10 @@ module.exports = async (req, res) => {
             source: payload.source,
             water_temp: payload.water_temp,
             wave_height: payload.wave_height,
+            cacheTtlSec: Math.round(cacheTtlMs(payload.source) / 1000),
         });
         setMemoryCached(key, payload);
-        setCacheHeaders(res, false);
+        setCacheHeaders(res, false, payload.source);
         return res.status(200).json(payload);
     } catch (err) {
         console.error(`${LOG_PREFIX} handler error`, {
