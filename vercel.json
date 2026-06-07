@@ -1,6 +1,7 @@
 {
   "outputDirectory": "www",
   "routes": [
+    { "src": "/privacy", "dest": "/www/privacy" },
     { "src": "/privacy", "dest": "/www/privacy.html" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/www/index.html" }
