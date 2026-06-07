@@ -58,7 +58,25 @@
         .api-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
         .api-dot.loading { background: #fbbf24; animation: pulse 1s infinite; }
         .api-dot.error { background: #f87171; }
+        .api-dot.cache { background: #fbbf24; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @keyframes skeleton-shimmer {
+            0% { background-position: -200px 0; }
+            100% { background-position: calc(200px + 100%) 0; }
+        }
+        .skeleton {
+            display: inline-block;
+            background: linear-gradient(90deg, rgba(148,163,184,0.25) 0%, rgba(148,163,184,0.45) 50%, rgba(148,163,184,0.25) 100%);
+            background-size: 200px 100%;
+            animation: skeleton-shimmer 1.2s ease-in-out infinite;
+            border-radius: 8px;
+            vertical-align: middle;
+        }
+        .skeleton-temp-lg { width: 140px; height: 52px; }
+        .skeleton-text-sm { width: 120px; height: 16px; }
+        .skeleton-text-md { width: 160px; height: 14px; margin-top: 6px; }
+        .skeleton-card-val { width: 52px; height: 18px; }
+        .info-card .skeleton { background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%); background-size: 200px 100%; }
 
         /* 캐릭터 + 수온 */
         .char-temp-section { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 8px; margin: 0 auto 20px; width: fit-content; padding: 0 6px; }
@@ -1141,6 +1159,8 @@ let currentWindSpeed = null;
 let currentWindDirection = null;
 let currentAirTemp = null;
 let isLoading = false;
+const BEACH_DATA_CACHE_KEY = 'bada_beach_data_cache';
+const BEACH_DATA_CACHE_TTL_MS = 10 * 60 * 1000;
 let usedKhoaApi = false;
 let usedKmaApi = false;
 let usedNifsApi = false;
@@ -1999,28 +2019,156 @@ async function fetchKhoaBeachData(beach) {
 }
 
 // =====================================================
-//  API 호출 (바다누리 → 국립수산과학원 → Open-Meteo)
+//  로컬 캐시 · 스켈레톤
 // =====================================================
-async function fetchAllData() {
-    if (isLoading) return;
-    isLoading = true;
-    usedKhoaApi = false;
-    usedKmaApi = false;
-    usedNifsApi = false;
-    currentWaterTempIsSatellite = false;
-    const btn = document.getElementById('refresh-main-btn');
-    btn.classList.add('spinning');
-    setApiStatus('loading', '실시간 데이터 불러오는 중...');
+function saveBeachDataCache(locationId, statusText) {
+    try {
+        localStorage.setItem(BEACH_DATA_CACHE_KEY, JSON.stringify({
+            locationId,
+            savedAt: Date.now(),
+            data: {
+                currentWaterTemp,
+                currentWaveHeight,
+                currentWindSpeed,
+                currentWindDirection,
+                currentAirTemp,
+                currentWaterTempIsSatellite,
+                weatherCode: window._weatherCode ?? 0,
+                hourlyData: window._hourlyData,
+                dailyData: window._dailyData,
+                usedKmaApi,
+                usedKhoaApi,
+                usedNifsApi,
+                statusText,
+            },
+        }));
+    } catch (e) {
+        console.warn('[cache] save failed', e);
+    }
+}
 
+function loadBeachDataCache(locationId) {
+    try {
+        const entry = JSON.parse(localStorage.getItem(BEACH_DATA_CACHE_KEY) || 'null');
+        if (!entry || entry.locationId !== locationId) return null;
+        if (Date.now() - entry.savedAt > BEACH_DATA_CACHE_TTL_MS) return null;
+        return entry;
+    } catch {
+        return null;
+    }
+}
+
+function applyBeachDataFromCache(entry) {
+    const d = entry.data;
+    currentWaterTemp = d.currentWaterTemp ?? null;
+    currentWaveHeight = d.currentWaveHeight ?? null;
+    currentWindSpeed = d.currentWindSpeed ?? null;
+    currentWindDirection = d.currentWindDirection ?? null;
+    currentAirTemp = d.currentAirTemp ?? null;
+    currentWaterTempIsSatellite = d.currentWaterTempIsSatellite ?? false;
+    window._weatherCode = d.weatherCode ?? 0;
+    window._hourlyData = d.hourlyData ?? { marine: {}, weather: {} };
+    window._dailyData = d.dailyData ?? {};
+    usedKmaApi = d.usedKmaApi ?? false;
+    usedKhoaApi = d.usedKhoaApi ?? false;
+    usedNifsApi = d.usedNifsApi ?? false;
+}
+
+function showSkeletonUI() {
+    const tempEl = document.getElementById('main-temp-val');
+    if (tempEl) tempEl.innerHTML = '<span class="skeleton skeleton-temp-lg"></span>';
+    const suitEl = document.getElementById('main-suit-text');
+    if (suitEl) suitEl.innerHTML = '<span class="skeleton skeleton-text-sm"></span>';
+    const subEl = document.getElementById('main-sub-text');
+    if (subEl) subEl.innerHTML = '<span class="skeleton skeleton-text-md"></span>';
+    ['val-wave', 'val-wind'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<span class="skeleton skeleton-card-val"></span>';
+    });
+}
+
+function tryShowCachedBeachData(locationId) {
+    const cached = loadBeachDataCache(locationId);
+    if (!cached) return false;
+    applyBeachDataFromCache(cached);
+    renderAll();
+    const status = cached.data.statusText || '이전 데이터';
+    setApiStatus('cache', `${status} · 캐시됨`);
+    return true;
+}
+
+function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs) {
+    currentWaveHeight = marine?.current?.wave_height ?? null;
+    currentAirTemp = weather?.current?.temperature_2m ?? null;
+    window._hourlyData = { marine: marine?.hourly || {}, weather: weather?.hourly || {} };
+    window._dailyData = weather?.daily || {};
+    window._weatherCode = weather?.current?.weather_code ?? 0;
+    currentWindDirection = weather?.current?.wind_direction_10m ?? null;
+
+    usedKmaApi = false;
+    usedKhoaApi = false;
+    usedNifsApi = false;
+
+    let statusText = null;
+    let dataSource = null;
+
+    if (kma) {
+        applyKmaBeachData(kma, marine, weather);
+        statusText = formatMarineApiStatusText(loc, kma);
+        usedKmaApi = true;
+        dataSource = kma.source === 'kma-buoy'
+            ? 'KMA-부이'
+            : kma.source === 'khoa-survey'
+                ? 'KHOA-조위'
+                : 'KMA';
+    } else if (khoa) {
+        const khoaResult = applyKhoaWithOpenMeteoFallback(loc, khoa, marine, weather);
+        statusText = khoaResult.statusText;
+        usedKhoaApi = khoaResult.usedKhoa;
+        dataSource = usedKhoaApi ? 'KHOA' : 'Open-Meteo(KHOA폴백)';
+    } else if (nifs) {
+        currentWaterTemp = nifs.water_temp;
+        applyOpenMeteoWind(weather);
+        statusText = formatNifsStatusText(nifs.sta_nam_kor, nifs.obs_time);
+        usedNifsApi = true;
+        dataSource = 'NIFS';
+    } else {
+        logApiFetch('폴백', 'Open-Meteo 수온·풍속', 'marine + forecast');
+        applyOpenMeteoWaterWind(marine, weather);
+        statusText = `Open-Meteo 폴백 · ${getTimeStr()} 기준`;
+        dataSource = 'Open-Meteo';
+    }
+
+    updateWaterTempSatelliteFlag(loc);
+    return { statusText, dataSource };
+}
+
+// =====================================================
+//  API 호출 (병렬 fetch → KMA/KHOA/NIFS 우선순위 적용)
+// =====================================================
+async function fetchAllData(opts = {}) {
+    const { background = false } = opts;
+    if (isLoading && !background) return;
+
+    const btn = document.getElementById('refresh-main-btn');
     const loc = getCurrentLoc();
     const kmaUrl = loc.kmaBeachId ? buildKmaBeachUrl(loc) : null;
+
+    if (!background) {
+        isLoading = true;
+        usedKhoaApi = false;
+        usedKmaApi = false;
+        usedNifsApi = false;
+        currentWaterTempIsSatellite = false;
+        btn.classList.add('spinning');
+        showSkeletonUI();
+        setApiStatus('loading', '실시간 데이터 불러오는 중...');
+    }
+
     console.log('[fetchAllData] 시작', {
         beach: loc.name,
+        background,
         beachId: loc.id,
-        beachCode: loc.beachCode || null,
-        buoyCode: loc.buoyCode || null,
-        obsCode: loc.obsCode || null,
-        kmaBeachId: loc.kmaBeachId || null,
         kmaApi: kmaUrl,
         kmaApiBase: getKmaApiBase(),
         hostname: window.location.hostname,
@@ -2035,6 +2183,7 @@ async function fetchAllData() {
 
         window._khoaHourlyMap = null;
         const obsCode = loc.obsCode != null ? String(loc.obsCode).trim() : '';
+
         const khoaHourlyPromise = obsCode
             ? fetchKhoaHourlyData(obsCode).catch((e) => {
                 console.warn('[fetchAllData] KHOA hourly 실패 → 예보 과거 구간 Open-Meteo 유지', e.message);
@@ -2043,78 +2192,34 @@ async function fetchAllData() {
             })
             : Promise.resolve(null);
 
-        const [marineRes, weatherRes] = await Promise.all([
+        const kmaPromise = loc.kmaBeachId
+            ? fetchKmaBeachData(loc).catch((e) => {
+                console.warn('[fetchAllData] KMA 실패 → KHOA/NIFS/Open-Meteo 폴백', e.message, { tried: kmaUrl });
+                return null;
+            })
+            : Promise.resolve(null);
+
+        const khoaPromise = loc.beachCode
+            ? fetchKhoaBeachData(loc).catch(() => null)
+            : Promise.resolve(null);
+
+        const nifsPromise = (loc.nifsStation && NIFS_SERVICE_KEY)
+            ? fetchNifsObsData(loc.nifsStation).catch(() => null)
+            : Promise.resolve(null);
+
+        const [marineRes, weatherRes, , kma, khoa, nifs] = await Promise.all([
             fetch(marineUrl),
             fetch(weatherUrl),
             khoaHourlyPromise,
+            kmaPromise,
+            khoaPromise,
+            nifsPromise,
         ]);
+
         const marine = await marineRes.json();
         const weather = await weatherRes.json();
 
-        currentWaveHeight = marine?.current?.wave_height ?? null;
-        currentAirTemp    = weather?.current?.temperature_2m ?? null;
-        window._hourlyData = { marine: marine?.hourly || {}, weather: weather?.hourly || {} };
-        window._dailyData = weather?.daily || {};
-        window._weatherCode = weather?.current?.weather_code ?? 0;
-        currentWindDirection = weather?.current?.wind_direction_10m ?? null;
-
-        let statusText = null;
-        let dataSource = null;
-
-        // kmaBeachId 있으면 해양부이→조위관측소→KMA HTML 프록시 먼저 (성공 시 KHOA/NIFS 생략)
-        if (loc.kmaBeachId) {
-            try {
-                const kma = await fetchKmaBeachData(loc);
-                applyKmaBeachData(kma, marine, weather);
-                statusText = formatMarineApiStatusText(loc, kma);
-                usedKmaApi = true;
-                dataSource = kma.source === 'kma-buoy'
-                    ? 'KMA-부이'
-                    : kma.source === 'khoa-survey'
-                        ? 'KHOA-조위'
-                        : 'KMA';
-            } catch (e) {
-                console.warn('[fetchAllData] KMA 실패 → KHOA/NIFS/Open-Meteo 폴백', e.message, { tried: kmaUrl });
-            }
-        } else {
-            console.log('[fetchAllData] kmaBeachId 없음 → KHOA/NIFS/Open-Meteo만 사용', loc.name);
-        }
-
-        if (!usedKmaApi) {
-            let khoa = null;
-            try {
-                khoa = await fetchKhoaBeachData(loc);
-            } catch (_) { /* KHOA 실패 → NIFS/Open-Meteo */ }
-
-            if (khoa) {
-                const khoaResult = applyKhoaWithOpenMeteoFallback(loc, khoa, marine, weather);
-                statusText = khoaResult.statusText;
-                usedKhoaApi = khoaResult.usedKhoa;
-                dataSource = usedKhoaApi ? 'KHOA' : 'Open-Meteo(KHOA폴백)';
-            } else if (loc.nifsStation && NIFS_SERVICE_KEY) {
-                logApiFetch('3순위', `NIFS station=${loc.nifsStation}`, NIFS_OBS_API);
-                try {
-                    const nifs = await fetchNifsObsData(loc.nifsStation);
-                    currentWaterTemp = nifs.water_temp;
-                    applyOpenMeteoWind(weather);
-                    statusText = formatNifsStatusText(nifs.sta_nam_kor, nifs.obs_time);
-                    usedNifsApi = true;
-                    dataSource = 'NIFS';
-                } catch (_) {
-                    logApiFetch('폴백', 'Open-Meteo 수온·풍속', 'marine + forecast');
-                    applyOpenMeteoWaterWind(marine, weather);
-                    statusText = `Open-Meteo 폴백 · ${getTimeStr()} 기준`;
-                    dataSource = 'Open-Meteo';
-                }
-            } else {
-                logApiFetch('폴백', 'Open-Meteo 수온·풍속', 'marine + forecast');
-                applyOpenMeteoWaterWind(marine, weather);
-                statusText = `Open-Meteo 폴백 · ${getTimeStr()} 기준`;
-                dataSource = 'Open-Meteo';
-            }
-        }
-
-        updateWaterTempSatelliteFlag(loc);
+        const { statusText, dataSource } = resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs);
 
         console.log('[fetchAllData] 완료', {
             beach: loc.name,
@@ -2130,7 +2235,8 @@ async function fetchAllData() {
 
         renderAll();
         setApiStatus('ok', statusText);
-        showToast(`🌊 ${loc.name} 실시간 데이터 갱신 완료!`);
+        saveBeachDataCache(loc.id, statusText);
+        if (!background) showToast(`🌊 ${loc.name} 실시간 데이터 갱신 완료!`);
         if (loc.id === getMainBeachId()) {
             saveMainBeachWeatherCache({
                 waveHeight: currentWaveHeight,
@@ -2140,17 +2246,27 @@ async function fetchAllData() {
         }
         scheduleLocalNotifications().catch((e) => console.warn('[LocalNotifications] schedule failed', e));
     } catch (err) {
-        if (currentWaterTemp === null) currentWaterTemp = 20;
-        if (currentWaveHeight === null) currentWaveHeight = 0.5;
-        if (currentWindSpeed === null) currentWindSpeed = 3;
-        if (currentAirTemp === null) currentAirTemp = 25;
-        renderAll();
-        setApiStatus('error', 'API 오류 · 기본값 표시 중');
-        showToast('❌ 데이터 연결 실패');
+        console.error('[fetchAllData] error', err);
+        if (!background && currentWaterTemp === null) currentWaterTemp = 20;
+        if (!background && currentWaveHeight === null) currentWaveHeight = 0.5;
+        if (!background && currentWindSpeed === null) currentWindSpeed = 3;
+        if (!background && currentAirTemp === null) currentAirTemp = 25;
+        if (!background) {
+            renderAll();
+            setApiStatus('error', 'API 오류 · 기본값 표시 중');
+            showToast('❌ 데이터 연결 실패');
+        }
     } finally {
-        isLoading = false;
-        setTimeout(() => btn.classList.remove('spinning'), 600);
+        if (!background) {
+            isLoading = false;
+            setTimeout(() => btn.classList.remove('spinning'), 600);
+        }
     }
+}
+
+function loadBeachDataWithCache(locationId) {
+    const hasCache = tryShowCachedBeachData(locationId);
+    fetchAllData({ background: hasCache });
 }
 
 // =====================================================
@@ -2198,7 +2314,7 @@ function selectLocation(id) {
     currentLocationId = id;
     currentWaterTemp = null; currentWaterTempIsSatellite = false; currentWaveHeight = null; currentWindSpeed = null; currentWindDirection = null; currentAirTemp = null;
     renderLocationChips();
-    fetchAllData();
+    loadBeachDataWithCache(id);
 }
 
 // =====================================================
@@ -2656,7 +2772,11 @@ function renderInfoCards() {
 //  API 상태 / 탭 / 토스트
 // =====================================================
 function setApiStatus(state, text) {
-    document.getElementById('api-status-dot').className = 'api-dot' + (state==='loading' ? ' loading' : state==='error' ? ' error' : '');
+    const dotClass = state === 'loading' ? ' loading'
+        : state === 'error' ? ' error'
+        : state === 'cache' ? ' cache'
+        : '';
+    document.getElementById('api-status-dot').className = 'api-dot' + dotClass;
     document.getElementById('api-status-text').textContent = text;
 }
 
@@ -3585,8 +3705,8 @@ window.onload = function() {
     syncTempUnitButtons();
     renderProfileTab();
     renderLocationChips();
-    fetchAllData();
-    setInterval(fetchAllData, 5 * 60 * 1000);
+    loadBeachDataWithCache(currentLocationId);
+    setInterval(() => fetchAllData({ background: true }), 5 * 60 * 1000);
     setupStravaOAuthListeners();
     setupAndroidBackButton();
     setupStravaSheetSwipe();

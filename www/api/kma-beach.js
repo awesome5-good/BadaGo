@@ -94,7 +94,7 @@ function cors(res) {
 function setCacheHeaders(res, hit) {
     res.setHeader(
         'Cache-Control',
-        `public, s-maxage=${CACHE_TTL_SEC}, max-age=${CACHE_TTL_SEC}`
+        `public, s-maxage=${CACHE_TTL_SEC}, max-age=${CACHE_TTL_SEC}, stale-while-revalidate=300`
     );
     if (hit) res.setHeader('X-BadaGo-Cache', 'HIT');
     else res.setHeader('X-BadaGo-Cache', 'MISS');
