@@ -101,9 +101,8 @@
         .icon-wave { background: linear-gradient(135deg, #38bdf8, #0284c7); }
         .icon-jelly { background: linear-gradient(135deg, #c084fc, #db2777); }
         .icon-wind { background: linear-gradient(135deg, #4ade80, #15803d); }
-        .icon-ttakkomi { background: linear-gradient(135deg, #fbbf24, #F59E0B); }
+        .icon-ttakkomi { background: #F59E0B; }
         .card-icon-svg { width: 22px; height: 22px; }
-        .card-icon-emoji { font-size: 22px; line-height: 1; }
         .card-title { font-size: 15px; font-weight: 700; color: #1e293b; }
         .flex-space { flex: 1; }
         .card-val { font-size: 16px; font-weight: 800; color: #1e293b; margin-right: 10px; }
@@ -487,7 +486,9 @@
             </div>
             <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-ttakkomi-card')">
                 <div class="card-icon-container icon-ttakkomi">
-                    <span class="card-icon-emoji" aria-hidden="true">⚡</span>
+                    <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/>
+                    </svg>
                 </div>
                 <span class="card-title">따꼼이 (바다물벼룩)</span>
                 <div class="flex-space"></div>
