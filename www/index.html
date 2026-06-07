@@ -285,6 +285,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding-bottom: 12px;
         }
         #strava-detail-capture-root .loc-sheet-header {
             padding: 0 20px;
@@ -571,7 +572,7 @@
                             <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
                             <div class="strava-detail-location" id="strava-detail-location"></div>
                         </div>
-                        <button type="button" class="loc-sheet-close" onclick="closeStravaDetail()">✕</button>
+                        <button type="button" class="loc-sheet-close" id="strava-detail-close-btn" onclick="closeStravaDetail()">✕</button>
                     </div>
                     <div class="strava-detail-scroll" id="strava-detail-scroll">
                         <div class="loc-sheet-body" id="strava-detail-body"></div>
@@ -2124,6 +2125,8 @@ async function captureStravaSheetCanvas() {
     const target = document.getElementById('strava-detail-capture-root');
     const scroll = document.getElementById('strava-detail-scroll');
     const body = document.getElementById('strava-detail-body');
+    const header = target?.querySelector('.loc-sheet-header');
+    const closeBtn = document.getElementById('strava-detail-close-btn');
     if (!target) throw new Error('capture target not found');
     if (typeof html2canvas === 'undefined') throw new Error('html2canvas not loaded');
 
@@ -2136,16 +2139,30 @@ async function captureStravaSheetCanvas() {
         scrollOverflow: scroll?.style.overflow ?? '',
         scrollMaxHeight: scroll?.style.maxHeight ?? '',
         scrollHeight: scroll?.style.height ?? '',
-        bodyPaddingBottom: body?.style.paddingBottom ?? '',
+        bodyPadding: body?.style.padding ?? '',
+        targetPadding: target.style.padding ?? '',
+        headerPadding: header?.style.padding ?? '',
+        headerMarginBottom: header?.style.marginBottom ?? '',
+        closeVisibility: closeBtn?.style.visibility ?? '',
+        closeDisplay: closeBtn?.style.display ?? '',
     };
 
     setStravaCaptureButtonsVisible(false);
+    if (closeBtn) {
+        closeBtn.style.visibility = 'hidden';
+        closeBtn.style.display = 'none';
+    }
     if (scroll) {
         scroll.style.overflow = 'visible';
         scroll.style.maxHeight = 'none';
         scroll.style.height = 'auto';
     }
-    if (body) body.style.paddingBottom = '16px';
+    target.style.padding = '8px 12px 12px';
+    if (header) {
+        header.style.padding = '0 0';
+        header.style.marginBottom = '8px';
+    }
+    if (body) body.style.padding = '0 0 0';
 
     try {
         await new Promise((r) => requestAnimationFrame(r));
@@ -2155,6 +2172,12 @@ async function captureStravaSheetCanvas() {
             scale: 1,
             backgroundColor: '#ffffff',
             logging: false,
+            x: 0,
+            y: 0,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: target.scrollWidth,
+            windowHeight: target.scrollHeight,
         });
     } finally {
         if (scroll) {
@@ -2162,7 +2185,16 @@ async function captureStravaSheetCanvas() {
             scroll.style.maxHeight = saved.scrollMaxHeight;
             scroll.style.height = saved.scrollHeight;
         }
-        if (body) body.style.paddingBottom = saved.bodyPaddingBottom;
+        target.style.padding = saved.targetPadding;
+        if (header) {
+            header.style.padding = saved.headerPadding;
+            header.style.marginBottom = saved.headerMarginBottom;
+        }
+        if (body) body.style.padding = saved.bodyPadding;
+        if (closeBtn) {
+            closeBtn.style.visibility = saved.closeVisibility;
+            closeBtn.style.display = saved.closeDisplay;
+        }
         setStravaCaptureButtonsVisible(true);
     }
 }
