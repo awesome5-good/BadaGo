@@ -113,9 +113,12 @@
         .weather-section-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); margin: 4px 0 10px; padding: 0 2px; }
         .weather-cards-stack { display: flex; flex-direction: column; gap: 10px; }
         .weather-metric-card { background: rgba(255,255,255,0.85); border-radius: 16px; padding: 14px 16px; }
-        .weather-metric-top { display: flex; align-items: center; gap: 10px; }
-        .weather-metric-emoji { font-size: 22px; line-height: 1; flex-shrink: 0; }
-        .weather-metric-val { font-size: 26px; font-weight: 800; color: #1e293b; flex: 1; min-width: 0; letter-spacing: -0.5px; }
+        .weather-metric-top { display: flex; align-items: flex-start; gap: 10px; }
+        .weather-metric-emoji { font-size: 22px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+        .weather-metric-body { flex: 1; min-width: 0; }
+        .weather-metric-label { font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 4px; line-height: 1.2; }
+        .weather-metric-value-row { display: flex; align-items: center; gap: 10px; }
+        .weather-metric-val { font-size: 26px; font-weight: 800; color: #1e293b; flex: 1; min-width: 0; letter-spacing: -0.5px; line-height: 1.1; }
         .weather-metric-badge { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
         .weather-badge-safe { background: #dcfce7; color: #16a34a; }
         .weather-badge-caution { background: #ffedd5; color: #ea580c; }
@@ -513,8 +516,13 @@
                 <div class="weather-metric-card" id="weather-wave-card">
                     <div class="weather-metric-top">
                         <span class="weather-metric-emoji">🌊</span>
-                        <span class="weather-metric-val" id="weather-wave-val">--</span>
-                        <span class="weather-metric-badge weather-badge-safe" id="weather-wave-badge">⏳</span>
+                        <div class="weather-metric-body">
+                            <div class="weather-metric-label">파도 높이</div>
+                            <div class="weather-metric-value-row">
+                                <span class="weather-metric-val" id="weather-wave-val">--</span>
+                                <span class="weather-metric-badge weather-badge-safe" id="weather-wave-badge">⏳</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="weather-metric-bar-track">
                         <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wave-bar" style="width:0%"></div>
@@ -527,8 +535,13 @@
                 <div class="weather-metric-card" id="weather-jelly-card">
                     <div class="weather-metric-top">
                         <span class="weather-metric-emoji">🪼</span>
-                        <span class="weather-metric-val" id="weather-jelly-val">--</span>
-                        <span class="weather-metric-badge weather-badge-safe" id="weather-jelly-badge">⏳</span>
+                        <div class="weather-metric-body">
+                            <div class="weather-metric-label">해파리</div>
+                            <div class="weather-metric-value-row">
+                                <span class="weather-metric-val" id="weather-jelly-val">--</span>
+                                <span class="weather-metric-badge weather-badge-safe" id="weather-jelly-badge">⏳</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="weather-metric-bar-track">
                         <div class="weather-metric-bar-fill weather-bar-safe" id="weather-jelly-bar" style="width:0%"></div>
@@ -541,8 +554,13 @@
                 <div class="weather-metric-card" id="weather-wind-card">
                     <div class="weather-metric-top">
                         <span class="weather-metric-emoji">💨</span>
-                        <span class="weather-metric-val" id="weather-wind-val">--</span>
-                        <span class="weather-metric-badge weather-badge-safe" id="weather-wind-badge">⏳</span>
+                        <div class="weather-metric-body">
+                            <div class="weather-metric-label">풍속 · 풍향</div>
+                            <div class="weather-metric-value-row">
+                                <span class="weather-metric-val" id="weather-wind-val">--</span>
+                                <span class="weather-metric-badge weather-badge-safe" id="weather-wind-badge">⏳</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="weather-metric-bar-track">
                         <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wind-bar" style="width:0%"></div>
