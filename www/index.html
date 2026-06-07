@@ -398,6 +398,14 @@
         .profile-beach-check { width: 20px; height: 20px; accent-color: var(--primary); flex-shrink: 0; cursor: pointer; }
         .profile-beach-emoji { font-size: 20px; flex-shrink: 0; }
         .profile-beach-name { font-size: 14px; font-weight: 700; color: #1e293b; flex: 1; }
+        .profile-main-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; font-weight: 800; color: #1e293b; }
+        .profile-search-box { margin-bottom: 12px; position: relative; }
+        .profile-search-input { width: 100%; padding: 11px 14px 11px 38px; border-radius: 14px; border: 2px solid #e2e8f0; font-size: 14px; font-family: var(--font-sans); outline: none; color: #1e293b; background: #f8fafc; transition: border-color 0.2s; }
+        .profile-search-input:focus { border-color: var(--primary); background: #fff; }
+        .profile-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; pointer-events: none; }
+        .profile-star-btn { border: none; background: none; font-size: 20px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; line-height: 1; }
+        .profile-star-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+        .profile-star-btn:not(:disabled):active { transform: scale(1.1); }
         .profile-strava-status { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; background: #f8fafc; }
         .profile-strava-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .profile-strava-dot.connected { background: #4ade80; }
@@ -438,6 +446,9 @@
         .radio-pill input { position: absolute; opacity: 0; width: 0; height: 0; }
         .radio-pill span { display: inline-block; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; background: #f1f5f9; color: #64748b; cursor: pointer; transition: all 0.2s; }
         .radio-pill input:checked + span { background: var(--primary); color: #fff; }
+        .notif-time-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; flex-wrap: nowrap; }
+        .notif-time-scroll::-webkit-scrollbar { display: none; }
+        .notif-time-scroll .radio-pill span { white-space: nowrap; font-size: 12px; padding: 8px 12px; }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
@@ -758,6 +769,11 @@
 
             <div class="profile-card">
                 <div class="profile-section-title">내 바다 즐겨찾기</div>
+                <div class="profile-main-beach-banner" id="profile-main-beach-banner">메인 바다: --</div>
+                <div class="profile-search-box">
+                    <span class="profile-search-icon">🔍</span>
+                    <input class="profile-search-input" id="profile-fav-search" type="text" placeholder="해변 이름 검색" oninput="onProfileFavSearch(this.value)" />
+                </div>
                 <div class="region-pills" id="profile-region-pills"></div>
                 <div class="profile-beach-list" id="profile-beach-list"></div>
             </div>
@@ -864,11 +880,19 @@
             </div>
             <div class="app-sheet-body">
                 <div class="notif-beach-banner">
-                    <div class="notif-beach-label">현재 선택된 바다</div>
+                    <div class="notif-beach-label">메인 바다</div>
                     <div class="notif-beach-name" id="notif-beach-name">--</div>
-                    <div class="notif-beach-hint">알림은 위 바다 기준으로 발송됩니다</div>
+                    <div class="notif-beach-hint">알림은 메인 바다 기준으로 발송됩니다</div>
                 </div>
                 <div class="settings-section-title">알림 항목</div>
+                <div class="settings-row">
+                    <div><div class="settings-row-label">파도 위험 알림</div><div class="settings-row-desc">1.5m 이상</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="notif-wave" onchange="saveNotificationSettings()"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                    <div><div class="settings-row-label">풍속 경보 알림</div><div class="settings-row-desc">10m/s 이상</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="notif-wind" onchange="saveNotificationSettings()"><span class="toggle-slider"></span></label>
+                </div>
                 <div class="settings-row">
                     <div><div class="settings-row-label">해파리 특보 알림</div></div>
                     <label class="toggle-switch"><input type="checkbox" id="notif-jellyfish" onchange="saveNotificationSettings()"><span class="toggle-slider"></span></label>
@@ -877,20 +901,8 @@
                     <div><div class="settings-row-label">따꼼이 주의 알림</div><div class="settings-row-desc">수온 23℃ 이상</div></div>
                     <label class="toggle-switch"><input type="checkbox" id="notif-ttakkomi" onchange="saveNotificationSettings()"><span class="toggle-slider"></span></label>
                 </div>
-                <div class="settings-row">
-                    <div><div class="settings-row-label">파도 위험 알림</div><div class="settings-row-desc">1.5m 이상</div></div>
-                    <label class="toggle-switch"><input type="checkbox" id="notif-wave" onchange="saveNotificationSettings()"><span class="toggle-slider"></span></label>
-                </div>
-                <div class="settings-row">
-                    <div><div class="settings-row-label">강풍 경보 알림</div><div class="settings-row-desc">10m/s 이상</div></div>
-                    <label class="toggle-switch"><input type="checkbox" id="notif-wind" onchange="saveNotificationSettings()"><span class="toggle-slider"></span></label>
-                </div>
                 <div class="settings-section-title" style="margin-top:16px;">알림 시간</div>
-                <div class="radio-group" id="notif-time-group">
-                    <label class="radio-pill"><input type="radio" name="notif-time" value="6" onchange="saveNotificationSettings()"><span>오전 6시</span></label>
-                    <label class="radio-pill"><input type="radio" name="notif-time" value="7" onchange="saveNotificationSettings()"><span>오전 7시</span></label>
-                    <label class="radio-pill"><input type="radio" name="notif-time" value="8" onchange="saveNotificationSettings()"><span>오전 8시</span></label>
-                </div>
+                <div class="notif-time-scroll" id="notif-time-group"></div>
             </div>
         </div>
     </div>
@@ -1127,16 +1139,20 @@ const NICKNAME_KEY = 'bada_nickname';
 const DEFAULT_NICKNAME = '바다고 수영러';
 const NOTIF_SETTINGS_KEY = 'bada_notification_settings';
 const TEMP_UNIT_KEY = 'bada_temp_unit';
+const MAIN_BEACH_KEY = 'bada_main_beach';
 const PROFILE_REGIONS = ['부산', '경북', '강원', '충남', '제주'];
+const NOTIF_TIME_OPTIONS = ['05:00', '05:30', '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30'];
 let profileRegionTab = '부산';
+let profileFavSearchQuery = '';
 let nicknameEditing = false;
+let mainBeachId = localStorage.getItem(MAIN_BEACH_KEY) || favorites[0] || 'haeundae';
 
 const DEFAULT_NOTIF_SETTINGS = {
     jellyfish: true,
     ttakkomi: true,
     wave: true,
     wind: true,
-    notifyHour: 7,
+    notifyTime: '07:00',
 };
 
 function getNickname() {
@@ -1149,28 +1165,53 @@ function saveNickname(name) {
     return trimmed;
 }
 
+function normalizeNotificationSettings(saved) {
+    const settings = { ...DEFAULT_NOTIF_SETTINGS, ...saved };
+    if (!settings.notifyTime && settings.notifyHour != null) {
+        settings.notifyTime = `${String(settings.notifyHour).padStart(2, '0')}:00`;
+    }
+    if (!NOTIF_TIME_OPTIONS.includes(settings.notifyTime)) {
+        settings.notifyTime = '07:00';
+    }
+    return settings;
+}
+
 function getNotificationSettings() {
     try {
         const saved = JSON.parse(localStorage.getItem(NOTIF_SETTINGS_KEY) || 'null');
-        return saved ? { ...DEFAULT_NOTIF_SETTINGS, ...saved } : { ...DEFAULT_NOTIF_SETTINGS };
+        return saved ? normalizeNotificationSettings(saved) : { ...DEFAULT_NOTIF_SETTINGS };
     } catch {
         return { ...DEFAULT_NOTIF_SETTINGS };
     }
 }
 
 function saveNotificationSettings() {
-    const hourEl = document.querySelector('input[name="notif-time"]:checked');
+    const timeEl = document.querySelector('input[name="notif-time"]:checked');
     const settings = {
         jellyfish: !!document.getElementById('notif-jellyfish')?.checked,
         ttakkomi: !!document.getElementById('notif-ttakkomi')?.checked,
         wave: !!document.getElementById('notif-wave')?.checked,
         wind: !!document.getElementById('notif-wind')?.checked,
-        notifyHour: hourEl ? parseInt(hourEl.value, 10) : 7,
+        notifyTime: timeEl ? timeEl.value : '07:00',
     };
     localStorage.setItem(NOTIF_SETTINGS_KEY, JSON.stringify(settings));
 }
 
+function initNotifTimePills() {
+    const container = document.getElementById('notif-time-group');
+    if (!container || container.dataset.ready) return;
+    container.dataset.ready = '1';
+    container.innerHTML = '';
+    NOTIF_TIME_OPTIONS.forEach(time => {
+        const label = document.createElement('label');
+        label.className = 'radio-pill';
+        label.innerHTML = `<input type="radio" name="notif-time" value="${time}" onchange="saveNotificationSettings()"><span>${time}</span>`;
+        container.appendChild(label);
+    });
+}
+
 function loadNotificationSettingsToUI() {
+    initNotifTimePills();
     const s = getNotificationSettings();
     const jelly = document.getElementById('notif-jellyfish');
     const ttak = document.getElementById('notif-ttakkomi');
@@ -1181,13 +1222,49 @@ function loadNotificationSettingsToUI() {
     if (wave) wave.checked = s.wave;
     if (wind) wind.checked = s.wind;
     document.querySelectorAll('input[name="notif-time"]').forEach(el => {
-        el.checked = parseInt(el.value, 10) === s.notifyHour;
+        el.checked = el.value === s.notifyTime;
     });
+}
+
+function saveMainBeach(id) {
+    mainBeachId = id;
+    localStorage.setItem(MAIN_BEACH_KEY, id);
+}
+
+function getMainBeachId() {
+    if (!mainBeachId || !favorites.includes(mainBeachId)) {
+        mainBeachId = favorites[0] || 'haeundae';
+        saveMainBeach(mainBeachId);
+    }
+    return mainBeachId;
+}
+
+function getMainBeach() {
+    return getBeachById(getMainBeachId()) || ALL_BEACHES[0];
+}
+
+function updateProfileMainBeachBanner() {
+    const el = document.getElementById('profile-main-beach-banner');
+    if (el) el.textContent = `메인 바다: ${getMainBeach().name}`;
 }
 
 function updateNotificationBeachLabel() {
     const el = document.getElementById('notif-beach-name');
-    if (el) el.textContent = getCurrentLoc().name;
+    if (el) el.textContent = getMainBeach().name;
+}
+
+function setMainBeach(id, e) {
+    if (e) e.stopPropagation();
+    if (!favorites.includes(id)) {
+        showToast('즐겨찾기에 추가된 해변만 메인 바다로 지정할 수 있어요');
+        return;
+    }
+    saveMainBeach(id);
+    const beach = getBeachById(id);
+    showToast(`⭐ ${beach?.name || ''} 메인 바다로 지정!`);
+    updateProfileMainBeachBanner();
+    updateNotificationBeachLabel();
+    renderProfileBeachList();
 }
 
 function openNotificationSheet() {
@@ -1277,12 +1354,19 @@ function isSettingsSheetOpen() {
 function resetAppData() {
     if (!confirm('즐겨찾기와 닉네임을 초기화할까요?')) return;
     localStorage.removeItem(NICKNAME_KEY);
+    localStorage.removeItem(MAIN_BEACH_KEY);
     favorites = ['haeundae'];
     currentLocationId = 'haeundae';
+    mainBeachId = 'haeundae';
+    saveMainBeach('haeundae');
     saveFavorites();
     nicknameEditing = false;
+    profileFavSearchQuery = '';
+    const searchInput = document.getElementById('profile-fav-search');
+    if (searchInput) searchInput.value = '';
     renderLocationChips();
     renderProfileTab();
+    updateNotificationBeachLabel();
     fetchAllData();
     showToast('데이터가 초기화되었어요');
     closeSettingsSheet();
@@ -1312,9 +1396,27 @@ function toggleNicknameEdit() {
     }
 }
 
+function onProfileFavSearch(val) {
+    profileFavSearchQuery = String(val || '').trim();
+    renderProfileRegionPills();
+    renderProfileBeachList();
+}
+
+function getProfileBeachesToShow() {
+    if (profileFavSearchQuery) {
+        return ALL_BEACHES.filter(b => b.name.includes(profileFavSearchQuery));
+    }
+    return ALL_BEACHES.filter(b => b.region === profileRegionTab);
+}
+
 function renderProfileRegionPills() {
     const container = document.getElementById('profile-region-pills');
     if (!container) return;
+    if (profileFavSearchQuery) {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = '';
     container.innerHTML = '';
     PROFILE_REGIONS.forEach(region => {
         const pill = document.createElement('button');
@@ -1333,20 +1435,23 @@ function renderProfileRegionPills() {
 function renderProfileBeachList() {
     const container = document.getElementById('profile-beach-list');
     if (!container) return;
-    const beaches = ALL_BEACHES.filter(b => b.region === profileRegionTab);
+    const beaches = getProfileBeachesToShow();
+    const mainId = getMainBeachId();
     container.innerHTML = '';
     if (!beaches.length) {
-        container.innerHTML = '<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;font-weight:600;">해당 지역 해변이 없어요</div>';
+        container.innerHTML = `<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;font-weight:600;">${profileFavSearchQuery ? '검색 결과가 없어요' : '해당 지역 해변이 없어요'}</div>`;
         return;
     }
     beaches.forEach(beach => {
         const isFav = favorites.includes(beach.id);
-        const item = document.createElement('label');
+        const isMain = beach.id === mainId;
+        const item = document.createElement('div');
         item.className = `profile-beach-item ${isFav ? 'checked' : ''}`;
         item.innerHTML = `
             <input type="checkbox" class="profile-beach-check" ${isFav ? 'checked' : ''} onchange="toggleProfileFavorite('${beach.id}', this.checked)" />
             <span class="profile-beach-emoji">${beach.emoji}</span>
-            <span class="profile-beach-name">${beach.name}</span>`;
+            <span class="profile-beach-name">${beach.name}${profileFavSearchQuery ? ` <span style="font-size:11px;font-weight:600;color:#94a3b8;">${beach.region}</span>` : ''}</span>
+            <button type="button" class="profile-star-btn" ${isFav ? '' : 'disabled'} onclick="setMainBeach('${beach.id}', event)" aria-label="메인 바다로 지정">${isMain ? '⭐' : '☆'}</button>`;
         container.appendChild(item);
     });
 }
@@ -1366,12 +1471,16 @@ function toggleProfileFavorite(id, checked) {
             currentLocationId = favorites[0];
             fetchAllData();
         }
+        if (getMainBeachId() === id) {
+            saveMainBeach(favorites[0]);
+        }
         saveFavorites();
         const beach = getBeachById(id);
         showToast(`${beach?.name || ''} 즐겨찾기 해제`);
     }
     renderLocationChips();
     renderProfileBeachList();
+    updateProfileMainBeachBanner();
     updateNotificationBeachLabel();
 }
 
@@ -1396,6 +1505,8 @@ function renderProfileTab() {
     const input = document.getElementById('profile-nickname-input');
     if (display && !nicknameEditing) display.textContent = getNickname();
     if (input && nicknameEditing) input.value = getNickname();
+    getMainBeachId();
+    updateProfileMainBeachBanner();
     renderProfileRegionPills();
     renderProfileBeachList();
     updateProfileStravaStatus();
@@ -1866,7 +1977,6 @@ function selectLocation(id) {
     currentLocationId = id;
     currentWaterTemp = null; currentWaterTempIsSatellite = false; currentWaveHeight = null; currentWindSpeed = null; currentWindDirection = null; currentAirTemp = null;
     renderLocationChips();
-    updateNotificationBeachLabel();
     fetchAllData();
 }
 
@@ -3249,6 +3359,7 @@ window.onload = function() {
     favorites = favorites.filter(id => ALL_BEACHES.some(b => b.id === id));
     if (favorites.length === 0) { favorites = ['haeundae']; saveFavorites(); }
     currentLocationId = favorites.includes(currentLocationId) ? currentLocationId : favorites[0];
+    getMainBeachId();
     loadNotificationSettingsToUI();
     syncTempUnitButtons();
     renderProfileTab();
