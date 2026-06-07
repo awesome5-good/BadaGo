@@ -257,20 +257,26 @@ async function fetchSeaObsBuoy(buoyCode) {
         timeoutMs: FETCH_TIMEOUT_MS,
     });
 
-    const { res, text } = await fetchWithTimeout(url, 'sea_obs');
+    const { res, text: rawText } = await fetchWithTimeout(url, 'sea_obs');
     console.log(`${LOG_PREFIX} sea_obs RESPONSE`, {
         httpStatus: res.status,
-        bodyLength: text.length,
-        body: text.length <= SURVEY_RESPONSE_LOG_MAX ? text : `${text.slice(0, SURVEY_RESPONSE_LOG_MAX)}…`,
+        bodyLength: rawText.length,
+        body: rawText.length <= SURVEY_RESPONSE_LOG_MAX ? rawText : `${rawText.slice(0, SURVEY_RESPONSE_LOG_MAX)}…`,
     });
 
     if (!res.ok) {
+        console.error('[buoy-debug]', rawText.slice(0, 500));
         throw new Error(`sea_obs HTTP ${res.status}`);
     }
 
-    const parsed = parseSeaObsText(text, buoyCode);
-    console.log(`${LOG_PREFIX} sea_obs parsed`, parsed);
-    return parsed;
+    try {
+        const parsed = parseSeaObsText(rawText, buoyCode);
+        console.log(`${LOG_PREFIX} sea_obs parsed`, parsed);
+        return parsed;
+    } catch (parseErr) {
+        console.error('[buoy-debug]', rawText.slice(0, 500));
+        throw parseErr;
+    }
 }
 
 function getSurveyEnvelope(json) {
@@ -535,6 +541,7 @@ module.exports = async (req, res) => {
         buoyCode: buoyCode || null,
         obsCode: obsCode || null,
         cacheKey: key,
+        query: req.query,
     });
     logKmaApiHubKeyStatus('handler');
     logDataGoKrKeyStatus('handler');

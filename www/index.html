@@ -609,11 +609,11 @@ const NIFS_STATION_CODES = {
 const ALL_BEACHES = [
     // 부산 — kmaBeachId: weather.go.kr · obsCode: 조위관측소 실측 수온 (부산 DT_0005)
     { id:'haeundae',   name:'해운대',     emoji:'🏖️', region:'부산', lat:35.158, lon:129.160, beachCode:'BCH001', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['해운대'] },
-    { id:'gwangan',    name:'광안리',     emoji:'🌉', region:'부산', lat:35.153, lon:129.118, beachCode:'BCH002', obsCode:null, kmaBeachId:'306', nifsStation:'부산',   khoaObsAccept:['광안리','광안','수영','남천'] },
-    { id:'songjeong',  name:'송정',       emoji:'🌊', region:'부산', lat:35.179, lon:129.209, beachCode:'BCH010', obsCode:'DT_0005', kmaBeachId:'307', nifsStation:'해운대', khoaObsAccept:['송정','해운대'] },
-    { id:'songdo',     name:'송도',       emoji:'🎡', region:'부산', lat:35.091, lon:129.014, beachCode:'BCH012', obsCode:'DT_0005', kmaBeachId:'309', nifsStation:'부산',   khoaObsAccept:['송도','감천','부산'] },
-    { id:'dadaepo',    name:'다대포',     emoji:'🏄', region:'부산', lat:35.046, lon:128.965, beachCode:'BCH013', obsCode:'DT_0005', kmaBeachId:'308', nifsStation:'부산',   khoaObsAccept:['다대포','감천','부산'] },
-    { id:'ilgwang',    name:'일광',       emoji:'🐚', region:'부산', lat:35.245, lon:129.228, beachCode:'BCH008', obsCode:'DT_0005', kmaBeachId:'310', nifsStation:'해운대', khoaObsAccept:['일광','임랑'] },
+    { id:'gwangan',    name:'광안리',     emoji:'🌉', region:'부산', lat:35.153, lon:129.118, beachCode:'BCH002', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'306', nifsStation:'부산',   khoaObsAccept:['광안리','광안','수영','남천'] },
+    { id:'songjeong',  name:'송정',       emoji:'🌊', region:'부산', lat:35.179, lon:129.209, beachCode:'BCH010', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'307', nifsStation:'해운대', khoaObsAccept:['송정','해운대'] },
+    { id:'songdo',     name:'송도',       emoji:'🎡', region:'부산', lat:35.091, lon:129.014, beachCode:'BCH012', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'309', nifsStation:'부산',   khoaObsAccept:['송도','감천','부산'] },
+    { id:'dadaepo',    name:'다대포',     emoji:'🏄', region:'부산', lat:35.046, lon:128.965, beachCode:'BCH013', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'308', nifsStation:'부산',   khoaObsAccept:['다대포','감천','부산'] },
+    { id:'ilgwang',    name:'일광',       emoji:'🐚', region:'부산', lat:35.245, lon:129.228, beachCode:'BCH008', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'310', nifsStation:'해운대', khoaObsAccept:['일광','임랑'] },
     // 경남
     { id:'sangju',     name:'상주은모래', emoji:'✨', region:'경남', lat:34.837, lon:128.422, beachCode:'BCH041', obsCode:null, kmaBeachId:'122' },
     { id:'hakdong',    name:'학동몽돌',   emoji:'🪨', region:'경남', lat:34.727, lon:128.431, beachCode:'BCH042', obsCode:null, kmaBeachId:'136' },
@@ -711,21 +711,32 @@ function formatMarineApiStatusText(loc, json) {
     return formatKmaStatusText(loc.name, json.obs_time);
 }
 
-function buildKmaBeachUrl(kmaBeachId, obsCode, buoyCode) {
-    const params = new URLSearchParams({ id: String(kmaBeachId) });
-    if (buoyCode) params.set('buoyCode', String(buoyCode));
-    if (obsCode) params.set('obsCode', obsCode);
+function buildKmaBeachUrl(beach) {
+    const params = new URLSearchParams({ id: String(beach.kmaBeachId) });
+    const buoy = beach.buoyCode != null ? String(beach.buoyCode).trim() : '';
+    const obs = beach.obsCode != null ? String(beach.obsCode).trim() : '';
+    if (buoy) params.set('buoyCode', buoy);
+    if (obs) params.set('obsCode', obs);
     return `${getKmaApiBase()}?${params.toString()}`;
 }
 
-async function fetchKmaBeachData(kmaBeachId, obsCode, buoyCode) {
-    const url = buildKmaBeachUrl(kmaBeachId, obsCode, buoyCode);
+async function fetchKmaBeachData(beach) {
+    const url = buildKmaBeachUrl(beach);
+    const buoyCode = beach.buoyCode != null ? String(beach.buoyCode).trim() : '';
+    const obsCode = beach.obsCode != null ? String(beach.obsCode).trim() : '';
     const label = buoyCode
         ? 'KMA API허브 해양부이 → 조위관측소 → KMA HTML'
         : obsCode
             ? 'KHOA 조위관측소 실측 수온 (실패 시 KMA)'
             : 'KMA 해수욕장';
     logApiFetch('1순위', label, url);
+    console.log('[BadaGo API] kma-beach 요청', {
+        beach: beach.name,
+        kmaBeachId: beach.kmaBeachId,
+        buoyCode: buoyCode || null,
+        obsCode: obsCode || null,
+        url,
+    });
     const res = await fetch(url);
     const json = await res.json();
     if (!res.ok || !json.ok) {
@@ -737,7 +748,7 @@ async function fetchKmaBeachData(kmaBeachId, obsCode, buoyCode) {
             ? 'KHOA 실측수온'
             : 'KMA';
     console.log(`[BadaGo API] ${srcLabel} 응답 OK`, {
-        id: kmaBeachId,
+        id: beach.kmaBeachId,
         buoyCode: json.buoyCode || buoyCode || null,
         obsCode: json.obsCode || obsCode || null,
         source: json.source,
@@ -942,7 +953,7 @@ async function fetchAllData() {
     setApiStatus('loading', '실시간 데이터 불러오는 중...');
 
     const loc = getCurrentLoc();
-    const kmaUrl = loc.kmaBeachId ? buildKmaBeachUrl(loc.kmaBeachId, loc.obsCode, loc.buoyCode) : null;
+    const kmaUrl = loc.kmaBeachId ? buildKmaBeachUrl(loc) : null;
     console.log('[fetchAllData] 시작', {
         beach: loc.name,
         beachId: loc.id,
@@ -980,7 +991,7 @@ async function fetchAllData() {
         // kmaBeachId 있으면 해양부이→조위관측소→KMA HTML 프록시 먼저 (성공 시 KHOA/NIFS 생략)
         if (loc.kmaBeachId) {
             try {
-                const kma = await fetchKmaBeachData(loc.kmaBeachId, loc.obsCode, loc.buoyCode);
+                const kma = await fetchKmaBeachData(loc);
                 applyKmaBeachData(kma, marine, weather);
                 statusText = formatMarineApiStatusText(loc, kma);
                 usedKmaApi = true;
