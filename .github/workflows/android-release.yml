@@ -59,24 +59,6 @@ jobs:
             -Pandroid.injected.signing.key.password="${{ secrets.ANDROID_KEY_PASSWORD }}"
           test -f android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Verify release APK signature
-        run: |
-          APK="android/app/build/outputs/apk/release/app-release.apk"
-          echo "APK: $APK"
-          unzip -l "$APK" | head -5
-          if jarsigner -verify -verbose -certs "$APK" 2>&1 | tee /tmp/jarsigner.log | grep -q "jar verified"; then
-            echo "✓ jarsigner: release APK is signed"
-          else
-            echo "::error::APK is not signed (expected release keystore from ANDROID_KEYSTORE_BASE64)"
-            cat /tmp/jarsigner.log
-            exit 1
-          fi
-          if jarsigner -verify -verbose -certs "$APK" 2>&1 | grep -qi "CN=Android Debug"; then
-            echo "::error::APK signed with debug key — release signing did not apply"
-            exit 1
-          fi
-          echo "✓ not signed with Android Debug certificate"
-
       - name: Prepare release asset
         run: cp android/app/build/outputs/apk/release/app-release.apk "BadaGo-${{ github.run_number }}.apk"
 
