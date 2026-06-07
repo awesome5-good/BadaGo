@@ -47,14 +47,21 @@ jobs:
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release.keystore
           {
-            echo "storeFile=../release.keystore"
+            echo "storeFile=release.keystore"
             echo "storePassword=${ANDROID_KEYSTORE_PASSWORD}"
             echo "keyAlias=${ANDROID_KEY_ALIAS}"
             echo "keyPassword=${ANDROID_KEY_PASSWORD}"
           } > android/keystore.properties
           ls -la android/release.keystore android/keystore.properties
-          echo "--- keystore.properties contents (passwords masked) ---"
-          sed '/[Pp]assword=/s/=.*/=***/' android/keystore.properties
+          echo "--- keystore paths (android/ root 기준) ---"
+          echo "keystore.properties → android/keystore.properties"
+          echo "release.keystore    → android/release.keystore"
+          echo "build.gradle reads  → rootProject.file('keystore.properties') = android/keystore.properties"
+          echo "build.gradle store  → rootProject.file(storeFile) = android/release.keystore"
+          echo "--- keystore.properties (keyAlias 그대로, 비밀번호만 마스킹) ---"
+          grep '^storeFile=' android/keystore.properties
+          grep '^keyAlias=' android/keystore.properties
+          grep 'Password=' android/keystore.properties | sed 's/=.*/=***/'
 
       - name: Build signed release APK
         working-directory: android

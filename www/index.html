@@ -606,29 +606,6 @@ const NIFS_STATION_CODES = {
     '제주':   'bjni5',  // 제주 중문
 };
 
-const KHOA_OBS_STATIONS = [
-    { code:'BCH001', name:'해운대',     lat:35.158, lon:129.160 },
-    { code:'BCH002', name:'광안리',     lat:35.153, lon:129.118 },
-    { code:'BCH004', name:'망상',       lat:37.594, lon:129.152 },
-    { code:'BCH005', name:'낙산',       lat:38.121, lon:128.636 },
-    { code:'BCH006', name:'진하',       lat:35.438, lon:129.357 },
-    { code:'BCH008', name:'일광',       lat:35.245, lon:129.228 },
-    { code:'BCH009', name:'삼척',       lat:37.439, lon:129.166 },
-    { code:'BCH010', name:'송정',       lat:35.179, lon:129.209 },
-    { code:'BCH012', name:'송도',       lat:35.069, lon:129.016 },
-    { code:'BCH013', name:'다대포',     lat:35.047, lon:128.961 },
-    { code:'BCH014', name:'대천',       lat:36.318, lon:126.502 },
-    { code:'BCH017', name:'중문',       lat:33.244, lon:126.412 },
-    { code:'BCH020', name:'협재',       lat:33.394, lon:126.239 },
-    { code:'BCH021', name:'곽지',       lat:33.461, lon:126.301 },
-    { code:'BCH024', name:'함덕',       lat:33.543, lon:126.670 },
-    { code:'BCH031', name:'경포대',     lat:37.796, lon:128.906 },
-    { code:'BCH033', name:'만리포',     lat:36.788, lon:126.148 },
-    { code:'BCH041', name:'상주은모래', lat:34.837, lon:128.422 },
-    { code:'BCH042', name:'학동몽돌',   lat:34.725, lon:128.433 },
-    { code:'BCH050', name:'정동진',     lat:37.682, lon:129.049 },
-];
-
 const ALL_BEACHES = [
     // 부산 — kmaBeachId: weather.go.kr · obsCode: 조위관측소 실측 수온 (부산 DT_0005)
     { id:'haeundae',   name:'해운대',     emoji:'🏖️', region:'부산', lat:35.158, lon:129.160, beachCode:'BCH001', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['해운대'] },
@@ -782,19 +759,6 @@ function haversineKm(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function findNearestKhoaObsStation(lat, lon) {
-    let nearest = null;
-    let minDist = Infinity;
-    for (const st of KHOA_OBS_STATIONS) {
-        const d = haversineKm(lat, lon, st.lat, st.lon);
-        if (d < minDist) {
-            minDist = d;
-            nearest = { ...st, distanceKm: d };
-        }
-    }
-    return nearest;
-}
-
 function normalizeObsPostName(name) {
     return String(name || '').replace(/해수욕장$/, '').replace(/\s+/g, '').trim();
 }
@@ -928,35 +892,27 @@ function applyKhoaWithOpenMeteoFallback(beach, khoa, marine, weather) {
 }
 
 async function fetchKhoaBeachData(beach) {
-    let beachCode;
-    let nearest = null;
-
-    if (beach.beachCode) {
-        beachCode = beach.beachCode;
-    } else {
-        nearest = findNearestKhoaObsStation(beach.lat, beach.lon);
-        if (!nearest) throw new Error('No KHOA station');
-        beachCode = nearest.code;
-    }
+    const beachCode = beach.beachCode;
+    if (!beachCode) throw new Error(`KHOA beachCode 없음: ${beach.name}`);
 
     const url = `${KHOA_BEACH_API}?ServiceKey=${encodeURIComponent(KHOA_SERVICE_KEY)}&ResultType=json&BeachCode=${encodeURIComponent(beachCode)}`;
     logApiFetch('2순위', `KHOA BeachCode=${beachCode}`, `${KHOA_BEACH_API}?BeachCode=${beachCode}&ResultType=json`);
     const res = await fetch(url);
     const json = await res.json();
     const meta = json.result?.meta || {};
-    console.log('[BadaGo API] KHOA 응답', beach.name, '→', beachCode, nearest?.name ?? '(beachCode)', {
+    console.log('[BadaGo API] KHOA 응답', beach.name, '→', beachCode, {
         beach_name: meta.beach_name,
         obs_post_name: meta.obs_post_name,
-        distance_km: nearest ? Math.round(nearest.distanceKm * 10) / 10 : null,
+        water_temp: json.result?.data?.[0]?.water_temp ?? null,
     });
     if (json.result?.error) throw new Error(json.result.error);
     const data = json.result?.data?.[0];
     if (!data) throw new Error('No data');
     return {
         ...data,
+        beach_code: beachCode,
         obs_post_name: meta.obs_post_name || '',
         obs_time: data.obs_time || '',
-        nearest_station: nearest,
     };
 }
 
