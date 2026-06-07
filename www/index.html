@@ -41,6 +41,8 @@
         .l-chip.gps-active { background: #4ade80; color: #064e3b; }
         .l-chip.l-chip-manage { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border: 1.5px dashed rgba(255,255,255,0.5); display: inline-flex; align-items: center; gap: 5px; }
         .l-chip.l-chip-manage:active { background: rgba(255,255,255,0.25); }
+        .l-chip.l-chip-main { border: 2px solid #F59E0B; }
+        .l-chip.l-chip-main.active { box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
 
         /* 위치 헤더 */
         .location-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -419,6 +421,8 @@
         .profile-beach-emoji { font-size: 20px; flex-shrink: 0; }
         .profile-beach-name { font-size: 14px; font-weight: 700; color: #1e293b; flex: 1; }
         .profile-main-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; font-weight: 800; color: #1e293b; }
+        .profile-main-beach-banner--unset { background: #fffbeb; border-color: #F59E0B; color: #92400e; }
+        .profile-main-beach-hint { display: block; font-size: 12px; font-weight: 600; color: #b45309; margin-top: 4px; }
         .profile-search-box { margin-bottom: 12px; position: relative; }
         .profile-search-input { width: 100%; padding: 11px 14px 11px 38px; border-radius: 14px; border: 2px solid #e2e8f0; font-size: 14px; font-family: var(--font-sans); outline: none; color: #1e293b; background: #f8fafc; transition: border-color 0.2s; }
         .profile-search-input:focus { border-color: var(--primary); background: #fff; }
@@ -1209,7 +1213,7 @@ const NOTIF_TIME_OPTIONS = NOTIF_TIME_GROUPS.flatMap((g) => g.times);
 let profileRegionTab = '부산';
 let profileFavSearchQuery = '';
 let nicknameEditing = false;
-let mainBeachId = localStorage.getItem(MAIN_BEACH_KEY) || favorites[0] || 'haeundae';
+let mainBeachId = null;
 
 const DEFAULT_NOTIF_SETTINGS = {
     jellyfish: true,
@@ -1308,26 +1312,60 @@ function saveMainBeach(id) {
     localStorage.setItem(MAIN_BEACH_KEY, id);
 }
 
+function clearMainBeach() {
+    mainBeachId = null;
+    localStorage.removeItem(MAIN_BEACH_KEY);
+}
+
+function isMainBeachConfigured() {
+    const id = localStorage.getItem(MAIN_BEACH_KEY);
+    return !!id && favorites.includes(id);
+}
+
 function getMainBeachId() {
-    if (!mainBeachId || !favorites.includes(mainBeachId)) {
-        mainBeachId = favorites[0] || 'haeundae';
-        saveMainBeach(mainBeachId);
+    const id = localStorage.getItem(MAIN_BEACH_KEY);
+    if (id && favorites.includes(id)) {
+        mainBeachId = id;
+        return id;
     }
-    return mainBeachId;
+    mainBeachId = null;
+    return null;
 }
 
 function getMainBeach() {
-    return getBeachById(getMainBeachId()) || ALL_BEACHES[0];
+    const id = getMainBeachId();
+    if (id) return getBeachById(id) || ALL_BEACHES[0];
+    return getBeachById(favorites[0]) || ALL_BEACHES[0];
+}
+
+function getDefaultLocationId() {
+    return getMainBeachId() || favorites[0] || 'haeundae';
+}
+
+function getOrderedFavoriteIds() {
+    const mainId = getMainBeachId();
+    if (!mainId) return [...favorites];
+    return [mainId, ...favorites.filter(id => id !== mainId)];
 }
 
 function updateProfileMainBeachBanner() {
     const el = document.getElementById('profile-main-beach-banner');
-    if (el) el.textContent = `메인 바다: ${getMainBeach().name}`;
+    if (!el) return;
+    const mainId = getMainBeachId();
+    if (mainId) {
+        el.className = 'profile-main-beach-banner';
+        el.textContent = `메인 바다: ${getBeachById(mainId).name}`;
+    } else {
+        el.className = 'profile-main-beach-banner profile-main-beach-banner--unset';
+        el.innerHTML = '⭐ 메인 바다를 설정해 주세요<span class="profile-main-beach-hint">즐겨찾기 해변 옆 ☆를 눌러 메인 바다로 지정하세요</span>';
+    }
 }
 
 function updateNotificationBeachLabel() {
     const el = document.getElementById('notif-beach-name');
-    if (el) el.textContent = getMainBeach().name;
+    if (!el) return;
+    const mainId = getMainBeachId();
+    el.textContent = mainId ? getBeachById(mainId).name : '미설정';
 }
 
 function setMainBeach(id, e) {
@@ -1342,6 +1380,7 @@ function setMainBeach(id, e) {
     updateProfileMainBeachBanner();
     updateNotificationBeachLabel();
     renderProfileBeachList();
+    renderLocationChips();
     scheduleLocalNotifications().catch((err) => console.warn('[LocalNotifications] schedule failed', err));
 }
 
@@ -1707,11 +1746,11 @@ function toggleProfileFavorite(id, checked) {
         favorites = favorites.filter(f => f !== id);
         if (favorites.length === 0) favorites = ['haeundae'];
         if (!favorites.includes(currentLocationId)) {
-            currentLocationId = favorites[0];
+            currentLocationId = getDefaultLocationId();
             fetchAllData();
         }
         if (getMainBeachId() === id) {
-            saveMainBeach(favorites[0]);
+            clearMainBeach();
         }
         saveFavorites();
         const beach = getBeachById(id);
@@ -2308,12 +2347,14 @@ function renderLocationChips() {
     manageChip.onclick = openLocSheet;
     container.appendChild(manageChip);
 
-    favorites.forEach(id => {
+    const mainId = getMainBeachId();
+    getOrderedFavoriteIds().forEach(id => {
         const beach = getBeachById(id);
         if (!beach) return;
+        const isMain = id === mainId;
         const chip = document.createElement('button');
-        chip.className = `l-chip ${id === currentLocationId ? 'active' : 'inactive'}`;
-        chip.textContent = `${beach.emoji} ${beach.name}`;
+        chip.className = `l-chip ${id === currentLocationId ? 'active' : 'inactive'}${isMain ? ' l-chip-main' : ''}`;
+        chip.innerHTML = `${isMain ? '<span aria-hidden="true">⭐</span> ' : ''}${beach.emoji} ${beach.name}`;
         chip.onclick = () => selectLocation(id);
         container.appendChild(chip);
     });
@@ -2425,8 +2466,9 @@ function removeFavorite(id, e) {
     e.stopPropagation();
     favorites = favorites.filter(f => f !== id);
     saveFavorites();
+    if (getMainBeachId() === id) clearMainBeach();
     if (currentLocationId === id) {
-        currentLocationId = favorites[0] || 'haeundae';
+        currentLocationId = getDefaultLocationId();
         if (!favorites.includes('haeundae') && favorites.length === 0) {
             favorites = ['haeundae'];
             saveFavorites();
@@ -2434,6 +2476,8 @@ function removeFavorite(id, e) {
     }
     renderLocSheetBody('');
     renderLocationChips();
+    updateProfileMainBeachBanner();
+    updateNotificationBeachLabel();
     const beach = getBeachById(id);
     showToast(`${beach?.name || ''} 즐겨찾기 삭제`);
 }
@@ -3709,8 +3753,8 @@ window.onload = function() {
     if (navigator.userAgent.includes('Android')) document.body.classList.add('android-app');
     favorites = favorites.filter(id => ALL_BEACHES.some(b => b.id === id));
     if (favorites.length === 0) { favorites = ['haeundae']; saveFavorites(); }
-    currentLocationId = favorites.includes(currentLocationId) ? currentLocationId : favorites[0];
     getMainBeachId();
+    currentLocationId = getDefaultLocationId();
     loadNotificationSettingsToUI();
     syncTempUnitButtons();
     renderProfileTab();
