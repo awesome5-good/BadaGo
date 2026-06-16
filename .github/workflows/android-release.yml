@@ -1,4 +1,4 @@
-name: Android APK Release
+name: Android APK & AAB Release
 
 on:
   push:
@@ -59,18 +59,37 @@ jobs:
             -Pandroid.injected.signing.key.password="${{ secrets.ANDROID_KEY_PASSWORD }}"
           test -f android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Prepare release asset
-        run: cp android/app/build/outputs/apk/release/app-release.apk "BadaGo-${{ github.run_number }}.apk"
+      - name: Build release AAB
+        run: |
+          cd android
+          ./gradlew bundleRelease --no-daemon
+          test -f app/build/outputs/bundle/release/app-release.aab
+
+      - name: Sign AAB
+        run: |
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore android/release.keystore \
+            -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            android/app/build/outputs/bundle/release/app-release.aab \
+            "${{ secrets.ANDROID_KEY_ALIAS }}"
+
+      - name: Prepare release assets
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk "BadaGo-${{ github.run_number }}.apk"
+          cp android/app/build/outputs/bundle/release/app-release.aab "BadaGo-${{ github.run_number }}.aab"
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-${{ github.run_number }}
-          name: BadaGo APK #${{ github.run_number }}
+          name: BadaGo #${{ github.run_number }}
           body: |
-            자동 빌드 APK (release, 고정 키 서명)
+            자동 빌드 APK + AAB (release, 고정 키 서명)
             - Run: ${{ github.run_number }}
             - Commit: ${{ github.sha }}
             - Branch: ${{ github.ref_name }}
-          files: BadaGo-${{ github.run_number }}.apk
+          files: |
+            BadaGo-${{ github.run_number }}.apk
+            BadaGo-${{ github.run_number }}.aab
           make_latest: true
