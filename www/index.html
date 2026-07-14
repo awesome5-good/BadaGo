@@ -2489,9 +2489,10 @@ function getCharInfo(temp) {
     if (temp <= 10) return { img:'https://i.imgur.com/3b6NSFh.png', text:'풀슈트+후드+장갑+부츠 필수!', sub:'15분 이내 권장' };
     if (temp <= 14) return { img:'https://i.imgur.com/Pc5bUs1.png', text:'풀슈트+장갑+후드 착용', sub:'30분 이내 권장' };
     if (temp <= 17) return { img:'https://i.imgur.com/Y0ASHWS.png', text:'풀슈트 착용', sub:'45분 이내 권장' };
-    if (temp <= 20) return { img:'https://i.imgur.com/8VR2nWX.png', text:'나시슈트 OK', sub:'60분 이내 권장' };
-    if (temp <= 23) return { img:'https://i.imgur.com/FkAqcjO.png', text:'반팔숏슈트 OK 👌', sub:'수온 적당 · 쾌적해요' };
-    return { img:'https://i.imgur.com/uEV5qB3.png', text:'수영복으로 알탕 가능! 🌊', sub:'오늘 바다 완전 좋아요' };
+    if (temp <= 19) return { img:'https://i.imgur.com/8VR2nWX.png', text:'나시슈트 입고 입수! 🤿', sub:'슬슬 바다 느낌 나요' };
+    if (temp <= 21) return { img:'https://i.imgur.com/FkAqcjO.png', text:'숏슈트면 딱이에요 👌', sub:'제법 들어갈 만해요' };
+    if (temp <= 23) return { img:'https://i.imgur.com/uEV5qB3.png', text:'수영복으로 알탕 가능! 🩱', sub:'오늘 바다 완전 좋아요' };
+    return { img:'https://i.imgur.com/uEV5qB3.png', text:'수영복 입고 풍덩! 🌊', sub:'바다가 부르고 있어요' };
 }
 
 function getSvgFallback(temp) {
@@ -2499,9 +2500,10 @@ function getSvgFallback(temp) {
     if(temp<=10){cs='#a5f3fc';ce='#1d4ed8';em='🥶';}
     else if(temp<=14){cs='#60a5fa';ce='#1e3a8a';em='🥶';}
     else if(temp<=17){cs='#2dd4bf';ce='#0f766e';em='🏊';}
-    else if(temp<=20){cs='#34d399';ce='#065f46';em='🚣';}
-    else if(temp<=23){cs='#fbbf24';ce='#b45309';em='😄';}
-    else{cs='#f97316';ce='#9a3412';em='😎';}
+    else if(temp<=19){cs='#34d399';ce='#065f46';em='🚣';}
+    else if(temp<=21){cs='#fbbf24';ce='#b45309';em='😄';}
+    else if(temp<=23){cs='#f97316';ce='#9a3412';em='😎';}
+    else{cs='#f97316';ce='#9a3412';em='🌊';}
     return `<svg viewBox='0 0 120 120' style='width:140px;height:140px;display:block;'><defs><linearGradient id='gf' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='${cs}'/><stop offset='100%' stop-color='${ce}'/></linearGradient></defs><rect width='120' height='120' rx='20' fill='url(#gf)'/><text x='60' y='70' font-size='44' text-anchor='middle' dominant-baseline='middle'>${em}</text></svg>`;
 }
 
