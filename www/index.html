@@ -484,11 +484,22 @@
         .notif-time-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; flex-wrap: nowrap; }
         .notif-time-scroll::-webkit-scrollbar { display: none; }
         .notif-time-scroll .radio-pill span { white-space: nowrap; font-size: 12px; padding: 8px 12px; }
+
+        @keyframes splashFloat {
+            0%   { transform: translateY(0px); }
+            50%  { transform: translateY(-18px); }
+            100% { transform: translateY(0px); }
+        }
+        #splash-img-wrap {
+            animation: splashFloat 2s ease-in-out infinite;
+        }
     </style>
 </head>
 <body>
-<div id="splash-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0ea5e9;z-index:9999;overflow:hidden;">
-  <img src="splash.png" id="splash-img" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" />
+<div id="splash-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0ea5e9;z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div id="splash-img-wrap" style="width:100%;height:100%;position:relative;overflow:hidden;">
+    <img src="splash.png" id="splash-img" style="width:100%;height:110%;object-fit:cover;position:absolute;top:0;left:0;" />
+  </div>
 </div>
 <div class="phone-frame">
     <div class="content-scroll">
@@ -3820,10 +3831,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const splashEl = document.getElementById('splash-overlay');
     if (splashEl) {
         setTimeout(() => {
-            splashEl.style.transition = 'opacity 0.5s ease';
+            splashEl.style.transition = 'opacity 0.6s ease';
             splashEl.style.opacity = '0';
-            setTimeout(() => splashEl.remove(), 500);
-        }, 1500);
+            setTimeout(() => splashEl.remove(), 600);
+        }, 1800);
     }
 });
 
