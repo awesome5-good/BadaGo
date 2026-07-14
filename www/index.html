@@ -80,31 +80,6 @@
         .skeleton-card-val { width: 52px; height: 18px; }
         .info-card .skeleton { background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%); background-size: 200px 100%; }
 
-        /* 로딩 수영 캐릭터 오버레이 */
-        .swim-loading-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 10000;
-            background: #4BBDE8;
-            overflow: hidden;
-            pointer-events: none;
-        }
-        .swim-loading-char {
-            position: absolute;
-            top: 50%;
-            left: 0;
-            width: 140px;
-            height: auto;
-            object-fit: contain;
-            transform: translateY(-50%) translateX(110vw);
-            animation: swim-across 2.5s linear infinite;
-            will-change: transform;
-        }
-        @keyframes swim-across {
-            from { transform: translateY(-50%) translateX(110vw); }
-            to { transform: translateY(-50%) translateX(-110vw); }
-        }
-
         /* 캐릭터 + 수온 */
         .char-temp-section { display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 8px; margin: 0 auto 20px; width: fit-content; padding: 0 6px; }
         .character-box { width: 150px !important; height: 150px !important; background: transparent; border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -512,6 +487,9 @@
     </style>
 </head>
 <body>
+<div id="splash-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#0ea5e9;z-index:9999;overflow:hidden;">
+  <img src="splash.png" id="splash-img" style="width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;" />
+</div>
 <div class="phone-frame">
     <div class="content-scroll">
 
@@ -1197,7 +1175,6 @@ let currentAirTemp = null;
 let isLoading = false;
 const BEACH_DATA_CACHE_KEY = 'bada_beach_data_cache';
 const BEACH_DATA_CACHE_TTL_MS = 10 * 60 * 1000;
-const SWIM_LOADER_IMG = 'https://i.imgur.com/uEV5qB3.png';
 let usedKhoaApi = false;
 let usedKmaApi = false;
 let usedNifsApi = false;
@@ -2159,20 +2136,6 @@ function showSkeletonUI() {
     });
 }
 
-function showSwimLoadingOverlay() {
-    hideSwimLoadingOverlay();
-    const overlay = document.createElement('div');
-    overlay.id = 'swim-loading-overlay';
-    overlay.className = 'swim-loading-overlay';
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.innerHTML = `<img class="swim-loading-char" src="${SWIM_LOADER_IMG}" alt="" />`;
-    document.body.appendChild(overlay);
-}
-
-function hideSwimLoadingOverlay() {
-    document.getElementById('swim-loading-overlay')?.remove();
-}
-
 function tryShowCachedBeachData(locationId) {
     const cached = loadBeachDataCache(locationId);
     if (!cached) return false;
@@ -2248,7 +2211,6 @@ async function fetchAllData(opts = {}) {
         currentWaterTempIsSatellite = false;
         btn.classList.add('spinning');
         showSkeletonUI();
-        showSwimLoadingOverlay();
         setApiStatus('loading', '실시간 데이터 불러오는 중...');
     }
 
@@ -2345,7 +2307,6 @@ async function fetchAllData(opts = {}) {
         }
     } finally {
         if (!background) {
-            hideSwimLoadingOverlay();
             isLoading = false;
             setTimeout(() => btn.classList.remove('spinning'), 600);
         }
@@ -3855,6 +3816,17 @@ function showToast(msg) {
 // =====================================================
 //  초기화
 // =====================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const splashEl = document.getElementById('splash-overlay');
+    if (splashEl) {
+        setTimeout(() => {
+            splashEl.style.transition = 'opacity 0.5s ease';
+            splashEl.style.opacity = '0';
+            setTimeout(() => splashEl.remove(), 500);
+        }, 1500);
+    }
+});
+
 window.onload = function() {
     if (navigator.userAgent.includes('Android')) document.body.classList.add('android-app');
     favorites = favorites.filter(id => ALL_BEACHES.some(b => b.id === id));
