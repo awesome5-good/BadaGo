@@ -485,7 +485,6 @@
         .notif-time-scroll::-webkit-scrollbar { display: none; }
         .notif-time-scroll .radio-pill span { white-space: nowrap; font-size: 12px; padding: 8px 12px; }
     </style>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
 <div class="phone-frame">
@@ -1018,8 +1017,6 @@
     </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // =====================================================
 //  전국 해변 데이터베이스 (바다누리 BeachCode)
@@ -2225,8 +2222,8 @@ async function fetchAllData(opts = {}) {
     });
 
     try {
-        const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&past_days=1&forecast_days=2`;
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=Asia%2FSeoul&past_days=1&forecast_days=3`;
+        const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${loc.lat}&longitude=${loc.lon}&current=wave_height,sea_surface_temperature&hourly=sea_surface_temperature,wave_height&timezone=Asia%2FSeoul&forecast_days=2`;
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=Asia%2FSeoul&forecast_days=2`;
         logApiFetch('배경', 'Open-Meteo marine', marineUrl);
         logApiFetch('배경', 'Open-Meteo weather', weatherUrl);
 
@@ -2485,6 +2482,9 @@ function removeFavorite(id, e) {
 // =====================================================
 //  캐릭터 + 수온
 // =====================================================
+/** 이미지 URL 변경 시에만 버전 번호를 올려주세요 */
+const CHAR_IMG_VERSION = '1';
+
 function getCharInfo(temp) {
     if (temp <= 10) return { img:'https://i.imgur.com/3b6NSFh.png', text:'풀슈트+후드+장갑+부츠 필수!', sub:'15분 이내 권장' };
     if (temp <= 14) return { img:'https://i.imgur.com/Pc5bUs1.png', text:'풀슈트+장갑+후드 착용', sub:'30분 이내 권장' };
@@ -2516,7 +2516,7 @@ function renderCharTemp() {
     document.getElementById('main-suit-text').textContent = cInfo.text;
     document.getElementById('main-sub-text').textContent = cInfo.sub;
     document.getElementById('char-image-container').innerHTML =
-        `<img src="${cInfo.img}?v=${Date.now()}" alt="캐릭터"
+        `<img src="${cInfo.img}?v=${CHAR_IMG_VERSION}" alt="캐릭터"
             onerror="this.onerror=null;this.outerHTML='${getSvgFallback(temp)}';"
             style="width:140px!important;height:140px!important;object-fit:contain;display:block;">`;
 }
@@ -2925,6 +2925,55 @@ let stravaDetailActivity = null;
 let stravaTabInitialized = false;
 let stravaOAuthInProgress = false;
 let stravaOAuthListenersReady = false;
+
+const LEAFLET_CSS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+const LEAFLET_JS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+const HTML2CANVAS_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+let stravaLibsPromise = null;
+
+function loadStylesheet(href) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`link[rel="stylesheet"][href="${href}"]`)) {
+            resolve();
+            return;
+        }
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        link.onload = () => resolve();
+        link.onerror = () => reject(new Error(`stylesheet load failed: ${href}`));
+        document.head.appendChild(link);
+    });
+}
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`script load failed: ${src}`));
+        document.body.appendChild(script);
+    });
+}
+
+function ensureStravaLibsLoaded() {
+    if (!stravaLibsPromise) {
+        stravaLibsPromise = (async () => {
+            await loadStylesheet(LEAFLET_CSS_URL);
+            await loadScript(LEAFLET_JS_URL);
+            await loadScript(HTML2CANVAS_JS_URL);
+        })().catch((err) => {
+            stravaLibsPromise = null;
+            throw err;
+        });
+    }
+    return stravaLibsPromise;
+}
 
 function isCapacitorNative() {
     return !!(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -3351,6 +3400,11 @@ async function loadStravaActivities() {
 }
 
 async function initStravaTab() {
+    try {
+        await ensureStravaLibsLoaded();
+    } catch (e) {
+        console.warn('[Strava] lazy libs load failed', e);
+    }
     renderStravaUI();
     if (!getStravaTokens()) return;
     if (!stravaTabInitialized || !stravaActivities.length) {
@@ -3487,6 +3541,7 @@ function canvasToBase64Png(canvas) {
 }
 
 async function captureStravaSheetCanvas() {
+    await ensureStravaLibsLoaded();
     const target = document.getElementById('strava-detail-capture-root');
     const scroll = document.getElementById('strava-detail-scroll');
     const body = document.getElementById('strava-detail-body');
@@ -3684,7 +3739,7 @@ function resetStravaSheetTransform() {
     stravaSheetSwipe.active = false;
 }
 
-function openStravaDetail(activityId) {
+async function openStravaDetail(activityId) {
     const activity = stravaActivities.find(a => a.id === activityId);
     if (!activity) return;
     stravaDetailActivity = activity;
@@ -3720,9 +3775,16 @@ function openStravaDetail(activityId) {
     document.getElementById('strava-detail-overlay').classList.add('show');
 
     if (summaryPolyline) {
-        requestAnimationFrame(() => {
-            setTimeout(() => renderStravaDetailMap(summaryPolyline), 80);
-        });
+        try {
+            await ensureStravaLibsLoaded();
+            requestAnimationFrame(() => {
+                setTimeout(() => renderStravaDetailMap(summaryPolyline), 80);
+            });
+        } catch (e) {
+            console.warn('[Strava] map libs load failed', e);
+            const mapEl = document.getElementById('strava-detail-map');
+            if (mapEl) mapEl.outerHTML = '<div class="strava-detail-map-placeholder">지도를 불러올 수 없습니다</div>';
+        }
     }
 }
 
