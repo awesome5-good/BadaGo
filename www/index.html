@@ -1222,7 +1222,7 @@ function setWeatherBadgeHtml(el, wCode, airTemp) {
 // =====================================================
 const KHOA_SERVICE_KEY = 'asGG26KX5P9eLKZkroj0Kg==';
 const KHOA_BEACH_API = 'https://khoa.go.kr/oceandata/api/beach/search.do';
-// TODO: 공공데이터포털 기상청 단기예보 API 키 입력
+// TODO: 공공데이터포털 기상청 ASOS 시간자료 API 키 (KMA_NCST_KEY)
 const KMA_NCST_KEY = '4f518baf8a28ed0f517bba932b36bc8dccb2b3c5c5b16993de091777e0f48ef4';
 const KMA_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/kma-beach';
 const KHOA_HOURLY_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/khoa-hourly';
@@ -1242,88 +1242,62 @@ function getKhoaHourlyApiBase() {
     return KHOA_HOURLY_REMOTE_API_BASE;
 }
 
-async function fetchKmaUltraSrtNcst(nx, ny) {
+async function fetchKmaAsosHourly(stnId) {
     const now = new Date();
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-    const baseDate = kst.toISOString().slice(0, 10).replace(/-/g, '');
-    // 초단기실황: 매시 40분 발표 → 현재시각 -1시간으로 안전하게
-    let baseHour = kst.getUTCHours();
-    if (kst.getUTCMinutes() < 40) baseHour -= 1;
-    if (baseHour < 0) baseHour = 23;
-    const baseTime = String(baseHour).padStart(2, '0') + '00';
+    const year = kst.getUTCFullYear();
+    const month = String(kst.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(kst.getUTCDate()).padStart(2, '0');
+    const hour = String(kst.getUTCHours()).padStart(2, '0');
 
-    if (!KMA_NCST_KEY) throw new Error('KMA_NCST_KEY not configured');
+    const url = `https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList?serviceKey=${KMA_NCST_KEY}&numOfRows=1&pageNo=1&dataType=JSON&dataCd=ASOS&dateCd=HR&startDt=${year}${month}${day}&startHh=${hour}&endDt=${year}${month}${day}&endHh=${hour}&stnIds=${stnId}`;
+    logApiFetch('기온', `KMA ASOS stnId=${stnId}`, 'getWthrDataList');
 
-    const url = `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst?serviceKey=${encodeURIComponent(KMA_NCST_KEY)}&numOfRows=10&pageNo=1&dataType=JSON&base_date=${baseDate}&base_time=${baseTime}&nx=${nx}&ny=${ny}`;
-    logApiFetch('기온', `KMA 초단기실황 nx=${nx} ny=${ny}`, 'getUltraSrtNcst');
-
-    const res = await fetch(url);
-    const data = await res.json();
-    const items = data?.response?.body?.items?.item || [];
-    if (!Array.isArray(items) || items.length === 0) {
-        throw new Error(data?.response?.header?.resultMsg || 'KMA 초단기실황 데이터 없음');
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const item = data?.response?.body?.items?.item?.[0];
+        if (!item) return null;
+        return {
+            airTemp: item.ta !== undefined ? parseFloat(item.ta) : null,
+            windSpeed: item.ws !== undefined ? parseFloat(item.ws) : null,
+            windDir: item.wd !== undefined ? parseFloat(item.wd) : null,
+        };
+    } catch (e) {
+        console.warn('ASOS API 실패:', e);
+        return null;
     }
-
-    const result = {};
-    items.forEach(item => {
-        if (item.category === 'T1H') result.airTemp = parseFloat(item.obsrValue);
-        if (item.category === 'WSD') result.windSpeed = parseFloat(item.obsrValue);
-        if (item.category === 'VEC') result.windDir = parseFloat(item.obsrValue);
-        if (item.category === 'SKY') result.skyCode = parseInt(item.obsrValue, 10);
-        if (item.category === 'PTY') result.ptyCode = parseInt(item.obsrValue, 10);
-    });
-    return result;
 }
 
-function mapKmaSkyPtyToWeatherCode(skyCode, ptyCode) {
-    const pty = ptyCode ?? 0;
-    const sky = skyCode ?? 1;
-    if (pty === 3 || pty === 7) return 71;
-    if (pty === 2) return 71;
-    if (pty === 1 || pty === 4 || pty === 5) return 61;
-    if (pty === 6) return 71;
-    if (sky === 1) return 0;
-    if (sky === 3) return 2;
-    if (sky === 4) return 3;
-    return 0;
-}
+function applyKmaAsosOverlay(asosData, weather) {
+    airTempFromKmaAsos = false;
 
-function applyKmaUltraSrtOverlay(kmaRealtime, weather) {
-    airTempFromKmaNcst = false;
-
-    if (kmaRealtime?.airTemp != null && !Number.isNaN(kmaRealtime.airTemp)) {
-        currentAirTemp = kmaRealtime.airTemp;
-        airTempFromKmaNcst = true;
-    } else {
-        currentAirTemp = weather?.current?.temperature_2m ?? null;
-        if (weather?.current?.temperature_2m != null) {
-            console.warn('[BadaGo] 기상청 초단기실황 기온 실패 → Open-Meteo 예보 fallback');
-        }
+    currentAirTemp = asosData?.airTemp ?? weather?.current?.temperature_2m ?? null;
+    if (asosData?.airTemp != null && !Number.isNaN(asosData.airTemp)) {
+        airTempFromKmaAsos = true;
+    } else if (weather?.current?.temperature_2m != null) {
+        console.warn('[BadaGo] 기상청 ASOS 실측 기온 실패 → Open-Meteo 예보 fallback');
     }
 
-    if (kmaRealtime?.windSpeed != null && !Number.isNaN(kmaRealtime.windSpeed)) {
-        currentWindSpeed = kmaRealtime.windSpeed;
+    if (asosData?.windSpeed != null && !Number.isNaN(asosData.windSpeed)) {
+        currentWindSpeed = asosData.windSpeed;
     } else if (weather?.current?.wind_speed_10m != null) {
         const windKmh = weather.current.wind_speed_10m;
         currentWindSpeed = Math.round(windKmh / 3.6 * 10) / 10;
-        if (!kmaRealtime?.windSpeed) {
-            console.warn('[BadaGo] 기상청 초단기실황 풍속 실패 → Open-Meteo 예보 fallback');
+        if (!asosData?.windSpeed) {
+            console.warn('[BadaGo] 기상청 ASOS 풍속 실패 → Open-Meteo 예보 fallback');
         }
     }
 
-    if (kmaRealtime?.windDir != null && !Number.isNaN(kmaRealtime.windDir)) {
-        currentWindDirection = kmaRealtime.windDir;
+    if (asosData?.windDir != null && !Number.isNaN(asosData.windDir)) {
+        currentWindDirection = asosData.windDir;
     } else {
         currentWindDirection = weather?.current?.wind_direction_10m ?? null;
-    }
-
-    if (kmaRealtime?.skyCode != null || kmaRealtime?.ptyCode != null) {
-        window._weatherCode = mapKmaSkyPtyToWeatherCode(kmaRealtime.skyCode, kmaRealtime.ptyCode);
     }
 }
 
 function updateAirTempSourceLabel() {
-    const label = airTempFromKmaNcst ? '기상청 실황' : '예보 기준';
+    const label = airTempFromKmaAsos ? '기상청 실측' : '예보 기준';
     ['air-temp-source-label', 'weather-tab-air-source-label'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.textContent = label;
@@ -1476,59 +1450,59 @@ const NIFS_STATION_CODES = {
 
 const ALL_BEACHES = [
     // 부산 — kmaBeachId: weather.go.kr · obsCode: 부산(DT_0005) 조위관측소 실측 수온 (해운대 전용 DT 없음)
-    { id:'haeundae',   name:'해운대',     emoji:'🏖️', region:'부산', lat:35.158, lon:129.160, nx:99, ny:75, beachCode:'BCH001', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['해운대'] },
-    { id:'gwangan',    name:'광안리',     emoji:'🌉', region:'부산', lat:35.153, lon:129.118, nx:99, ny:75, beachCode:'BCH002', kmaBeachId:'306', nifsStation:'부산',   khoaObsAccept:['광안리','광안','수영','남천'] },
-    { id:'songjeong',  name:'송정',       emoji:'🌊', region:'부산', lat:35.179, lon:129.209, nx:100, ny:76, beachCode:'BCH010', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['송정','해운대'] },
-    { id:'songdo',     name:'송도',       emoji:'🎡', region:'부산', lat:35.091, lon:129.014, nx:97, ny:74, beachCode:'BCH012', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'268', nifsStation:'부산',   khoaObsAccept:['송도','감천','부산'] },
-    { id:'dadaepo',    name:'다대포',     emoji:'🏄', region:'부산', lat:35.046, lon:128.965, nx:96, ny:73, beachCode:'BCH013', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'308', nifsStation:'부산',   khoaObsAccept:['다대포','감천','부산'] },
-    { id:'ilgwang',    name:'일광',       emoji:'🐚', region:'부산', lat:35.245, lon:129.228, nx:100, ny:77, beachCode:'BCH008', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'310', nifsStation:'해운대', khoaObsAccept:['일광','임랑'] },
+    { id:'haeundae',   name:'해운대',     emoji:'🏖️', region:'부산', lat:35.158, lon:129.160, stnId:661, beachCode:'BCH001', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['해운대'] },
+    { id:'gwangan',    name:'광안리',     emoji:'🌉', region:'부산', lat:35.153, lon:129.118, stnId:661, beachCode:'BCH002', kmaBeachId:'306', nifsStation:'부산',   khoaObsAccept:['광안리','광안','수영','남천'] },
+    { id:'songjeong',  name:'송정',       emoji:'🌊', region:'부산', lat:35.179, lon:129.209, stnId:661, beachCode:'BCH010', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['송정','해운대'] },
+    { id:'songdo',     name:'송도',       emoji:'🎡', region:'부산', lat:35.091, lon:129.014, stnId:725, beachCode:'BCH012', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'268', nifsStation:'부산',   khoaObsAccept:['송도','감천','부산'] },
+    { id:'dadaepo',    name:'다대포',     emoji:'🏄', region:'부산', lat:35.046, lon:128.965, stnId:723, beachCode:'BCH013', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'308', nifsStation:'부산',   khoaObsAccept:['다대포','감천','부산'] },
+    { id:'ilgwang',    name:'일광',       emoji:'🐚', region:'부산', lat:35.245, lon:129.228, stnId:661, beachCode:'BCH008', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'310', nifsStation:'해운대', khoaObsAccept:['일광','임랑'] },
     // 경남
-    { id:'sangju',     name:'상주은모래', emoji:'✨', region:'경남', lat:34.837, lon:128.422, nx:86, ny:68, beachCode:'BCH041', obsCode:null, kmaBeachId:'122' },
-    { id:'hakdong',    name:'학동(몽돌)', emoji:'🪨', region:'경남', lat:34.77, lon:128.67, nx:91, ny:67, beachCode:'BCH042', obsCode:null, kmaBeachId:'325' },
-    { id:'jinha',      name:'진하',       emoji:'🌅', region:'경남', lat:35.403, lon:129.324, nx:102, ny:81, beachCode:'BCH006', obsCode:'DT_0005', kmaBeachId:'311' },
-    { id:'gujora',     name:'구조라',     emoji:'🏖️', region:'경남', lat:34.80, lon:128.70, nx:91, ny:67, kmaBeachId:'323' },
-    { id:'mangchi',    name:'망치',       emoji:'🌊', region:'경남', lat:34.82, lon:128.72, nx:92, ny:68, kmaBeachId:'321' },
-    { id:'deokpo',     name:'덕포',       emoji:'⛵', region:'경남', lat:35.08, lon:128.97, nx:96, ny:74, kmaBeachId:'318' },
+    { id:'sangju',     name:'상주은모래', emoji:'✨', region:'경남', lat:34.837, lon:128.422, stnId:162, beachCode:'BCH041', obsCode:null, kmaBeachId:'122' },
+    { id:'hakdong',    name:'학동(몽돌)', emoji:'🪨', region:'경남', lat:34.77, lon:128.67, stnId:168, beachCode:'BCH042', obsCode:null, kmaBeachId:'325' },
+    { id:'jinha',      name:'진하',       emoji:'🌅', region:'경남', lat:35.403, lon:129.324, stnId:192, beachCode:'BCH006', obsCode:'DT_0005', kmaBeachId:'311' },
+    { id:'gujora',     name:'구조라',     emoji:'🏖️', region:'경남', lat:34.80, lon:128.70, stnId:168, kmaBeachId:'323' },
+    { id:'mangchi',    name:'망치',       emoji:'🌊', region:'경남', lat:34.82, lon:128.72, stnId:168, kmaBeachId:'321' },
+    { id:'deokpo',     name:'덕포',       emoji:'⛵', region:'경남', lat:35.08, lon:128.97, stnId:723, kmaBeachId:'318' },
     // 강원
-    { id:'gyeongpo',   name:'경포대',     emoji:'🌲', region:'강원', lat:37.803, lon:128.910, nx:93, ny:133, beachCode:'BCH031', obsCode:null, kmaBeachId:'176', nifsStation:'강릉', khoaObsAccept:['경포','강릉'] },
-    { id:'naksan',     name:'낙산',       emoji:'🏯', region:'강원', lat:38.115, lon:128.635, nx:88, ny:139, beachCode:'BCH005', obsCode:null, kmaBeachId:'262', nifsStation:'속초', khoaObsAccept:['낙산'] },
-    { id:'sokcho',     name:'속초',       emoji:'🏖️', region:'강원', lat:38.192, lon:128.588, nx:87, ny:141, beachCode:'BCH003', obsCode:null, kmaBeachId:'201', nifsStation:'속초', khoaObsAccept:['속초'] },
-    { id:'hajodae',    name:'하조대',     emoji:'🌊', region:'강원', lat:38.21, lon:128.60, nx:87, ny:141, beachCode:'BCH007', obsCode:null, kmaBeachId:'249', nifsStation:'속초', khoaObsAccept:['하조대','낙산'] },
-    { id:'jeongdongjin', name:'정동진',   emoji:'🌄', region:'강원', lat:37.682, lon:129.049, nx:95, ny:130, beachCode:'BCH050', obsCode:null, kmaBeachId:'349', nifsStation:'강릉', khoaObsAccept:['정동진','망상'] },
-    { id:'maengbang',  name:'맹방',       emoji:'🏖️', region:'강원', lat:37.584, lon:129.117, nx:97, ny:128, beachCode:'BCH049', obsCode:null, kmaBeachId:'350' },
-    { id:'samcheok',   name:'삼척',       emoji:'⛰️', region:'강원', lat:37.443, lon:129.167, nx:98, ny:125, beachCode:'BCH009', obsCode:null, kmaBeachId:'351' },
-    { id:'mangsang',   name:'망상',       emoji:'🌅', region:'강원', lat:37.57, lon:129.12, nx:97, ny:128, beachCode:'BCH004', obsCode:null, kmaBeachId:'198', nifsStation:'강릉', khoaObsAccept:['망상'] },
-    { id:'gangmun',    name:'강문',       emoji:'🏖️', region:'강원', lat:37.77, lon:128.94, nx:93, ny:132, kmaBeachId:'172' },
-    { id:'anmok',      name:'안목',       emoji:'🌅', region:'강원', lat:37.78, lon:128.95, nx:94, ny:132, kmaBeachId:'174' },
-    { id:'goraebul',   name:'고래불',     emoji:'🐋', region:'경북', lat:36.578, lon:129.402, nx:102, ny:106, beachCode:'BCH048', obsCode:null, kmaBeachId:'288' },
+    { id:'gyeongpo',   name:'경포대',     emoji:'🌲', region:'강원', lat:37.803, lon:128.910, stnId:105, beachCode:'BCH031', obsCode:null, kmaBeachId:'176', nifsStation:'강릉', khoaObsAccept:['경포','강릉'] },
+    { id:'naksan',     name:'낙산',       emoji:'🏯', region:'강원', lat:38.115, lon:128.635, stnId:90, beachCode:'BCH005', obsCode:null, kmaBeachId:'262', nifsStation:'속초', khoaObsAccept:['낙산'] },
+    { id:'sokcho',     name:'속초',       emoji:'🏖️', region:'강원', lat:38.192, lon:128.588, stnId:90, beachCode:'BCH003', obsCode:null, kmaBeachId:'201', nifsStation:'속초', khoaObsAccept:['속초'] },
+    { id:'hajodae',    name:'하조대',     emoji:'🌊', region:'강원', lat:38.21, lon:128.60, stnId:90, beachCode:'BCH007', obsCode:null, kmaBeachId:'249', nifsStation:'속초', khoaObsAccept:['하조대','낙산'] },
+    { id:'jeongdongjin', name:'정동진',   emoji:'🌄', region:'강원', lat:37.682, lon:129.049, stnId:105, beachCode:'BCH050', obsCode:null, kmaBeachId:'349', nifsStation:'강릉', khoaObsAccept:['정동진','망상'] },
+    { id:'maengbang',  name:'맹방',       emoji:'🏖️', region:'강원', lat:37.584, lon:129.117, stnId:211, beachCode:'BCH049', obsCode:null, kmaBeachId:'350' },
+    { id:'samcheok',   name:'삼척',       emoji:'⛰️', region:'강원', lat:37.443, lon:129.167, stnId:174, beachCode:'BCH009', obsCode:null, kmaBeachId:'351' },
+    { id:'mangsang',   name:'망상',       emoji:'🌅', region:'강원', lat:37.57, lon:129.12, stnId:211, beachCode:'BCH004', obsCode:null, kmaBeachId:'198', nifsStation:'강릉', khoaObsAccept:['망상'] },
+    { id:'gangmun',    name:'강문',       emoji:'🏖️', region:'강원', lat:37.77, lon:128.94, stnId:105, kmaBeachId:'172' },
+    { id:'anmok',      name:'안목',       emoji:'🌅', region:'강원', lat:37.78, lon:128.95, stnId:105, kmaBeachId:'174' },
+    { id:'goraebul',   name:'고래불',     emoji:'🐋', region:'경북', lat:36.578, lon:129.402, stnId:130, beachCode:'BCH048', obsCode:null, kmaBeachId:'288' },
     // 경북 (포항) — obsCode: 포항 조위관측소 DT_0009
-    { id:'yeongildae', name:'영일대',     emoji:'🌇', region:'경북', lat:36.051, lon:129.378, nx:102, ny:95, beachCode:'BCH044', obsCode:'DT_0009', kmaBeachId:'271', khoaObsAccept:['영일','영일대','포항'] },
-    { id:'wolpo',      name:'월포',       emoji:'🌙', region:'경북', lat:36.178, lon:129.373, nx:102, ny:98, beachCode:'BCH045', obsCode:'DT_0009', kmaBeachId:'273', khoaObsAccept:['월포','포항'] },
-    { id:'hwajin',     name:'화진',       emoji:'🏖️', region:'경북', lat:36.105, lon:129.432, nx:103, ny:96, beachCode:'BCH046', obsCode:'DT_0009', kmaBeachId:'274', khoaObsAccept:['화진','포항'] },
-    { id:'jangsa',     name:'장사',       emoji:'🌊', region:'경북', lat:36.139, lon:129.368, nx:102, ny:97, beachCode:'BCH047', obsCode:'DT_0009', kmaBeachId:'284', khoaObsAccept:['장사','포항'] },
-    { id:'chilpo',     name:'칠포',       emoji:'🏄', region:'경북', lat:36.302, lon:129.244, nx:100, ny:100, beachCode:'BCH072', obsCode:'DT_0009', kmaBeachId:'272', khoaObsAccept:['칠포','포항'] },
+    { id:'yeongildae', name:'영일대',     emoji:'🌇', region:'경북', lat:36.051, lon:129.378, stnId:288, beachCode:'BCH044', obsCode:'DT_0009', kmaBeachId:'271', khoaObsAccept:['영일','영일대','포항'] },
+    { id:'wolpo',      name:'월포',       emoji:'🌙', region:'경북', lat:36.178, lon:129.373, stnId:288, beachCode:'BCH045', obsCode:'DT_0009', kmaBeachId:'273', khoaObsAccept:['월포','포항'] },
+    { id:'hwajin',     name:'화진',       emoji:'🏖️', region:'경북', lat:36.105, lon:129.432, stnId:288, beachCode:'BCH046', obsCode:'DT_0009', kmaBeachId:'274', khoaObsAccept:['화진','포항'] },
+    { id:'jangsa',     name:'장사',       emoji:'🌊', region:'경북', lat:36.139, lon:129.368, stnId:288, beachCode:'BCH047', obsCode:'DT_0009', kmaBeachId:'284', khoaObsAccept:['장사','포항'] },
+    { id:'chilpo',     name:'칠포',       emoji:'🏄', region:'경북', lat:36.302, lon:129.244, stnId:288, beachCode:'BCH072', obsCode:'DT_0009', kmaBeachId:'272', khoaObsAccept:['칠포','포항'] },
     // 충남
-    { id:'daecheon',   name:'대천',       emoji:'🦀', region:'충남', lat:36.310, lon:126.513, nx:52, ny:99, beachCode:'BCH014', obsCode:null, kmaBeachId:'41', nifsStation:'보령', khoaObsAccept:['대천'] },
-    { id:'kkotji',     name:'꽃지',       emoji:'🌸', region:'충남', lat:36.65, lon:126.30, nx:48, ny:107, beachCode:'BCH015', obsCode:null, kmaBeachId:'44', nifsStation:'보령', khoaObsAccept:['꽃지','보령'] },
-    { id:'mallipo',    name:'만리포',     emoji:'🐟', region:'충남', lat:36.77, lon:126.13, nx:45, ny:109, beachCode:'BCH033', obsCode:null, kmaBeachId:'70', nifsStation:'보령', khoaObsAccept:['만리포','안흥'] },
-    { id:'muchangpo',  name:'무창포',     emoji:'🌊', region:'충남', lat:36.251, lon:126.453, nx:51, ny:98, beachCode:'BCH035', obsCode:null, kmaBeachId:'45', nifsStation:'보령', khoaObsAccept:['무창포','대천'] },
-    { id:'chunjangdae', name:'춘장대',    emoji:'🪨', region:'충남', lat:36.32, lon:126.57, nx:53, ny:100, beachCode:'BCH036', obsCode:null, kmaBeachId:'43' },
-    { id:'anmyeon',    name:'안면',       emoji:'🏝️', region:'충남', lat:36.525, lon:126.338, nx:49, ny:104, beachCode:'BCH011', obsCode:null, kmaBeachId:'46', nifsStation:'보령', khoaObsAccept:['안면','보령'] },
+    { id:'daecheon',   name:'대천',       emoji:'🦀', region:'충남', lat:36.310, lon:126.513, stnId:235, beachCode:'BCH014', obsCode:null, kmaBeachId:'41', nifsStation:'보령', khoaObsAccept:['대천'] },
+    { id:'kkotji',     name:'꽃지',       emoji:'🌸', region:'충남', lat:36.65, lon:126.30, stnId:129, beachCode:'BCH015', obsCode:null, kmaBeachId:'44', nifsStation:'보령', khoaObsAccept:['꽃지','보령'] },
+    { id:'mallipo',    name:'만리포',     emoji:'🐟', region:'충남', lat:36.77, lon:126.13, stnId:129, beachCode:'BCH033', obsCode:null, kmaBeachId:'70', nifsStation:'보령', khoaObsAccept:['만리포','안흥'] },
+    { id:'muchangpo',  name:'무창포',     emoji:'🌊', region:'충남', lat:36.251, lon:126.453, stnId:235, beachCode:'BCH035', obsCode:null, kmaBeachId:'45', nifsStation:'보령', khoaObsAccept:['무창포','대천'] },
+    { id:'chunjangdae', name:'춘장대',    emoji:'🪨', region:'충남', lat:36.32, lon:126.57, stnId:235, beachCode:'BCH036', obsCode:null, kmaBeachId:'43' },
+    { id:'anmyeon',    name:'안면',       emoji:'🏝️', region:'충남', lat:36.525, lon:126.338, stnId:177, beachCode:'BCH011', obsCode:null, kmaBeachId:'46', nifsStation:'보령', khoaObsAccept:['안면','보령'] },
     // 제주
-    { id:'hyeopjae',   name:'협재',       emoji:'🟦', region:'제주', lat:33.394, lon:126.239, nx:47, ny:36, beachCode:'BCH020', obsCode:null, kmaBeachId:'346', nifsStation:'제주', khoaObsAccept:['협재','제주서부'] },
-    { id:'gwakji',     name:'곽지',       emoji:'🐠', region:'제주', lat:33.45, lon:126.30, nx:48, ny:37, beachCode:'BCH021', obsCode:null, kmaBeachId:'345', nifsStation:'제주', khoaObsAccept:['곽지','제주서부'] },
-    { id:'jungmun',    name:'중문',       emoji:'🏝️', region:'제주', lat:33.24, lon:126.41, nx:51, ny:32, beachCode:'BCH017', obsCode:null, kmaBeachId:'347', nifsStation:'제주', khoaObsAccept:['중문'] },
-    { id:'sinyang',    name:'신양',       emoji:'🌊', region:'제주', lat:33.52, lon:126.92, nx:60, ny:38, kmaBeachId:'344' },
-    { id:'hwasun',     name:'화순',       emoji:'🏖️', region:'제주', lat:33.24, lon:126.32, nx:49, ny:32, kmaBeachId:'343' },
-    { id:'hamdeok',    name:'함덕',       emoji:'🌺', region:'제주', lat:33.543, lon:126.670, nx:55, ny:39, beachCode:'BCH024', obsCode:null, kmaBeachId:'352', nifsStation:'제주', khoaObsAccept:['함덕','제주'] },
-    { id:'gimnyeong',  name:'김녕',       emoji:'🐚', region:'제주', lat:33.559, lon:126.764, nx:57, ny:39, beachCode:'BCH025', obsCode:null, kmaBeachId:'355', nifsStation:'제주', khoaObsAccept:['김녕','성산'] },
-    { id:'woljeongri', name:'월정리',     emoji:'🌙', region:'제주', lat:33.556, lon:126.794, nx:58, ny:39, beachCode:'BCH026', obsCode:null, kmaBeachId:'356', nifsStation:'제주', khoaObsAccept:['월정','성산'] },
-    { id:'pyoseon',    name:'표선',       emoji:'🌾', region:'제주', lat:33.323, lon:126.838, nx:58, ny:34, beachCode:'BCH018', obsCode:null, kmaBeachId:'172', nifsStation:'제주', khoaObsAccept:['표선','성산'] },
+    { id:'hyeopjae',   name:'협재',       emoji:'🟦', region:'제주', lat:33.394, lon:126.239, stnId:184, beachCode:'BCH020', obsCode:null, kmaBeachId:'346', nifsStation:'제주', khoaObsAccept:['협재','제주서부'] },
+    { id:'gwakji',     name:'곽지',       emoji:'🐠', region:'제주', lat:33.45, lon:126.30, stnId:184, beachCode:'BCH021', obsCode:null, kmaBeachId:'345', nifsStation:'제주', khoaObsAccept:['곽지','제주서부'] },
+    { id:'jungmun',    name:'중문',       emoji:'🏝️', region:'제주', lat:33.24, lon:126.41, stnId:189, beachCode:'BCH017', obsCode:null, kmaBeachId:'347', nifsStation:'제주', khoaObsAccept:['중문'] },
+    { id:'sinyang',    name:'신양',       emoji:'🌊', region:'제주', lat:33.52, lon:126.92, stnId:188, kmaBeachId:'344' },
+    { id:'hwasun',     name:'화순',       emoji:'🏖️', region:'제주', lat:33.24, lon:126.32, stnId:189, kmaBeachId:'343' },
+    { id:'hamdeok',    name:'함덕',       emoji:'🌺', region:'제주', lat:33.543, lon:126.670, stnId:184, beachCode:'BCH024', obsCode:null, kmaBeachId:'352', nifsStation:'제주', khoaObsAccept:['함덕','제주'] },
+    { id:'gimnyeong',  name:'김녕',       emoji:'🐚', region:'제주', lat:33.559, lon:126.764, stnId:188, beachCode:'BCH025', obsCode:null, kmaBeachId:'355', nifsStation:'제주', khoaObsAccept:['김녕','성산'] },
+    { id:'woljeongri', name:'월정리',     emoji:'🌙', region:'제주', lat:33.556, lon:126.794, stnId:188, beachCode:'BCH026', obsCode:null, kmaBeachId:'356', nifsStation:'제주', khoaObsAccept:['월정','성산'] },
+    { id:'pyoseon',    name:'표선',       emoji:'🌾', region:'제주', lat:33.323, lon:126.838, stnId:188, beachCode:'BCH018', obsCode:null, kmaBeachId:'172', nifsStation:'제주', khoaObsAccept:['표선','성산'] },
     // 전남
-    { id:'manseongri', name:'만성리',     emoji:'🌊', region:'전남', lat:34.722, lon:127.559, nx:71, ny:65, beachCode:'BCH040', obsCode:null, kmaBeachId:'122' },
-    { id:'sinjimyeongsa', name:'신지명사십리', emoji:'🌅', region:'전남', lat:34.42, lon:126.81, nx:58, ny:58, kmaBeachId:'136' },
-    { id:'yulpo',      name:'율포',       emoji:'🏖️', region:'전남', lat:34.63, lon:126.98, nx:61, ny:63, kmaBeachId:'122' },
-    { id:'myeongsa',   name:'명사',       emoji:'🌊', region:'전남', lat:34.68, lon:127.46, nx:69, ny:64, kmaBeachId:'323' },
+    { id:'manseongri', name:'만성리',     emoji:'🌊', region:'전남', lat:34.722, lon:127.559, stnId:257, beachCode:'BCH040', obsCode:null, kmaBeachId:'122' },
+    { id:'sinjimyeongsa', name:'신지명사십리', emoji:'🌅', region:'전남', lat:34.42, lon:126.81, stnId:261, kmaBeachId:'136' },
+    { id:'yulpo',      name:'율포',       emoji:'🏖️', region:'전남', lat:34.63, lon:126.98, stnId:295, kmaBeachId:'122' },
+    { id:'myeongsa',   name:'명사',       emoji:'🌊', region:'전남', lat:34.68, lon:127.46, stnId:295, kmaBeachId:'323' },
 ];
 
 // =====================================================
@@ -1545,7 +1519,7 @@ let currentWaveHeight = null;
 let currentWindSpeed = null;
 let currentWindDirection = null;
 let currentAirTemp = null;
-let airTempFromKmaNcst = false;
+let airTempFromKmaAsos = false;
 let isLoading = false;
 const BEACH_DATA_CACHE_KEY = 'bada_beach_data_cache';
 const MEASURED_WATER_CACHE_KEY = 'bada_measured_water_cache';
@@ -2540,7 +2514,7 @@ function saveBeachDataCache(locationId, statusText) {
                 currentWindSpeed,
                 currentWindDirection,
                 currentAirTemp,
-                airTempFromKmaNcst,
+                airTempFromKmaAsos,
                 currentWaterTempIsSatellite,
                 weatherCode: window._weatherCode ?? 0,
                 hourlyData: window._hourlyData,
@@ -2576,7 +2550,7 @@ function applyBeachDataFromCache(entry) {
     currentWindSpeed = d.currentWindSpeed ?? null;
     currentWindDirection = d.currentWindDirection ?? null;
     currentAirTemp = d.currentAirTemp ?? null;
-    airTempFromKmaNcst = d.airTempFromKmaNcst ?? false;
+    airTempFromKmaAsos = d.airTempFromKmaAsos ?? false;
     currentWaterTempIsSatellite = d.currentWaterTempIsSatellite ?? false;
     window._weatherCode = d.weatherCode ?? 0;
     window._hourlyData = d.hourlyData ?? { marine: {}, weather: {} };
@@ -2609,7 +2583,7 @@ function tryShowCachedBeachData(locationId) {
     return true;
 }
 
-function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, kmaRealtime) {
+function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, asosData) {
     currentWaveHeight = marine?.current?.wave_height ?? null;
     window._hourlyData = { marine: marine?.hourly || {}, weather: weather?.hourly || {} };
     window._dailyData = weather?.daily || {};
@@ -2658,7 +2632,7 @@ function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, kmaR
         dataSource = currentWaterTempIsCached ? 'cache' : 'unavailable';
     }
 
-    applyKmaUltraSrtOverlay(kmaRealtime, weather);
+    applyKmaAsosOverlay(asosData, weather);
     updateWaterTempSatelliteFlag(loc);
     return { statusText, dataSource };
 }
@@ -2727,27 +2701,24 @@ async function fetchAllData(opts = {}) {
             ? fetchNifsObsData(loc.nifsStation).catch(() => null)
             : Promise.resolve(null);
 
-        const kmaNcstPromise = (loc.nx != null && loc.ny != null)
-            ? fetchKmaUltraSrtNcst(loc.nx, loc.ny).catch((e) => {
-                console.warn('[fetchAllData] KMA 초단기실황 실패 → Open-Meteo fallback', e.message);
-                return null;
-            })
+        const asosPromise = loc.stnId != null
+            ? fetchKmaAsosHourly(loc.stnId)
             : Promise.resolve(null);
 
-        const [marineRes, weatherRes, , kma, khoa, nifs, kmaRealtime] = await Promise.all([
+        const [marineRes, weatherRes, , kma, khoa, nifs, asosData] = await Promise.all([
             fetch(marineUrl),
             fetch(weatherUrl),
             khoaHourlyPromise,
             kmaPromise,
             khoaPromise,
             nifsPromise,
-            kmaNcstPromise,
+            asosPromise,
         ]);
 
         const marine = await marineRes.json();
         const weather = await weatherRes.json();
 
-        const { statusText, dataSource } = resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, kmaRealtime);
+        const { statusText, dataSource } = resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, asosData);
 
         console.log('[fetchAllData] 완료', {
             beach: loc.name,
@@ -2845,7 +2816,7 @@ function renderLocationChips() {
 function selectLocation(id) {
     if (id === currentLocationId) return;
     currentLocationId = id;
-    currentWaterTemp = null; currentWaterTempIsSatellite = false; currentWaterTempIsCached = false; currentWaterTempObsTime = null; currentWaveHeight = null; currentWindSpeed = null; currentWindDirection = null; currentAirTemp = null; airTempFromKmaNcst = false;
+    currentWaterTemp = null; currentWaterTempIsSatellite = false; currentWaterTempIsCached = false; currentWaterTempObsTime = null; currentWaveHeight = null; currentWindSpeed = null; currentWindDirection = null; currentAirTemp = null; airTempFromKmaAsos = false;
     renderLocationChips();
     loadBeachDataWithCache(id);
 }
