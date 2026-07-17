@@ -10,12 +10,10 @@
       "enabled": true
     },
     "SplashScreen": {
-      "launchShowDuration": 1500,
-      "backgroundColor": "#4BBDE8",
-      "androidSplashResourceName": "splash",
-      "showSpinner": false,
-      "splashFullScreen": true,
-      "splashImmersive": true
+      "launchShowDuration": 0,
+      "launchAutoHide": true,
+      "backgroundColor": "#ffffff",
+      "showSpinner": false
     }
   }
 }
