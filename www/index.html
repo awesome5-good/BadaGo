@@ -414,22 +414,33 @@
         .region-pill.inactive { background: #f1f5f9; color: #64748b; }
         .profile-beach-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; scrollbar-width: none; }
         .profile-beach-list::-webkit-scrollbar { display: none; }
-        .profile-beach-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #f8fafc; border: 2px solid #f1f5f9; cursor: pointer; transition: all 0.2s; }
-        .profile-beach-item:active { transform: scale(0.99); }
+        .profile-beach-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #f8fafc; border: 2px solid #f1f5f9; cursor: pointer; transition: background 0.15s, transform 0.15s; -webkit-tap-highlight-color: transparent; }
+        .profile-beach-item:active { transform: scale(0.99); background: #e2e8f0; }
         .profile-beach-item.checked { border-color: #bfdbfe; background: #eff6ff; }
-        .profile-beach-check { width: 20px; height: 20px; accent-color: var(--primary); flex-shrink: 0; cursor: pointer; }
-        .profile-beach-emoji { font-size: 20px; flex-shrink: 0; }
-        .profile-beach-name { font-size: 14px; font-weight: 700; color: #1e293b; flex: 1; }
-        .profile-main-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; font-weight: 800; color: #1e293b; }
-        .profile-main-beach-banner--unset { background: #fffbeb; border-color: #F59E0B; color: #92400e; }
-        .profile-main-beach-hint { display: block; font-size: 12px; font-weight: 600; color: #b45309; margin-top: 4px; }
+        .profile-beach-item.checked:active { background: #dbeafe; }
+        .profile-beach-check-wrap { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin: -6px 0 -6px -6px; pointer-events: none; }
+        .profile-beach-check { width: 20px; height: 20px; accent-color: var(--primary); flex-shrink: 0; pointer-events: none; }
+        .profile-beach-emoji { font-size: 20px; flex-shrink: 0; pointer-events: none; }
+        .profile-beach-name { font-size: 14px; font-weight: 700; color: #1e293b; flex: 1; pointer-events: none; }
+        .profile-main-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+        .profile-main-beach-banner--set { background: #fffbeb; border-color: #FCD34D; }
+        .profile-main-beach-banner--unset { background: #fffbeb; border-color: #F59E0B; }
+        .profile-main-beach-banner--empty { background: #f8fafc; border-color: #e2e8f0; }
+        .profile-main-beach-label { font-size: 12px; font-weight: 700; color: #B45309; letter-spacing: -0.2px; }
+        .profile-main-beach-banner--empty .profile-main-beach-label { color: #64748b; }
+        .profile-main-beach-name { font-size: 20px; font-weight: 800; color: #92400e; margin-top: 6px; line-height: 1.3; letter-spacing: -0.3px; }
+        .profile-main-beach-banner--unset .profile-main-beach-name { font-size: 16px; color: #92400e; }
+        .profile-main-beach-banner--empty .profile-main-beach-name { font-size: 15px; color: #64748b; font-weight: 700; }
+        .profile-main-beach-hint { display: block; font-size: 11px; font-weight: 600; color: #b45309; margin-top: 8px; line-height: 1.4; }
+        .profile-main-beach-banner--empty .profile-main-beach-hint { color: #94a3b8; }
         .profile-search-box { margin-bottom: 12px; position: relative; }
         .profile-search-input { width: 100%; padding: 11px 14px 11px 38px; border-radius: 14px; border: 2px solid #e2e8f0; font-size: 14px; font-family: var(--font-sans); outline: none; color: #1e293b; background: #f8fafc; transition: border-color 0.2s; }
         .profile-search-input:focus { border-color: var(--primary); background: #fff; }
         .profile-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 15px; pointer-events: none; }
-        .profile-star-btn { border: none; background: none; font-size: 20px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; line-height: 1; }
-        .profile-star-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-        .profile-star-btn:not(:disabled):active { transform: scale(1.1); }
+        .profile-star-btn { border: none; background: none; font-size: 22px; cursor: pointer; flex-shrink: 0; line-height: 1; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0; -webkit-tap-highlight-color: transparent; }
+        .profile-star-btn--main { color: #F59E0B; }
+        .profile-star-btn--fav { color: #94a3b8; }
+        .profile-star-btn:not(:disabled):active { transform: scale(1.08); }
         .profile-strava-status { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; background: #f8fafc; }
         .profile-strava-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
         .profile-strava-dot.connected { background: #4ade80; }
@@ -1365,13 +1376,29 @@ function getOrderedFavoriteIds() {
 function updateProfileMainBeachBanner() {
     const el = document.getElementById('profile-main-beach-banner');
     if (!el) return;
+    const hint = '<span class="profile-main-beach-hint">즐겨찾기한 바다 중 ⭐를 눌러 변경할 수 있어요</span>';
+    if (favorites.length === 0) {
+        el.className = 'profile-main-beach-banner profile-main-beach-banner--empty';
+        el.innerHTML = `
+            <div class="profile-main-beach-label">⭐ 메인 바다</div>
+            <div class="profile-main-beach-name">즐겨찾기한 바다가 없어요</div>
+            <span class="profile-main-beach-hint">아래 목록에서 해변을 선택해 즐겨찾기에 추가해 주세요</span>`;
+        return;
+    }
     const mainId = getMainBeachId();
     if (mainId) {
-        el.className = 'profile-main-beach-banner';
-        el.textContent = `메인 바다: ${getBeachById(mainId).name}`;
+        const beach = getBeachById(mainId);
+        el.className = 'profile-main-beach-banner profile-main-beach-banner--set';
+        el.innerHTML = `
+            <div class="profile-main-beach-label">⭐ 메인 바다</div>
+            <div class="profile-main-beach-name">${beach?.emoji || '🏖️'} ${beach?.name || ''}</div>
+            ${hint}`;
     } else {
         el.className = 'profile-main-beach-banner profile-main-beach-banner--unset';
-        el.innerHTML = '⭐ 메인 바다를 설정해 주세요<span class="profile-main-beach-hint">즐겨찾기 해변 옆 ☆를 눌러 메인 바다로 지정하세요</span>';
+        el.innerHTML = `
+            <div class="profile-main-beach-label">⭐ 메인 바다</div>
+            <div class="profile-main-beach-name">메인 바다를 선택해주세요</div>
+            ${hint}`;
     }
 }
 
@@ -1739,13 +1766,55 @@ function renderProfileBeachList() {
         const isMain = beach.id === mainId;
         const item = document.createElement('div');
         item.className = `profile-beach-item ${isFav ? 'checked' : ''}`;
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+        item.setAttribute('aria-pressed', isFav ? 'true' : 'false');
+        item.onclick = () => toggleProfileFavorite(beach.id, !isFav);
+        item.onkeydown = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleProfileFavorite(beach.id, !isFav);
+            }
+        };
+        const starHtml = isFav
+            ? `<button type="button" class="profile-star-btn ${isMain ? 'profile-star-btn--main' : 'profile-star-btn--fav'}" onclick="setMainBeach('${beach.id}', event)" aria-label="${isMain ? '메인 바다' : '메인 바다로 지정'}">${isMain ? '⭐' : '☆'}</button>`
+            : '';
         item.innerHTML = `
-            <input type="checkbox" class="profile-beach-check" ${isFav ? 'checked' : ''} onchange="toggleProfileFavorite('${beach.id}', this.checked)" />
+            <span class="profile-beach-check-wrap">
+                <input type="checkbox" class="profile-beach-check" ${isFav ? 'checked' : ''} tabindex="-1" aria-hidden="true" />
+            </span>
             <span class="profile-beach-emoji">${beach.emoji}</span>
             <span class="profile-beach-name">${beach.name}${profileFavSearchQuery ? ` <span style="font-size:11px;font-weight:600;color:#94a3b8;">${beach.region}</span>` : ''}</span>
-            <button type="button" class="profile-star-btn" ${isFav ? '' : 'disabled'} onclick="setMainBeach('${beach.id}', event)" aria-label="메인 바다로 지정">${isMain ? '⭐' : '☆'}</button>`;
+            ${starHtml}`;
         container.appendChild(item);
     });
+}
+
+function removeProfileFavorite(id, { allowEmptyFavorites = false } = {}) {
+    const wasMain = getMainBeachId() === id;
+    favorites = favorites.filter(f => f !== id);
+    if (wasMain) {
+        if (favorites.length > 0) {
+            saveMainBeach(favorites[0]);
+        } else {
+            clearMainBeach();
+        }
+    }
+    if (favorites.length === 0 && !allowEmptyFavorites) {
+        favorites = ['haeundae'];
+    }
+    saveFavorites();
+    if (!favorites.includes(currentLocationId)) {
+        currentLocationId = getDefaultLocationId();
+        fetchAllData();
+    }
+    renderLocationChips();
+    renderProfileBeachList();
+    updateProfileMainBeachBanner();
+    updateNotificationBeachLabel();
+    if (wasMain) {
+        scheduleLocalNotifications().catch((err) => console.warn('[LocalNotifications] schedule failed', err));
+    }
 }
 
 function toggleProfileFavorite(id, checked) {
@@ -1757,18 +1826,20 @@ function toggleProfileFavorite(id, checked) {
             showToast(`⭐ ${beach?.name || ''} 즐겨찾기 추가!`);
         }
     } else {
-        favorites = favorites.filter(f => f !== id);
-        if (favorites.length === 0) favorites = ['haeundae'];
-        if (!favorites.includes(currentLocationId)) {
-            currentLocationId = getDefaultLocationId();
-            fetchAllData();
-        }
         if (getMainBeachId() === id) {
-            clearMainBeach();
+            if (!confirm('메인 바다로 설정된 해변이에요. 즐겨찾기를 해제하면 메인 바다도 해제됩니다. 계속할까요?')) {
+                renderProfileBeachList();
+                return;
+            }
+            removeProfileFavorite(id, { allowEmptyFavorites: true });
+            const beach = getBeachById(id);
+            showToast(`${beach?.name || ''} 즐겨찾기 해제`);
+            return;
         }
-        saveFavorites();
+        removeProfileFavorite(id);
         const beach = getBeachById(id);
         showToast(`${beach?.name || ''} 즐겨찾기 해제`);
+        return;
     }
     renderLocationChips();
     renderProfileBeachList();
