@@ -1,4 +1,4 @@
-const TIDAL_BU_TEMP_API = 'http://www.khoa.go.kr/api/oceangrid/tidalBuTemp/search.do';
+const KHOA_BEACH_API = 'https://khoa.go.kr/oceandata/api/beach/search.do';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_TTL_SEC = 300;
 const FETCH_TIMEOUT_MS = 8000;
@@ -21,17 +21,6 @@ function setCacheHeaders(res, hit) {
     res.setHeader('X-BadaGo-Cache', hit ? 'HIT' : 'MISS');
 }
 
-function kstDateYmd(date = new Date()) {
-    return new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Seoul',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-    })
-        .format(date)
-        .replace(/-/g, '');
-}
-
 function maskKeyInUrl(url, paramName = 'ServiceKey') {
     const re = new RegExp(`([?&]${paramName}=)([^&]+)`, 'gi');
     return String(url).replace(re, (_, prefix, key) => {
@@ -41,14 +30,11 @@ function maskKeyInUrl(url, paramName = 'ServiceKey') {
     });
 }
 
-/** 테스트: 공공데이터포털 기상청 키(KMA_NCST_KEY)를 우선 사용 — 동일 포털 키로 동작 여부 확인 */
 function getServiceKey() {
-    const fromKma = process.env.KMA_NCST_KEY != null ? String(process.env.KMA_NCST_KEY).trim() : '';
-    if (fromKma) return fromKma;
     const fromKhoa = process.env.KHOA_SERVICE_KEY != null ? String(process.env.KHOA_SERVICE_KEY).trim() : '';
     if (fromKhoa) return fromKhoa;
-    const fromPortal = process.env.DATA_GO_KR_SERVICE_KEY != null ? String(process.env.DATA_GO_KR_SERVICE_KEY).trim() : '';
-    return fromPortal;
+    const fromKma = process.env.KMA_NCST_KEY != null ? String(process.env.KMA_NCST_KEY).trim() : '';
+    return fromKma;
 }
 
 function parseWaterTemp(raw) {
@@ -56,12 +42,6 @@ function parseWaterTemp(raw) {
     const n = parseFloat(raw);
     if (Number.isNaN(n) || n < 0 || n > 45) return null;
     return n;
-}
-
-function collectRows(json) {
-    const rows = json?.result?.data ?? json?.response?.result?.data ?? [];
-    if (Array.isArray(rows)) return rows;
-    return rows ? [rows] : [];
 }
 
 async function fetchWithTimeout(url, label) {
@@ -81,72 +61,6 @@ async function fetchWithTimeout(url, label) {
     }
 }
 
-async function fetchTidalBuTemp(obsCode, dateYmd) {
-    const serviceKey = getServiceKey();
-    if (!serviceKey) {
-        throw new Error('KMA_NCST_KEY not configured');
-    }
-
-    const q = new URLSearchParams({
-        ServiceKey: serviceKey,
-        ObsCode: obsCode,
-        Date: dateYmd,
-        ResultType: 'json',
-    });
-    const url = `${TIDAL_BU_TEMP_API}?${q.toString()}`;
-    console.log(`${LOG_PREFIX} REQUEST`, {
-        obsCode,
-        date: dateYmd,
-        url: maskKeyInUrl(url),
-        timeoutMs: FETCH_TIMEOUT_MS,
-    });
-
-    const { res, text } = await fetchWithTimeout(url, 'tidalBuTemp');
-    console.log(`${LOG_PREFIX} RESPONSE`, {
-        obsCode,
-        date: dateYmd,
-        httpStatus: res.status,
-        bodyPreview: text.slice(0, 500),
-    });
-
-    if (!text || text.trimStart().startsWith('<')) {
-        throw new Error(`tidalBuTemp HTML error response (HTTP ${res.status})`);
-    }
-
-    let json;
-    try {
-        json = JSON.parse(text);
-    } catch (_) {
-        throw new Error(`tidalBuTemp invalid JSON (HTTP ${res.status})`);
-    }
-
-    if (!res.ok) {
-        throw new Error(`tidalBuTemp HTTP ${res.status}`);
-    }
-
-    const data = collectRows(json);
-    if (!data.length) {
-        throw new Error('tidalBuTemp data empty');
-    }
-
-    const last = data[data.length - 1];
-    const water_temp = parseWaterTemp(last.water_temp ?? last.waterTemp);
-    if (water_temp === null) {
-        throw new Error('tidalBuTemp water_temp invalid');
-    }
-
-    return {
-        ok: true,
-        water_temp,
-        obs_time: last.record_time ?? last.recordTime ?? null,
-        obsCode,
-        date: dateYmd,
-        source: 'khoa-tidalBu',
-        upstreamUrl: maskKeyInUrl(url),
-        cached: false,
-    };
-}
-
 function getMemoryCached(key) {
     const entry = memoryCache.get(key);
     if (!entry) return null;
@@ -164,6 +78,61 @@ function setMemoryCached(key, payload) {
     });
 }
 
+async function fetchBeachWaterTemp(beachCode) {
+    const serviceKey = getServiceKey();
+    if (!serviceKey) {
+        throw new Error('KHOA_SERVICE_KEY (or KMA_NCST_KEY) not configured');
+    }
+
+    const url = `${KHOA_BEACH_API}?ServiceKey=${serviceKey}&BeachCode=${beachCode}&ResultType=json`;
+    console.log(`${LOG_PREFIX} REQUEST`, {
+        beachCode,
+        url: maskKeyInUrl(url),
+        timeoutMs: FETCH_TIMEOUT_MS,
+    });
+
+    const { res, text } = await fetchWithTimeout(url, 'khoa-beach');
+    console.log(`${LOG_PREFIX} RESPONSE`, {
+        beachCode,
+        httpStatus: res.status,
+        bodyPreview: text.slice(0, 500),
+    });
+
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (_) {
+        throw new Error(`khoa-beach invalid JSON (HTTP ${res.status})`);
+    }
+
+    if (!res.ok) {
+        throw new Error(`khoa-beach HTTP ${res.status}`);
+    }
+
+    const err = data?.result?.error;
+    if (err) {
+        throw new Error(`khoa-beach error: ${err}`);
+    }
+
+    const item = data?.result?.data?.[0];
+    const water_temp = parseWaterTemp(item?.water_temp);
+    if (water_temp === null) {
+        throw new Error('khoa-beach water_temp empty');
+    }
+
+    return {
+        ok: true,
+        water_temp,
+        obs_time: item?.obs_time ?? null,
+        obs_post_name: data?.result?.meta?.obs_post_name ?? null,
+        beach_name: data?.result?.meta?.beach_name ?? null,
+        beachCode,
+        source: 'khoa-beach',
+        upstreamUrl: maskKeyInUrl(url),
+        cached: false,
+    };
+}
+
 module.exports = async (req, res) => {
     cors(res);
 
@@ -175,44 +144,35 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const obsCode = String(req.query?.obsCode || '').trim().toUpperCase();
-    const dateYmd = String(req.query?.date || kstDateYmd()).trim();
-
-    if (!obsCode || !/^TW_\d{4}$/.test(obsCode)) {
-        return res.status(400).json({ error: 'Missing or invalid obsCode (expected TW_####)' });
-    }
-    if (!/^\d{8}$/.test(dateYmd)) {
-        return res.status(400).json({ error: 'Invalid date (expected YYYYMMDD)' });
+    const beachCode = String(req.query?.beachCode || 'BCH001').trim().toUpperCase();
+    if (!/^BCH\d{3}$/.test(beachCode)) {
+        return res.status(400).json({ error: 'Missing or invalid beachCode (expected BCH###)' });
     }
 
     const serviceKey = getServiceKey();
     if (!serviceKey) {
-        return res.status(500).json({ error: 'KMA_NCST_KEY not configured on server' });
+        return res.status(500).json({ error: 'KHOA_SERVICE_KEY (or KMA_NCST_KEY) not configured on server' });
     }
 
-    const cacheKey = `${obsCode}:${dateYmd}`;
-
     try {
-        const cached = getMemoryCached(cacheKey);
+        const cached = getMemoryCached(beachCode);
         if (cached) {
             setCacheHeaders(res, true);
             return res.status(200).json(cached);
         }
 
-        const payload = await fetchTidalBuTemp(obsCode, dateYmd);
-        setMemoryCached(cacheKey, payload);
+        const payload = await fetchBeachWaterTemp(beachCode);
+        setMemoryCached(beachCode, payload);
         setCacheHeaders(res, false);
         return res.status(200).json(payload);
     } catch (err) {
         console.error(`${LOG_PREFIX} handler error`, {
-            obsCode,
-            date: dateYmd,
+            beachCode,
             error: err?.message || String(err),
         });
         return res.status(502).json({
-            error: err.message || 'tidalBuTemp fetch failed',
-            obsCode,
-            date: dateYmd,
+            error: err.message || 'khoa beach fetch failed',
+            beachCode,
         });
     }
 };
