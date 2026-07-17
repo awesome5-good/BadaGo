@@ -41,7 +41,10 @@ function maskKeyInUrl(url, paramName = 'ServiceKey') {
     });
 }
 
+/** 테스트: 공공데이터포털 기상청 키(KMA_NCST_KEY)를 우선 사용 — 동일 포털 키로 동작 여부 확인 */
 function getServiceKey() {
+    const fromKma = process.env.KMA_NCST_KEY != null ? String(process.env.KMA_NCST_KEY).trim() : '';
+    if (fromKma) return fromKma;
     const fromKhoa = process.env.KHOA_SERVICE_KEY != null ? String(process.env.KHOA_SERVICE_KEY).trim() : '';
     if (fromKhoa) return fromKhoa;
     const fromPortal = process.env.DATA_GO_KR_SERVICE_KEY != null ? String(process.env.DATA_GO_KR_SERVICE_KEY).trim() : '';
@@ -81,7 +84,7 @@ async function fetchWithTimeout(url, label) {
 async function fetchTidalBuTemp(obsCode, dateYmd) {
     const serviceKey = getServiceKey();
     if (!serviceKey) {
-        throw new Error('KHOA_SERVICE_KEY not configured');
+        throw new Error('KMA_NCST_KEY not configured');
     }
 
     const q = new URLSearchParams({
@@ -184,7 +187,7 @@ module.exports = async (req, res) => {
 
     const serviceKey = getServiceKey();
     if (!serviceKey) {
-        return res.status(500).json({ error: 'KHOA_SERVICE_KEY not configured on server' });
+        return res.status(500).json({ error: 'KMA_NCST_KEY not configured on server' });
     }
 
     const cacheKey = `${obsCode}:${dateYmd}`;
