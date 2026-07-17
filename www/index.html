@@ -189,6 +189,7 @@
         .loc-sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
         .loc-sheet-title { font-size: 18px; font-weight: 800; color: #1e293b; }
         .loc-sheet-close { background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
+        .loc-sheet-hint { font-size: 12px; font-weight: 600; color: #64748b; padding: 0 20px 10px; line-height: 1.4; }
 
         /* 검색창 */
         .loc-search-box { margin: 0 20px 12px; position: relative; flex-shrink: 0; }
@@ -211,16 +212,18 @@
         .gps-row-arrow { font-size: 14px; color: #16a34a; }
 
         /* 즐겨찾기 목록 */
-        .fav-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: all 0.2s; margin-bottom: 6px; position: relative; }
+        .fav-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 56px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: background 0.15s, transform 0.15s; margin-bottom: 6px; position: relative; -webkit-tap-highlight-color: transparent; }
         .fav-item.selected { border-color: var(--primary); background: #eff6ff; }
-        .fav-item:active { transform: scale(0.98); }
+        .fav-item:active { transform: scale(0.99); background: #f1f5f9; }
+        .fav-item.selected:active { background: #dbeafe; }
         .fav-emoji { font-size: 22px; }
         .fav-info { flex: 1; }
         .fav-name { font-size: 15px; font-weight: 700; color: #1e293b; }
         .fav-desc { font-size: 12px; color: #64748b; margin-top: 1px; }
         .fav-actions { display: flex; align-items: center; gap: 6px; }
         .fav-check { font-size: 16px; color: var(--primary); }
-        .fav-delete { background: #fee2e2; border: none; width: 26px; height: 26px; border-radius: 8px; font-size: 12px; cursor: pointer; color: #dc2626; display: flex; align-items: center; justify-content: center; }
+        .fav-delete { background: #fee2e2; border: none; min-width: 44px; min-height: 44px; width: 44px; height: 44px; border-radius: 10px; font-size: 14px; cursor: pointer; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+        .fav-delete:active { background: #fecaca; }
 
         /* 검색 결과 */
         .search-result-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: all 0.2s; margin-bottom: 6px; }
@@ -936,6 +939,7 @@
                 <span class="loc-search-icon">🔍</span>
                 <input class="loc-search-input" id="loc-search-input" type="text" placeholder="해변 이름 검색 (예: 해운대, 경포대...)" oninput="onSearchInput(this.value)" />
             </div>
+            <div class="loc-sheet-hint">탭하면 해당 바다로 이동해요</div>
             <!-- 본문 -->
             <div class="loc-sheet-body" id="loc-sheet-body"></div>
         </div>
@@ -2490,12 +2494,15 @@ function renderLocSheetBody(query) {
                 item.className = `fav-item ${id === currentLocationId ? 'selected' : ''}`;
                 item.innerHTML = `
                     <div class="fav-emoji">${beach.emoji}</div>
-                    <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region} · ${beach.beachCode}</div></div>
+                    <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region} · ${beach.beachCode || ''}</div></div>
                     <div class="fav-actions">
                         ${id === currentLocationId ? '<span class="fav-check">✓</span>' : ''}
-                        <button class="fav-delete" onclick="removeFavorite('${id}', event)">✕</button>
+                        <button type="button" class="fav-delete" onclick="removeFavorite('${id}', event)" aria-label="즐겨찾기 제거">✕</button>
                     </div>`;
-                item.onclick = () => { selectLocation(id); closeLocSheet(); };
+                item.onclick = () => {
+                    selectLocation(id);
+                    closeLocSheet();
+                };
                 body.appendChild(item);
             });
         }
@@ -2527,8 +2534,7 @@ function renderLocSheetBody(query) {
                 if (!isFav) {
                     addFavorite(beach.id);
                 } else {
-                    selectLocation(beach.id);
-                    closeLocSheet();
+                    showToast(`⭐ ${beach.name}은(는) 이미 즐겨찾기에 있어요`);
                 }
             };
             body.appendChild(item);
@@ -2549,22 +2555,17 @@ function addFavorite(id) {
 
 function removeFavorite(id, e) {
     e.stopPropagation();
-    favorites = favorites.filter(f => f !== id);
-    saveFavorites();
-    if (getMainBeachId() === id) clearMainBeach();
-    if (currentLocationId === id) {
-        currentLocationId = getDefaultLocationId();
-        if (!favorites.includes('haeundae') && favorites.length === 0) {
-            favorites = ['haeundae'];
-            saveFavorites();
+    if (getMainBeachId() === id) {
+        if (!confirm('메인 바다로 설정된 해변이에요. 즐겨찾기를 해제하면 메인 바다도 해제됩니다. 계속할까요?')) {
+            return;
         }
+        removeProfileFavorite(id, { allowEmptyFavorites: true });
+    } else {
+        removeProfileFavorite(id);
     }
-    renderLocSheetBody('');
-    renderLocationChips();
-    updateProfileMainBeachBanner();
-    updateNotificationBeachLabel();
     const beach = getBeachById(id);
     showToast(`${beach?.name || ''} 즐겨찾기 삭제`);
+    renderLocSheetBody(document.getElementById('loc-search-input').value.trim());
 }
 
 // =====================================================
