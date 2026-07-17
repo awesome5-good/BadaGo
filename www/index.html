@@ -149,17 +149,130 @@
         .weather-badge-caution { background: #ffedd5; color: #ea580c; }
         .weather-badge-danger { background: #fee2e2; color: #dc2626; }
         .weather-metric-bar-track { height: 5px; background: rgba(30,126,200,0.15); border-radius: 3px; margin: 10px 0 8px; overflow: hidden; }
-        .weather-metric-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+        .weather-metric-bar-fill { height: 100%; width: 100%; border-radius: 3px; transform: scaleX(calc(var(--bar-pct, 0) / 100)); transform-origin: left center; will-change: transform; }
+        .weather-metric-bar-fill.bar-animate { transition: transform 0.8s ease-out; }
+        .weather-metric-bar-fill.no-transition { transition: none; }
         .weather-bar-safe { background: #4ade80; }
         .weather-bar-caution { background: #fb923c; }
         .weather-bar-danger { background: #f87171; }
         .weather-metric-desc { font-size: 12px; font-weight: 600; color: #475569; line-height: 1.45; }
         .weather-metric-divider { height: 1px; background: rgba(30,126,200,0.12); margin: 10px 0 8px; }
         .weather-metric-note { font-size: 12px; font-weight: 500; color: #94a3b8; line-height: 1.45; }
+        .weather-metric-card { position: relative; overflow: hidden; }
+        .weather-metric-card.metric-pulse-danger::before,
+        .weather-metric-card.metric-pulse-caution::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            animation: metricCardPulse 2.5s ease-in-out infinite;
+        }
+        .weather-metric-card.metric-pulse-danger::before { background: rgba(220, 38, 38, 0.1); }
+        .weather-metric-card.metric-pulse-caution::before { background: rgba(234, 88, 12, 0.08); }
+        @keyframes metricCardPulse {
+            0%, 100% { opacity: 0.35; }
+            50% { opacity: 1; }
+        }
+        .weather-metric-emoji-wrap { position: relative; display: inline-flex; align-items: center; flex-shrink: 0; margin-top: 2px; }
+        .weather-wind-streaks { position: absolute; left: 100%; top: 50%; width: 28px; height: 20px; margin-left: 2px; transform: translateY(-50%); overflow: visible; pointer-events: none; }
+        .weather-wind-streaks path { fill: none; stroke: #94a3b8; stroke-width: 1.8; stroke-linecap: round; opacity: 0; }
         .sun-times-row { display: flex; justify-content: space-between; gap: 12px; }
         .sun-time-item { text-align: center; flex: 1; background: rgba(255,255,255,0.5); border-radius: 12px; padding: 10px 8px 12px; overflow: hidden; }
         .sun-scene-wrap { border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
         .sun-scene-svg { width: 100%; height: auto; display: block; aspect-ratio: 150 / 110; }
+        .sun-rise-sky { fill: url(#sunriseSkyGrad); }
+        .sun-set-sky { fill: url(#sunsetSkyGradAnim); }
+        .sun-rise-sun { animation: sunRiseMove 8s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+        .sun-set-sun { animation: sunSetMove 8s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+        .sun-disc { filter: drop-shadow(0 0 5px rgba(255, 200, 80, 0.75)); }
+        .sun-wave-layer { transform-box: fill-box; transform-origin: center; }
+        .sun-wave-1 { animation: sunWaveDrift1 5s linear infinite; }
+        .sun-wave-2 { animation: sunWaveDrift2 7s linear infinite; }
+        @keyframes sunRiseMove {
+            from { transform: translateY(22px); }
+            to { transform: translateY(-4px); }
+        }
+        @keyframes sunSetMove {
+            from { transform: translateY(-4px); }
+            to { transform: translateY(22px); }
+        }
+        @keyframes sunWaveDrift1 {
+            from { transform: translateX(0); }
+            to { transform: translateX(-75px); }
+        }
+        @keyframes sunWaveDrift2 {
+            from { transform: translateX(0); }
+            to { transform: translateX(75px); }
+        }
+        .anim-wave { animation: iconWaveBob 2s ease-in-out infinite; }
+        .anim-wave-danger { animation: iconWaveBob 1s ease-in-out infinite; }
+        @keyframes iconWaveBob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        .card-icon-container { position: relative; overflow: visible; }
+        .wind-streaks { position: absolute; left: 50%; top: 50%; width: 100%; height: 100%; transform: translate(-20%, -50%); pointer-events: none; overflow: visible; }
+        .wind-streaks path { fill: none; stroke: rgba(255,255,255,0.85); stroke-width: 1.6; stroke-linecap: round; opacity: 0; }
+        .wind-streak-1 { animation: windStreakFlow 1.8s ease-out infinite; }
+        .wind-streak-2 { animation: windStreakFlow 1.8s ease-out 0.35s infinite; }
+        .wind-streak-3 { animation: windStreakFlow 1.8s ease-out 0.7s infinite; }
+        .weather-wind-streak-1 { animation: weatherWindStreak 1.8s ease-out infinite; }
+        .weather-wind-streak-2 { animation: weatherWindStreak 1.8s ease-out 0.35s infinite; }
+        .weather-wind-streak-3 { animation: weatherWindStreak 1.8s ease-out 0.7s infinite; }
+        @keyframes windStreakFlow {
+            0% { opacity: 0; transform: translateX(-6px); }
+            25% { opacity: 0.9; }
+            100% { opacity: 0; transform: translateX(10px); }
+        }
+        @keyframes weatherWindStreak {
+            0% { opacity: 0; transform: translateX(-4px); }
+            25% { opacity: 0.75; }
+            100% { opacity: 0; transform: translateX(8px); }
+        }
+        .anim-jelly { animation: iconJellyFloat 3s ease-in-out infinite; display: inline-block; }
+        @keyframes iconJellyFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-4px) rotate(3deg); }
+        }
+        .info-card.metric-pulse-danger::before,
+        .info-card.metric-pulse-caution::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            animation: metricCardPulse 2.5s ease-in-out infinite;
+        }
+        .info-card { position: relative; overflow: hidden; }
+        .info-card.metric-pulse-danger::before { background: rgba(220, 38, 38, 0.1); }
+        .info-card.metric-pulse-caution::before { background: rgba(234, 88, 12, 0.08); }
+        .anim-lightning { animation: iconLightningBlink 1.5s ease-in-out infinite; display: inline-block; }
+        .anim-lightning-danger { animation: iconLightningBlink 1.5s ease-in-out infinite, iconLightningShake 2.3s ease-in-out infinite; }
+        @keyframes iconLightningBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        @keyframes iconLightningShake {
+            0%, 18%, 100% { transform: translateX(0); }
+            2% { transform: translateX(-1px); }
+            4% { transform: translateX(1px); }
+            6% { transform: translateX(-1px); }
+            8% { transform: translateX(1px); }
+            10% { transform: translateX(-1px); }
+            12% { transform: translateX(1px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .sun-rise-sun, .sun-set-sun, .sun-wave-1, .sun-wave-2,
+            .anim-wave, .anim-wave-danger, .anim-jelly, .anim-lightning, .anim-lightning-danger,
+            .wind-streak-1, .wind-streak-2, .wind-streak-3,
+            .weather-wind-streak-1, .weather-wind-streak-2, .weather-wind-streak-3,
+            .weather-metric-card.metric-pulse-danger::before, .weather-metric-card.metric-pulse-caution::before,
+            .info-card.metric-pulse-danger::before, .info-card.metric-pulse-caution::before {
+                animation: none !important;
+            }
+            .weather-metric-bar-fill.bar-animate { transition: none !important; }
+        }
         .sun-time-label { font-size: 11px; font-weight: 600; color: #64748b; }
         .sun-time-val { font-size: 20px; font-weight: 800; color: #1e293b; margin-top: 4px; }
 
@@ -586,8 +699,8 @@
 
         <!-- 정보 카드: 파도 → 풍속 → 해파리 → 따꼼이 -->
         <div class="info-cards-stack">
-            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-wave-card')">
-                <div class="card-icon-container icon-wave">
+            <div class="info-card info-card-clickable" id="info-card-wave" onclick="goToWeatherSection('weather-wave-card')">
+                <div class="card-icon-container icon-wave anim-wave">
                     <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M2 13c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
                         <path d="M2 18c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>
@@ -599,12 +712,17 @@
                 <span class="status-badge status-green" id="badge-wave">⏳</span>
                 <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-wind-card')">
+            <div class="info-card info-card-clickable" id="info-card-wind" onclick="goToWeatherSection('weather-wind-card')">
                 <div class="card-icon-container icon-wind">
                     <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M2 10h15a3 3 0 1 0-3-3"/>
                         <path d="M4 14h14a3 3 0 1 1-3 3"/>
                         <path d="M2 18h9a2 2 0 1 0-2-2"/>
+                    </svg>
+                    <svg class="wind-streaks" viewBox="0 0 24 24" aria-hidden="true">
+                        <path class="wind-streak wind-streak-1" d="M14 8h6"/>
+                        <path class="wind-streak wind-streak-2" d="M12 12h8"/>
+                        <path class="wind-streak wind-streak-3" d="M15 16h5"/>
                     </svg>
                 </div>
                 <span class="card-title">풍속</span>
@@ -613,8 +731,8 @@
                 <span class="status-badge status-green" id="badge-wind">⏳</span>
                 <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-jelly-card')">
-                <div class="card-icon-container icon-jelly">
+            <div class="info-card info-card-clickable" id="info-card-jelly" onclick="goToWeatherSection('weather-jelly-card')">
+                <div class="card-icon-container icon-jelly anim-jelly">
                     <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M6 11a6 6 0 0 1 12 0c0 .5-.5 1-1 1s-.75-.5-1-.5-.5.5-1 .5-.5-.5-1-.5s-.5.5-1 .5-.5-.5-1-.5-.5.5-1 .5c-.5 0-1-.5-1-1z" fill="rgba(255,255,255,0.2)"/>
                         <path d="M9 13v6M12 12v7M15 13v5"/>
@@ -626,8 +744,8 @@
                 <span class="status-badge status-green" id="badge-jelly">⏳</span>
                 <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card info-card-clickable" onclick="goToWeatherSection('weather-ttakkomi-card')">
-                <div class="card-icon-container icon-ttakkomi">
+            <div class="info-card info-card-clickable" id="info-card-ttakkomi" onclick="goToWeatherSection('weather-ttakkomi-card')">
+                <div class="card-icon-container icon-ttakkomi anim-lightning">
                     <svg class="card-icon-svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z"/>
                     </svg>
@@ -664,19 +782,31 @@
                     <div class="sun-time-item">
                         <div class="sun-scene-wrap">
                             <svg class="sun-scene-svg" viewBox="0 0 150 110" aria-hidden="true">
-                                <rect width="150" height="72" fill="#1a3a6e"/>
-                                <g stroke="#FFE066" stroke-width="3" stroke-linecap="round">
-                                    <line x1="75" y1="26" x2="75" y2="14"/>
-                                    <line x1="92" y1="36" x2="100" y2="28"/>
-                                    <line x1="58" y1="36" x2="50" y2="28"/>
-                                    <line x1="100" y1="56" x2="112" y2="56"/>
-                                    <line x1="50" y1="56" x2="38" y2="56"/>
+                                <defs>
+                                    <linearGradient id="sunriseSkyGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#1a2a5e"/>
+                                        <stop offset="55%" stop-color="#5a3a8a"/>
+                                        <stop offset="100%" stop-color="#ff8c42"/>
+                                    </linearGradient>
+                                </defs>
+                                <rect class="sun-rise-sky" width="150" height="72"/>
+                                <line x1="0" y1="72" x2="150" y2="72" stroke="rgba(255,180,80,0.35)" stroke-width="1"/>
+                                <g class="sun-rise-sun">
+                                    <g stroke="#FFE066" stroke-width="2.5" stroke-linecap="round" opacity="0.85">
+                                        <line x1="75" y1="26" x2="75" y2="14"/>
+                                        <line x1="92" y1="36" x2="100" y2="28"/>
+                                        <line x1="58" y1="36" x2="50" y2="28"/>
+                                        <line x1="100" y1="56" x2="112" y2="56"/>
+                                        <line x1="50" y1="56" x2="38" y2="56"/>
+                                    </g>
+                                    <circle class="sun-disc" cx="75" cy="58" r="18" fill="#FFE066"/>
                                 </g>
-                                <circle cx="75" cy="58" r="20" fill="#FFE066"/>
-                                <rect x="62" y="76" width="26" height="7" fill="#FFE066" opacity="0.35" rx="2"/>
-                                <path d="M0 78 Q37.5 72 75 78 T150 78 L150 110 L0 110 Z" fill="#1a4a8a"/>
-                                <path d="M0 84 Q37.5 78 75 84 T150 84 L150 110 L0 110 Z" fill="#1a5a9a"/>
-                                <path d="M0 90 Q37.5 84 75 90 T150 90 L150 110 L0 110 Z" fill="#1e6aaa"/>
+                                <g class="sun-wave-layer sun-wave-1">
+                                    <path d="M0 78 Q37.5 72 75 78 T150 78 L150 110 L0 110 Z" fill="#1a4a8a"/>
+                                </g>
+                                <g class="sun-wave-layer sun-wave-2">
+                                    <path d="M0 86 Q37.5 80 75 86 T150 86 L150 110 L0 110 Z" fill="#1e6aaa" opacity="0.85"/>
+                                </g>
                             </svg>
                         </div>
                         <div class="sun-time-label">일출</div>
@@ -686,21 +816,25 @@
                         <div class="sun-scene-wrap">
                             <svg class="sun-scene-svg" viewBox="0 0 150 110" aria-hidden="true">
                                 <defs>
-                                    <linearGradient id="sunsetSkyGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="#8a3a4e"/>
-                                        <stop offset="50%" stop-color="#4a1a6e"/>
-                                        <stop offset="100%" stop-color="#1a1a4e"/>
+                                    <linearGradient id="sunsetSkyGradAnim" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#6a2a7a"/>
+                                        <stop offset="45%" stop-color="#c44a28"/>
+                                        <stop offset="100%" stop-color="#ff6b35"/>
                                     </linearGradient>
                                 </defs>
-                                <rect width="150" height="72" fill="url(#sunsetSkyGrad)"/>
-                                <ellipse cx="48" cy="42" rx="22" ry="10" fill="#c45a6a" opacity="0.55"/>
-                                <ellipse cx="88" cy="36" rx="28" ry="12" fill="#b84a5a" opacity="0.5"/>
-                                <ellipse cx="112" cy="46" rx="18" ry="9" fill="#a84a62" opacity="0.6"/>
-                                <circle cx="75" cy="58" r="20" fill="#FF6B35"/>
-                                <rect x="62" y="76" width="26" height="7" fill="#FF6B35" opacity="0.4" rx="2"/>
-                                <path d="M0 78 Q37.5 72 75 78 T150 78 L150 110 L0 110 Z" fill="#1a2a6a"/>
-                                <path d="M0 84 Q37.5 78 75 84 T150 84 L150 110 L0 110 Z" fill="#1a3a7a"/>
-                                <path d="M0 90 Q37.5 84 75 90 T150 90 L150 110 L0 110 Z" fill="#1e4a8a"/>
+                                <rect class="sun-set-sky" width="150" height="72"/>
+                                <ellipse cx="48" cy="42" rx="22" ry="10" fill="#c45a6a" opacity="0.45"/>
+                                <ellipse cx="88" cy="36" rx="28" ry="12" fill="#b84a5a" opacity="0.4"/>
+                                <line x1="0" y1="72" x2="150" y2="72" stroke="rgba(255,120,60,0.35)" stroke-width="1"/>
+                                <g class="sun-set-sun">
+                                    <circle class="sun-disc" cx="75" cy="58" r="18" fill="#FF6B35"/>
+                                </g>
+                                <g class="sun-wave-layer sun-wave-1">
+                                    <path d="M0 78 Q37.5 72 75 78 T150 78 L150 110 L0 110 Z" fill="#1a2a6a"/>
+                                </g>
+                                <g class="sun-wave-layer sun-wave-2">
+                                    <path d="M0 86 Q37.5 80 75 86 T150 86 L150 110 L0 110 Z" fill="#1e4a8a" opacity="0.85"/>
+                                </g>
                             </svg>
                         </div>
                         <div class="sun-time-label">일몰</div>
@@ -713,7 +847,7 @@
             <div class="weather-cards-stack">
                 <div class="weather-metric-card" id="weather-wave-card">
                     <div class="weather-metric-top">
-                        <span class="weather-metric-emoji">🌊</span>
+                        <span class="weather-metric-emoji anim-wave">🌊</span>
                         <div class="weather-metric-body">
                             <div class="weather-metric-label">파도 높이</div>
                             <div class="weather-metric-value-row">
@@ -723,7 +857,7 @@
                         </div>
                     </div>
                     <div class="weather-metric-bar-track">
-                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wave-bar" style="width:0%"></div>
+                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wave-bar" style="--bar-pct:0"></div>
                     </div>
                     <p class="weather-metric-desc" id="weather-wave-desc">데이터 불러오는 중...</p>
                     <div class="weather-metric-divider"></div>
@@ -732,7 +866,14 @@
 
                 <div class="weather-metric-card" id="weather-wind-card">
                     <div class="weather-metric-top">
-                        <span class="weather-metric-emoji">💨</span>
+                        <span class="weather-metric-emoji-wrap">
+                            <span class="weather-metric-emoji">💨</span>
+                            <svg class="weather-wind-streaks" viewBox="0 0 28 20" aria-hidden="true">
+                                <path class="weather-wind-streak-1" d="M0 6h14"/>
+                                <path class="weather-wind-streak-2" d="M0 10h18"/>
+                                <path class="weather-wind-streak-3" d="M0 14h12"/>
+                            </svg>
+                        </span>
                         <div class="weather-metric-body">
                             <div class="weather-metric-label">풍속 · 풍향</div>
                             <div class="weather-metric-value-row">
@@ -742,7 +883,7 @@
                         </div>
                     </div>
                     <div class="weather-metric-bar-track">
-                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wind-bar" style="width:0%"></div>
+                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-wind-bar" style="--bar-pct:0"></div>
                     </div>
                     <p class="weather-metric-desc" id="weather-wind-desc">데이터 불러오는 중...</p>
                     <div class="weather-metric-divider"></div>
@@ -751,7 +892,7 @@
 
                 <div class="weather-metric-card" id="weather-jelly-card">
                     <div class="weather-metric-top">
-                        <span class="weather-metric-emoji">🪼</span>
+                        <span class="weather-metric-emoji anim-jelly">🪼</span>
                         <div class="weather-metric-body">
                             <div class="weather-metric-label">해파리</div>
                             <div class="weather-metric-value-row">
@@ -761,7 +902,7 @@
                         </div>
                     </div>
                     <div class="weather-metric-bar-track">
-                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-jelly-bar" style="width:0%"></div>
+                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-jelly-bar" style="--bar-pct:0"></div>
                     </div>
                     <p class="weather-metric-desc" id="weather-jelly-desc">데이터 불러오는 중...</p>
                     <div class="weather-metric-divider"></div>
@@ -770,7 +911,7 @@
 
                 <div class="weather-metric-card" id="weather-ttakkomi-card">
                     <div class="weather-metric-top">
-                        <span class="weather-metric-emoji icon-ttakkomi">⚡</span>
+                        <span class="weather-metric-emoji icon-ttakkomi anim-lightning">⚡</span>
                         <div class="weather-metric-body">
                             <div class="weather-metric-label">따꼼이 (바다물벼룩)</div>
                             <div class="weather-metric-value-row">
@@ -780,7 +921,7 @@
                         </div>
                     </div>
                     <div class="weather-metric-bar-track">
-                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-ttakkomi-bar" style="width:0%"></div>
+                        <div class="weather-metric-bar-fill weather-bar-safe" id="weather-ttakkomi-bar" style="--bar-pct:0"></div>
                     </div>
                     <p class="weather-metric-desc" id="weather-ttakkomi-desc">데이터 불러오는 중...</p>
                     <div class="weather-metric-divider"></div>
@@ -2871,9 +3012,70 @@ function applyWeatherMetricCard(valId, badgeId, barId, descId, info) {
     }
     if (barEl) {
         barEl.className = `weather-metric-bar-fill weather-bar-${info.level}`;
-        barEl.style.width = `${info.meterPct}%`;
+        barEl.dataset.barPct = String(info.meterPct ?? 0);
+        barEl.style.setProperty('--bar-pct', barEl.dataset.barPct);
     }
     if (descEl) descEl.textContent = info.desc;
+    applyWeatherMetricCardAnimations(barId.replace('-bar', '-card'), info.level);
+}
+
+function applyWeatherMetricCardAnimations(cardId, level) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.remove('metric-pulse-danger', 'metric-pulse-caution');
+    if (cardId === 'weather-jelly-card') {
+        if (level === 'danger') card.classList.add('metric-pulse-danger');
+        else if (level === 'caution') card.classList.add('metric-pulse-caution');
+    }
+    const waveEl = card.querySelector('.weather-metric-emoji.anim-wave, .weather-metric-emoji.anim-wave-danger');
+    if (waveEl) {
+        waveEl.classList.remove('anim-wave', 'anim-wave-danger');
+        waveEl.classList.add(level === 'danger' ? 'anim-wave-danger' : 'anim-wave');
+    }
+    const lightningEl = card.querySelector('.weather-metric-emoji.anim-lightning, .weather-metric-emoji.anim-lightning-danger');
+    if (lightningEl) {
+        lightningEl.classList.remove('anim-lightning', 'anim-lightning-danger');
+        lightningEl.classList.add(level === 'danger' ? 'anim-lightning-danger' : 'anim-lightning');
+    }
+}
+
+function animateWeatherMetricBars() {
+    const bars = document.querySelectorAll('.weather-metric-bar-fill');
+    bars.forEach(bar => {
+        const pct = bar.dataset.barPct ?? '0';
+        bar.classList.add('no-transition');
+        bar.classList.remove('bar-animate');
+        bar.style.setProperty('--bar-pct', '0');
+    });
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            bars.forEach(bar => {
+                bar.classList.remove('no-transition');
+                bar.classList.add('bar-animate');
+                bar.style.setProperty('--bar-pct', bar.dataset.barPct ?? '0');
+            });
+        });
+    });
+}
+
+function applyInfoCardAnim(cardId, level) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.remove('metric-pulse-danger', 'metric-pulse-caution');
+    if (cardId === 'info-card-jelly') {
+        if (level === 'danger') card.classList.add('metric-pulse-danger');
+        else if (level === 'caution') card.classList.add('metric-pulse-caution');
+    }
+    const icon = card.querySelector('.card-icon-container');
+    if (!icon) return;
+    if (cardId === 'info-card-wave') {
+        icon.classList.remove('anim-wave', 'anim-wave-danger');
+        icon.classList.add(level === 'danger' ? 'anim-wave-danger' : 'anim-wave');
+    }
+    if (cardId === 'info-card-ttakkomi') {
+        icon.classList.remove('anim-lightning', 'anim-lightning-danger');
+        icon.classList.add(level === 'danger' ? 'anim-lightning-danger' : 'anim-lightning');
+    }
 }
 
 function getWindDirectionLabel(deg) {
@@ -2935,12 +3137,14 @@ function renderInfoCards() {
     // 파고
     const waveVal = document.getElementById('val-wave');
     const waveBadge = document.getElementById('badge-wave');
+    let waveLevel = 'safe';
     if (currentWaveHeight !== null) {
         waveVal.textContent = `${currentWaveHeight.toFixed(1)}m`;
-        if (currentWaveHeight <= 0.8)      { waveBadge.className='status-badge status-green';  waveBadge.innerHTML='✓ 안전'; }
-        else if (currentWaveHeight <= 1.5) { waveBadge.className='status-badge status-orange'; waveBadge.innerHTML='⚠ 주의'; }
-        else                               { waveBadge.className='status-badge status-red';    waveBadge.innerHTML='⚠ 위험'; }
+        if (currentWaveHeight <= 0.8)      { waveLevel = 'safe'; waveBadge.className='status-badge status-green';  waveBadge.innerHTML='✓ 안전'; }
+        else if (currentWaveHeight <= 1.5) { waveLevel = 'caution'; waveBadge.className='status-badge status-orange'; waveBadge.innerHTML='⚠ 주의'; }
+        else                               { waveLevel = 'danger'; waveBadge.className='status-badge status-red';    waveBadge.innerHTML='⚠ 위험'; }
     }
+    applyInfoCardAnim('info-card-wave', waveLevel);
     // 풍속
     const windVal = document.getElementById('val-wind');
     const windBadge = document.getElementById('badge-wind');
@@ -2955,9 +3159,11 @@ function renderInfoCards() {
     const jellyBadge = document.getElementById('badge-jelly');
     const month = new Date().getMonth() + 1;
     const wt = currentWaterTemp ?? 20;
-    if (wt >= 25 && month >= 7 && month <= 9)      { jellyVal.textContent='경보'; jellyBadge.className='status-badge status-red';    jellyBadge.innerHTML='⚠ 위험'; }
-    else if (wt >= 22 && month >= 6 && month <= 9) { jellyVal.textContent='주의'; jellyBadge.className='status-badge status-orange'; jellyBadge.innerHTML='⚠ 보름달'; }
+    let jellyLevel = 'safe';
+    if (wt >= 25 && month >= 7 && month <= 9)      { jellyLevel = 'danger'; jellyVal.textContent='경보'; jellyBadge.className='status-badge status-red';    jellyBadge.innerHTML='⚠ 위험'; }
+    else if (wt >= 22 && month >= 6 && month <= 9) { jellyLevel = 'caution'; jellyVal.textContent='주의'; jellyBadge.className='status-badge status-orange'; jellyBadge.innerHTML='⚠ 보름달'; }
     else                                            { jellyVal.textContent='안전'; jellyBadge.className='status-badge status-green';  jellyBadge.innerHTML='✓ 없음'; }
+    applyInfoCardAnim('info-card-jelly', jellyLevel);
     // 따꼼이
     const ttakkomi = getTtakkomiDetailInfo(wt, month);
     const ttakkomiVal = document.getElementById('val-ttakkomi');
@@ -2975,6 +3181,7 @@ function renderInfoCards() {
             ttakkomiBadge.innerHTML = '✓ 안전';
         }
     }
+    applyInfoCardAnim('info-card-ttakkomi', ttakkomi.level);
 }
 
 // =====================================================
@@ -3010,6 +3217,7 @@ function switchTab(idx) {
         document.getElementById(`tab-panel-${i}`).className = i === idx ? 'tab-panel active' : 'tab-panel';
     }
     if (idx === 2) initStravaTab();
+    if (idx === 1) animateWeatherMetricBars();
     if (idx === 3) {
         profileRegionTab = getDefaultProfileRegionTab();
         renderProfileTab();
