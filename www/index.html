@@ -1226,6 +1226,8 @@ const KHOA_BEACH_API = 'https://khoa.go.kr/oceandata/api/beach/search.do';
 const KMA_NCST_KEY = '4f518baf8a28ed0f517bba932b36bc8dccb2b3c5c5b16993de091777e0f48ef4';
 const KMA_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/kma-beach';
 const KHOA_HOURLY_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/khoa-hourly';
+const KHOA_TIDAL_BU_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/khoa-tidalbu';
+const KMA_ASOS_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/kma-asos';
 
 /** Vercel 웹만 상대 경로, 앱·로컬 file/capacitor는 Vercel 프록시 절대 URL */
 function getKmaApiBase() {
@@ -1242,6 +1244,20 @@ function getKhoaHourlyApiBase() {
     return KHOA_HOURLY_REMOTE_API_BASE;
 }
 
+function getKhoaTidalBuApiBase() {
+    if (window.location.hostname === 'bada-go.vercel.app') {
+        return '/api/khoa-tidalbu';
+    }
+    return KHOA_TIDAL_BU_REMOTE_API_BASE;
+}
+
+function getKmaAsosApiBase() {
+    if (window.location.hostname === 'bada-go.vercel.app') {
+        return '/api/kma-asos';
+    }
+    return KMA_ASOS_REMOTE_API_BASE;
+}
+
 async function fetchKmaAsosHourly(stnId) {
     const now = new Date();
     const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -1249,22 +1265,35 @@ async function fetchKmaAsosHourly(stnId) {
     const month = String(kst.getUTCMonth() + 1).padStart(2, '0');
     const day = String(kst.getUTCDate()).padStart(2, '0');
     const hour = String(kst.getUTCHours()).padStart(2, '0');
+    const dateYmd = `${year}${month}${day}`;
 
-    const url = `https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList?serviceKey=${KMA_NCST_KEY}&numOfRows=1&pageNo=1&dataType=JSON&dataCd=ASOS&dateCd=HR&startDt=${year}${month}${day}&startHh=${hour}&endDt=${year}${month}${day}&endHh=${hour}&stnIds=${stnId}`;
+    if (!KMA_NCST_KEY) {
+        console.error('[BadaGo] KMA_NCST_KEY 비어 있음 — ASOS 호출 불가');
+        return null;
+    }
+
+    const upstreamUrl = `https://apis.data.go.kr/1360000/AsosHourlyInfoService/getWthrDataList?serviceKey=${KMA_NCST_KEY}&numOfRows=1&pageNo=1&dataType=JSON&dataCd=ASOS&dateCd=HR&startDt=${dateYmd}&startHh=${hour}&endDt=${dateYmd}&endHh=${hour}&stnIds=${stnId}`;
+    const proxyUrl = `${getKmaAsosApiBase()}?stnId=${encodeURIComponent(stnId)}&date=${dateYmd}&hour=${hour}`;
+    console.log('[BadaGo] ASOS upstream URL', upstreamUrl);
+    console.log('[BadaGo] ASOS proxy URL', proxyUrl);
     logApiFetch('기온', `KMA ASOS stnId=${stnId}`, 'getWthrDataList');
 
     try {
-        const res = await fetch(url);
-        const data = await res.json();
-        const item = data?.response?.body?.items?.item?.[0];
-        if (!item) return null;
+        const res = await fetch(proxyUrl);
+        const text = await res.text();
+        console.log('[BadaGo] ASOS 응답', { status: res.status, body: text.slice(0, 2000) });
+        if (!res.ok) return null;
+
+        const data = JSON.parse(text);
+        if (!data?.ok) return null;
+
         return {
-            airTemp: item.ta !== undefined ? parseFloat(item.ta) : null,
-            windSpeed: item.ws !== undefined ? parseFloat(item.ws) : null,
-            windDir: item.wd !== undefined ? parseFloat(item.wd) : null,
+            airTemp: data.airTemp ?? null,
+            windSpeed: data.windSpeed ?? null,
+            windDir: data.windDir ?? null,
         };
     } catch (e) {
-        console.warn('ASOS API 실패:', e);
+        console.warn('[BadaGo] ASOS API 실패:', e);
         return null;
     }
 }
@@ -1364,33 +1393,37 @@ function getKhoaApiDateYmd(date = new Date()) {
     }).format(date).replace(/-/g, '');
 }
 
-const KHOA_TIDAL_BU_TEMP_API = 'https://www.khoa.go.kr/api/oceangrid/tidalBuTemp/search.do';
+const KHOA_TIDAL_BU_TEMP_UPSTREAM = 'http://www.khoa.go.kr/api/oceangrid/tidalBuTemp/search.do';
 
 async function fetchKhoaTidalBuTemp(obsCode) {
     const code = String(obsCode || '').trim().toUpperCase();
     if (!isTidalBuObsCode(code)) return null;
 
+    if (!KHOA_SERVICE_KEY) {
+        console.error('[BadaGo] KHOA_SERVICE_KEY 비어 있음 — tidalBuTemp 호출 불가');
+        return null;
+    }
+
     const dateYmd = getKhoaApiDateYmd();
-    const url = `${KHOA_TIDAL_BU_TEMP_API}?ServiceKey=${encodeURIComponent(KHOA_SERVICE_KEY)}&ObsCode=${encodeURIComponent(code)}&Date=${dateYmd}&ResultType=json`;
-    logApiFetch('1순위', `KHOA tidalBuTemp ${code}`, 'tidalBuTemp/search.do');
+    const upstreamUrl = `${KHOA_TIDAL_BU_TEMP_UPSTREAM}?ServiceKey=${KHOA_SERVICE_KEY}&ObsCode=${code}&Date=${dateYmd}&ResultType=json`;
+    const proxyUrl = `${getKhoaTidalBuApiBase()}?obsCode=${encodeURIComponent(code)}&date=${dateYmd}`;
+    console.log('[BadaGo] tidalBuTemp upstream URL', upstreamUrl);
+    console.log('[BadaGo] tidalBuTemp proxy URL (실제 fetch)', proxyUrl);
+    logApiFetch('1순위', `KHOA tidalBuTemp ${code}`, 'khoa-tidalbu');
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(proxyUrl);
         const text = await res.text();
-        if (!text || text.trimStart().startsWith('<')) return null;
-        const json = JSON.parse(text);
-        const rows = json?.result?.data ?? json?.response?.result?.data ?? [];
-        const data = Array.isArray(rows) ? rows : (rows ? [rows] : []);
-        if (!data.length) return null;
+        console.log('[BadaGo] tidalBuTemp 응답', { status: res.status, body: text.slice(0, 2000) });
+        if (!res.ok) return null;
 
-        const last = data[data.length - 1];
-        const water_temp = parseObsWaterTemp(last.water_temp ?? last.waterTemp);
-        if (water_temp === null) return null;
+        const json = JSON.parse(text);
+        if (!json?.ok || json.water_temp == null) return null;
 
         return {
-            water_temp,
-            obs_time: last.record_time ?? last.recordTime ?? null,
-            obsCode: code,
+            water_temp: json.water_temp,
+            obs_time: json.obs_time ?? null,
+            obsCode: json.obsCode || code,
             source: 'khoa-tidalBu',
         };
     } catch (e) {
