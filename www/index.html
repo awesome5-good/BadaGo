@@ -1234,6 +1234,7 @@ const MAIN_BEACH_CACHE_KEY = 'bada_main_beach_weather_cache';
 const BADA_DAILY_NOTIF_ID = 1001;
 const BADA_NOTIF_CHANNEL_ID = 'badago-daily';
 const PROFILE_REGIONS = ['부산', '경북', '경남', '강원', '충남', '전남', '제주'];
+const PROFILE_FAV_TAB = '__favorites__';
 const NOTIF_TIME_GROUPS = [
     { label: '오전', times: ['05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00'] },
     { label: '오후', times: ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'] },
@@ -1719,6 +1720,10 @@ function toggleNicknameEdit() {
     }
 }
 
+function getDefaultProfileRegionTab() {
+    return favorites.length > 0 ? PROFILE_FAV_TAB : '부산';
+}
+
 function onProfileFavSearch(val) {
     profileFavSearchQuery = String(val || '').trim();
     renderProfileRegionPills();
@@ -1728,6 +1733,10 @@ function onProfileFavSearch(val) {
 function getProfileBeachesToShow() {
     if (profileFavSearchQuery) {
         return ALL_BEACHES.filter(b => b.name.includes(profileFavSearchQuery));
+    }
+    if (profileRegionTab === PROFILE_FAV_TAB) {
+        if (favorites.length === 0) return [];
+        return favorites.map(id => getBeachById(id)).filter(Boolean);
     }
     return ALL_BEACHES.filter(b => b.region === profileRegionTab);
 }
@@ -1739,15 +1748,18 @@ function renderProfileRegionPills() {
         container.style.display = 'none';
         return;
     }
+    if (profileRegionTab === PROFILE_FAV_TAB && favorites.length === 0) {
+        profileRegionTab = '부산';
+    }
     container.style.display = '';
     container.innerHTML = '';
-    PROFILE_REGIONS.forEach(region => {
+    [PROFILE_FAV_TAB, ...PROFILE_REGIONS].forEach(tab => {
         const pill = document.createElement('button');
         pill.type = 'button';
-        pill.className = `region-pill ${region === profileRegionTab ? 'active' : 'inactive'}`;
-        pill.textContent = region;
+        pill.className = `region-pill ${tab === profileRegionTab ? 'active' : 'inactive'}`;
+        pill.textContent = tab === PROFILE_FAV_TAB ? '⭐ 즐겨찾기' : tab;
         pill.onclick = () => {
-            profileRegionTab = region;
+            profileRegionTab = tab;
             renderProfileRegionPills();
             renderProfileBeachList();
         };
@@ -1762,7 +1774,10 @@ function renderProfileBeachList() {
     const mainId = getMainBeachId();
     container.innerHTML = '';
     if (!beaches.length) {
-        container.innerHTML = `<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;font-weight:600;">${profileFavSearchQuery ? '검색 결과가 없어요' : '해당 지역 해변이 없어요'}</div>`;
+        const emptyMsg = profileRegionTab === PROFILE_FAV_TAB
+            ? '즐겨찾기한 해변이 없어요'
+            : (profileFavSearchQuery ? '검색 결과가 없어요' : '해당 지역 해변이 없어요');
+        container.innerHTML = `<div style="text-align:center;padding:20px 0;color:#94a3b8;font-size:13px;font-weight:600;">${emptyMsg}</div>`;
         return;
     }
     beaches.forEach(beach => {
@@ -1813,6 +1828,7 @@ function removeProfileFavorite(id, { allowEmptyFavorites = false } = {}) {
         fetchAllData();
     }
     renderLocationChips();
+    renderProfileRegionPills();
     renderProfileBeachList();
     updateProfileMainBeachBanner();
     updateNotificationBeachLabel();
@@ -1846,6 +1862,7 @@ function toggleProfileFavorite(id, checked) {
         return;
     }
     renderLocationChips();
+    renderProfileRegionPills();
     renderProfileBeachList();
     updateProfileMainBeachBanner();
     updateNotificationBeachLabel();
@@ -2457,10 +2474,48 @@ function selectLocation(id) {
     loadBeachDataWithCache(id);
 }
 
+function pickLocationFromSheet(id) {
+    if (id && id !== currentLocationId) {
+        selectLocation(id);
+    }
+    closeLocSheet();
+}
+
 // =====================================================
 //  위치 관리 바텀시트
 // =====================================================
+function setupLocSheetDelegation() {
+    const body = document.getElementById('loc-sheet-body');
+    if (!body || body.dataset.delegationReady) return;
+    body.dataset.delegationReady = '1';
+    body.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('.fav-delete');
+        if (deleteBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const row = deleteBtn.closest('[data-beach-id]');
+            if (row?.dataset.beachId) removeFavorite(row.dataset.beachId, e);
+            return;
+        }
+        const favRow = e.target.closest('.fav-item[data-beach-id]');
+        if (favRow?.dataset.beachId) {
+            pickLocationFromSheet(favRow.dataset.beachId);
+            return;
+        }
+        const searchRow = e.target.closest('.search-result-item[data-beach-id]');
+        if (searchRow?.dataset.beachId) {
+            const beachId = searchRow.dataset.beachId;
+            const beach = getBeachById(beachId);
+            if (!favorites.includes(beachId)) {
+                addFavorite(beachId);
+            } else if (beach) {
+                showToast(`⭐ ${beach.name}은(는) 이미 즐겨찾기에 있어요`);
+            }
+        }
+    });
+}
 function openLocSheet() {
+    setupLocSheetDelegation();
     document.getElementById('loc-search-input').value = '';
     renderLocSheetBody('');
     document.getElementById('loc-sheet-overlay').classList.add('show');
@@ -2480,38 +2535,49 @@ function onSearchInput(val) {
 
 function renderLocSheetBody(query) {
     const body = document.getElementById('loc-sheet-body');
+    setupLocSheetDelegation();
     body.innerHTML = '';
 
     if (!query) {
-        body.innerHTML += `<div class="loc-section-title">즐겨찾기 (탭에 표시됨)</div>`;
+        const title1 = document.createElement('div');
+        title1.className = 'loc-section-title';
+        title1.textContent = '즐겨찾기 (탭에 표시됨)';
+        body.appendChild(title1);
+
         if (favorites.length === 0) {
-            body.innerHTML += `<div class="no-result">아직 즐겨찾기가 없어요<br>아래에서 검색해서 추가하세요 🔍</div>`;
+            const empty = document.createElement('div');
+            empty.className = 'no-result';
+            empty.innerHTML = '아직 즐겨찾기가 없어요<br>아래에서 검색해서 추가하세요 🔍';
+            body.appendChild(empty);
         } else {
             favorites.forEach(id => {
                 const beach = getBeachById(id);
                 if (!beach) return;
                 const item = document.createElement('div');
                 item.className = `fav-item ${id === currentLocationId ? 'selected' : ''}`;
+                item.dataset.beachId = id;
                 item.innerHTML = `
                     <div class="fav-emoji">${beach.emoji}</div>
                     <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region} · ${beach.beachCode || ''}</div></div>
                     <div class="fav-actions">
                         ${id === currentLocationId ? '<span class="fav-check">✓</span>' : ''}
-                        <button type="button" class="fav-delete" onclick="removeFavorite('${id}', event)" aria-label="즐겨찾기 제거">✕</button>
+                        <button type="button" class="fav-delete" aria-label="즐겨찾기 제거">✕</button>
                     </div>`;
-                item.onclick = () => {
-                    selectLocation(id);
-                    closeLocSheet();
-                };
                 body.appendChild(item);
             });
         }
 
-        body.innerHTML += `<div class="loc-section-title">해변 검색해서 추가하기</div>`;
-        body.innerHTML += `<div style="color:#94a3b8;font-size:13px;text-align:center;padding:8px 0;">위 검색창에 해변 이름을 입력하세요</div>`;
+        const title2 = document.createElement('div');
+        title2.className = 'loc-section-title';
+        title2.textContent = '해변 검색해서 추가하기';
+        body.appendChild(title2);
+
+        const hint = document.createElement('div');
+        hint.style.cssText = 'color:#94a3b8;font-size:13px;text-align:center;padding:8px 0;';
+        hint.textContent = '위 검색창에 해변 이름을 입력하세요';
+        body.appendChild(hint);
 
     } else {
-        // 검색 결과
         const results = ALL_BEACHES.filter(b =>
             b.name.includes(query) || b.region.includes(query)
         );
@@ -2521,22 +2587,20 @@ function renderLocSheetBody(query) {
             return;
         }
 
-        body.innerHTML += `<div class="loc-section-title">검색 결과 ${results.length}건</div>`;
+        const title = document.createElement('div');
+        title.className = 'loc-section-title';
+        title.textContent = `검색 결과 ${results.length}건`;
+        body.appendChild(title);
+
         results.forEach(beach => {
             const isFav = favorites.includes(beach.id);
             const item = document.createElement('div');
             item.className = `search-result-item ${isFav ? 'already-fav' : ''}`;
+            item.dataset.beachId = beach.id;
             item.innerHTML = `
                 <div class="sr-emoji">${beach.emoji}</div>
                 <div class="sr-info"><div class="sr-name">${beach.name}</div><div class="sr-desc">${beach.region}</div></div>
                 <div class="sr-add">${isFav ? '★' : '+'}</div>`;
-            item.onclick = () => {
-                if (!isFav) {
-                    addFavorite(beach.id);
-                } else {
-                    showToast(`⭐ ${beach.name}은(는) 이미 즐겨찾기에 있어요`);
-                }
-            };
             body.appendChild(item);
         });
     }
@@ -2946,7 +3010,10 @@ function switchTab(idx) {
         document.getElementById(`tab-panel-${i}`).className = i === idx ? 'tab-panel active' : 'tab-panel';
     }
     if (idx === 2) initStravaTab();
-    if (idx === 3) renderProfileTab();
+    if (idx === 3) {
+        profileRegionTab = getDefaultProfileRegionTab();
+        renderProfileTab();
+    }
 }
 
 function goToWeatherSection(sectionId) {
