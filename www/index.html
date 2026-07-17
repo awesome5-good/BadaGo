@@ -1326,12 +1326,77 @@ function isKstToday(date) {
     return getKstDateKey(date) === getKstDateKey(new Date());
 }
 
-/** API는 DT_####만 허용. TW_####(부이 필드명)은 DT_로 정규화 */
+/** DT_#### 조위관측소용. TW_####는 tidalBuTemp 전용 — DT로 변환하지 않음 */
 function normalizeObsCodeForApi(obsCode) {
     const code = String(obsCode || '').trim().toUpperCase();
-    const tw = code.match(/^TW_(\d{4})$/);
-    if (tw) return `DT_${tw[1]}`;
+    if (/^TW_\d{4}$/.test(code)) return code;
     return code;
+}
+
+function isTidalBuObsCode(obsCode) {
+    return /^TW_\d{4}$/.test(String(obsCode || '').trim().toUpperCase());
+}
+
+function getKhoaHourlyObsCode(beach) {
+    const code = beach?.obsCode != null ? String(beach.obsCode).trim().toUpperCase() : '';
+    if (isTidalBuObsCode(code) && beach.obsFallback) {
+        return String(beach.obsFallback).trim().toUpperCase();
+    }
+    if (/^DT_\d{4}$/.test(code)) return code;
+    return '';
+}
+
+function getKmaSurveyObsCode(beach) {
+    const code = beach?.obsCode != null ? String(beach.obsCode).trim().toUpperCase() : '';
+    if (isTidalBuObsCode(code) && beach.obsFallback) {
+        return String(beach.obsFallback).trim().toUpperCase();
+    }
+    if (/^DT_\d{4}$/.test(code)) return code;
+    return '';
+}
+
+function getKhoaApiDateYmd(date = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(date).replace(/-/g, '');
+}
+
+const KHOA_TIDAL_BU_TEMP_API = 'https://www.khoa.go.kr/api/oceangrid/tidalBuTemp/search.do';
+
+async function fetchKhoaTidalBuTemp(obsCode) {
+    const code = String(obsCode || '').trim().toUpperCase();
+    if (!isTidalBuObsCode(code)) return null;
+
+    const dateYmd = getKhoaApiDateYmd();
+    const url = `${KHOA_TIDAL_BU_TEMP_API}?ServiceKey=${encodeURIComponent(KHOA_SERVICE_KEY)}&ObsCode=${encodeURIComponent(code)}&Date=${dateYmd}&ResultType=json`;
+    logApiFetch('1순위', `KHOA tidalBuTemp ${code}`, 'tidalBuTemp/search.do');
+
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        if (!text || text.trimStart().startsWith('<')) return null;
+        const json = JSON.parse(text);
+        const rows = json?.result?.data ?? json?.response?.result?.data ?? [];
+        const data = Array.isArray(rows) ? rows : (rows ? [rows] : []);
+        if (!data.length) return null;
+
+        const last = data[data.length - 1];
+        const water_temp = parseObsWaterTemp(last.water_temp ?? last.waterTemp);
+        if (water_temp === null) return null;
+
+        return {
+            water_temp,
+            obs_time: last.record_time ?? last.recordTime ?? null,
+            obsCode: code,
+            source: 'khoa-tidalBu',
+        };
+    } catch (e) {
+        console.warn('[BadaGo] tidalBuTemp 실패', code, e);
+        return null;
+    }
 }
 
 function parseObsWaterTemp(raw) {
@@ -1412,7 +1477,11 @@ function buildWaterUnavailableStatus() {
 }
 
 async function fetchKhoaHourlyData(obsCode) {
-    const code = normalizeObsCodeForApi(obsCode);
+    const beach = getCurrentLoc();
+    const code = getKhoaHourlyObsCode(beach) || normalizeObsCodeForApi(obsCode);
+    if (!/^DT_\d{4}$/.test(code)) {
+        throw new Error(`KHOA hourly unsupported obsCode: ${obsCode}`);
+    }
     const url = `${getKhoaHourlyApiBase()}?obsCode=${encodeURIComponent(code)}`;
     logApiFetch('배경', 'KHOA 조위관측소 시간별 실측 수온', url);
     const res = await fetch(url);
@@ -1449,8 +1518,8 @@ const NIFS_STATION_CODES = {
 };
 
 const ALL_BEACHES = [
-    // 부산 — kmaBeachId: weather.go.kr · obsCode: 부산(DT_0005) 조위관측소 실측 수온 (해운대 전용 DT 없음)
-    { id:'haeundae',   name:'해운대',     emoji:'🏖️', region:'부산', lat:35.158, lon:129.160, stnId:661, beachCode:'BCH001', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['해운대'] },
+    // 부산 — 해운대: TW_0062 tidalBuTemp(부이) · 실패 시 DT_0005 조위관측소
+    { id:'haeundae',   name:'해운대',     emoji:'🏖️', region:'부산', lat:35.158, lon:129.160, stnId:661, obsCode:'TW_0062', obsFallback:'DT_0005', tidalBuLabel:'해운대해수욕장 관측소', beachCode:'BCH001', buoyCode:'22100', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['해운대'] },
     { id:'gwangan',    name:'광안리',     emoji:'🌉', region:'부산', lat:35.153, lon:129.118, stnId:661, beachCode:'BCH002', kmaBeachId:'306', nifsStation:'부산',   khoaObsAccept:['광안리','광안','수영','남천'] },
     { id:'songjeong',  name:'송정',       emoji:'🌊', region:'부산', lat:35.179, lon:129.209, stnId:661, beachCode:'BCH010', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'305', nifsStation:'해운대', khoaObsAccept:['송정','해운대'] },
     { id:'songdo',     name:'송도',       emoji:'🎡', region:'부산', lat:35.091, lon:129.014, stnId:725, beachCode:'BCH012', buoyCode:'22100', obsCode:'DT_0005', kmaBeachId:'268', nifsStation:'부산',   khoaObsAccept:['송도','감천','부산'] },
@@ -2250,6 +2319,11 @@ function formatKmaStatusText(beachName, obsTime) {
     return `기상청 ${beachName} · ${t} 기준`;
 }
 
+function formatTidalBuStatusText(loc, obsTime) {
+    const label = loc.tidalBuLabel || `${loc.name} 관측소`;
+    return `${label} · ${formatKhoaObsTime(obsTime)} 기준`;
+}
+
 function formatMarineApiStatusText(loc, json) {
     const t = json.obs_time ? formatKhoaObsTime(json.obs_time) : getTimeStr();
     if (json.source === 'kma-buoy') {
@@ -2257,16 +2331,19 @@ function formatMarineApiStatusText(loc, json) {
         return `기상청 해양부이${code ? ` ${code}` : ''} · ${t} 기준`;
     }
     if (json.source === 'khoa-survey') {
-        const code = json.obsCode || loc.obsCode || '';
-        return `해양조사원 조위관측소${code ? ` ${code}` : ''} · ${t} 기준`;
+        const code = json.obsCode || loc.obsFallback || loc.obsCode || '';
+        const base = `해양조사원 조위관측소${code ? ` ${code}` : ''} · ${t} 기준`;
+        if (isTidalBuObsCode(loc.obsCode)) return `${base} (부산 관측소 대체)`;
+        return base;
     }
     return formatKmaStatusText(loc.name, json.obs_time);
 }
 
 function buildKmaBeachUrl(beach) {
     const params = new URLSearchParams({ id: String(beach.kmaBeachId) });
-    const buoy = beach.buoyCode != null ? String(beach.buoyCode).trim() : '';
-    const obs = beach.obsCode != null ? normalizeObsCodeForApi(beach.obsCode) : '';
+    const skipBuoy = isTidalBuObsCode(beach.obsCode);
+    const buoy = !skipBuoy && beach.buoyCode != null ? String(beach.buoyCode).trim() : '';
+    const obs = getKmaSurveyObsCode(beach);
     if (buoy) params.set('buoyCode', buoy);
     if (obs && /^DT_\d{4}$/.test(obs)) params.set('obsCode', obs);
     return `${getKmaApiBase()}?${params.toString()}`;
@@ -2583,7 +2660,7 @@ function tryShowCachedBeachData(locationId) {
     return true;
 }
 
-function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, asosData) {
+function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, asosData, tidalBu) {
     currentWaveHeight = marine?.current?.wave_height ?? null;
     window._hourlyData = { marine: marine?.hourly || {}, weather: weather?.hourly || {} };
     window._dailyData = weather?.daily || {};
@@ -2598,7 +2675,16 @@ function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, asos
     let statusText = null;
     let dataSource = null;
 
-    if (kma) {
+    if (tidalBu?.water_temp != null) {
+        finalizeMeasuredWaterTemp(loc.id, tidalBu.water_temp, tidalBu.obs_time, 'khoa-tidalBu');
+        if (kma?.wave_height != null) currentWaveHeight = kma.wave_height;
+        applyOpenMeteoWind(weather);
+        statusText = currentWaterTempIsCached
+            ? buildWaterUnavailableStatus()
+            : formatTidalBuStatusText(loc, tidalBu.obs_time);
+        usedKhoaApi = true;
+        dataSource = 'KHOA-tidalBu';
+    } else if (kma) {
         applyKmaBeachData(kma, marine, weather);
         statusText = currentWaterTemp === null
             ? buildWaterUnavailableStatus()
@@ -2676,10 +2762,10 @@ async function fetchAllData(opts = {}) {
         logApiFetch('배경', 'Open-Meteo weather', weatherUrl);
 
         window._khoaHourlyMap = null;
-        const obsCode = loc.obsCode != null ? String(loc.obsCode).trim() : '';
+        const hourlyObsCode = getKhoaHourlyObsCode(loc);
 
-        const khoaHourlyPromise = obsCode
-            ? fetchKhoaHourlyData(obsCode).catch((e) => {
+        const khoaHourlyPromise = hourlyObsCode
+            ? fetchKhoaHourlyData(hourlyObsCode).catch((e) => {
                 console.warn('[fetchAllData] KHOA hourly 실패 → 예보 과거 구간 Open-Meteo 유지', e.message);
                 window._khoaHourlyMap = null;
                 return null;
@@ -2705,7 +2791,11 @@ async function fetchAllData(opts = {}) {
             ? fetchKmaAsosHourly(loc.stnId)
             : Promise.resolve(null);
 
-        const [marineRes, weatherRes, , kma, khoa, nifs, asosData] = await Promise.all([
+        const tidalBuPromise = isTidalBuObsCode(loc.obsCode)
+            ? fetchKhoaTidalBuTemp(loc.obsCode)
+            : Promise.resolve(null);
+
+        const [marineRes, weatherRes, , kma, khoa, nifs, asosData, tidalBu] = await Promise.all([
             fetch(marineUrl),
             fetch(weatherUrl),
             khoaHourlyPromise,
@@ -2713,12 +2803,13 @@ async function fetchAllData(opts = {}) {
             khoaPromise,
             nifsPromise,
             asosPromise,
+            tidalBuPromise,
         ]);
 
         const marine = await marineRes.json();
         const weather = await weatherRes.json();
 
-        const { statusText, dataSource } = resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, asosData);
+        const { statusText, dataSource } = resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, asosData, tidalBu);
 
         console.log('[fetchAllData] 완료', {
             beach: loc.name,
