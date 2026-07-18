@@ -1,9 +1,14 @@
 {
   "outputDirectory": "www",
+  "functions": {
+    "www/api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "routes": [
     { "src": "/privacy", "dest": "/www/privacy.html" },
     { "src": "/privacy.html", "dest": "/www/privacy.html" },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/api/(.*)", "dest": "/www/api/$1.js" },
     { "src": "/(.*)", "dest": "/www/index.html" }
   ]
 }
