@@ -57,9 +57,29 @@
         .content-scroll { flex: 1; overflow-y: auto; padding: var(--space-card); padding-top: calc(15px + var(--safe-top)); padding-bottom: calc(var(--tab-bar-height) + 28px); scrollbar-width: none; }
         .content-scroll::-webkit-scrollbar { display: none; }
 
-        /* 위치 탭 */
-        .location-chips { display: flex; gap: 8px; margin-bottom: var(--space-section); overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+        /* 위치 칩 (홈 sticky) */
+        .location-chips-sentinel { height: 1px; width: 100%; margin: 0; padding: 0; pointer-events: none; visibility: hidden; }
+        .location-chips {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            gap: 8px;
+            margin: 0 calc(-1 * var(--space-card)) var(--space-section);
+            padding: 6px var(--space-card) 14px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            background: linear-gradient(
+                180deg,
+                #A8E6FF 0%,
+                #A8E6FF calc(100% - 8px),
+                rgba(168, 230, 255, 0) 100%
+            );
+            box-shadow: none;
+            transition: box-shadow 0.2s ease;
+        }
         .location-chips::-webkit-scrollbar { display: none; }
+        .location-chips.scrolled { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
         .l-chip { padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.25s; flex-shrink: 0; }
         .l-chip.active { background: #fff; color: var(--primary); box-shadow: 0 4px 12px rgba(0,50,100,0.15); }
         .l-chip.inactive { background: rgba(255,255,255,0.25); color: #fff; }
@@ -672,7 +692,8 @@
             </button>
         </div>
 
-        <!-- 위치 탭 (즐겨찾기 기반) -->
+        <!-- 위치 탭 (즐겨찾기 기반, sticky) -->
+        <div class="location-chips-sentinel" id="location-chips-sentinel" aria-hidden="true"></div>
         <div class="location-chips" id="location-chips"></div>
 
         <!-- 위치명 + 날씨 -->
@@ -3175,6 +3196,32 @@ function renderLocationChips() {
         chip.onclick = () => selectLocation(id);
         container.appendChild(chip);
     });
+}
+
+function setupLocationChipsSticky() {
+    if (window.__locationChipsStickyReady) return;
+    const chips = document.getElementById('location-chips');
+    const sentinel = document.getElementById('location-chips-sentinel');
+    const scrollEl = document.querySelector('.content-scroll');
+    if (!chips || !sentinel || !scrollEl) return;
+    window.__locationChipsStickyReady = true;
+
+    if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+            ([entry]) => {
+                chips.classList.toggle('scrolled', !entry.isIntersecting);
+            },
+            { root: scrollEl, threshold: 0 }
+        );
+        io.observe(sentinel);
+        return;
+    }
+
+    const onScroll = () => {
+        chips.classList.toggle('scrolled', scrollEl.scrollTop > 8);
+    };
+    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
 }
 
 function selectLocation(id) {
