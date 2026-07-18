@@ -15,12 +15,12 @@
             --color-primary: #0ea5e9;
             --primary: #1E7EC8;
             --accent-yellow: #FFF35A;
-            --color-safe: #10b981;
-            --color-safe-bg: #ecfdf5;
+            --color-safe: #22c55e;
+            --color-safe-bg: #dcfce7;
             --color-caution: #f59e0b;
-            --color-caution-bg: #fffbeb;
+            --color-caution-bg: #fef3c7;
             --color-danger: #ef4444;
-            --color-danger-bg: #fef2f2;
+            --color-danger-bg: #fee2e2;
             --gray-50: #f8fafc;
             --gray-100: #f1f5f9;
             --gray-200: #e2e8f0;
@@ -66,9 +66,10 @@
         .l-chip.gps-active { background: #4ade80; color: #064e3b; }
         .l-chip.l-chip-manage { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border: 1.5px dashed rgba(255,255,255,0.5); display: inline-flex; align-items: center; gap: 5px; }
         .l-chip.l-chip-manage:active { background: rgba(255,255,255,0.25); }
-        .l-chip.l-chip-main { border: 2px solid #F59E0B; }
+        .l-chip.l-chip-main { border: 2px solid var(--color-caution); }
         .l-chip.l-chip-main.active { box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
         .l-chip .ui-icon-xs { width: 14px; height: 14px; color: var(--color-caution); }
+        .l-chip .chip-wave-icon { width: 14px; height: 14px; color: inherit; opacity: 0.9; }
 
         /* 위치 헤더 */
         .location-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -82,14 +83,14 @@
         .weather-badge { background: rgba(255,255,255,0.25); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: #fff; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
         .weather-badge .ui-icon-sm { color: #fff; }
         .weather-badge-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
-        .air-temp-source { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.65); white-space: nowrap; letter-spacing: -0.2px; }
+        .air-temp-source { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.65); white-space: nowrap; letter-spacing: -0.2px; }
 
         /* API 상태 */
-        .api-status-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); }
-        .api-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
-        .api-dot.loading { background: #fbbf24; animation: pulse 1s infinite; }
-        .api-dot.error { background: #f87171; }
-        .api-dot.cache { background: #fbbf24; }
+        .api-status-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); }
+        .api-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-safe); flex-shrink: 0; }
+        .api-dot.loading { background: var(--color-caution); animation: pulse 1s infinite; }
+        .api-dot.error { background: var(--color-danger); }
+        .api-dot.cache { background: var(--color-caution); }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         @keyframes skeleton-shimmer {
             0% { background-position: -200px 0; }
@@ -125,7 +126,7 @@
         .hourly-card { background: rgba(255,255,255,0.15); backdrop-filter: blur(15px); border-radius: 24px; padding: var(--space-card); margin-bottom: var(--space-section); border: 1px solid rgba(255,255,255,0.15); }
         .hourly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding: 0 4px; }
         .hourly-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); }
-        .chart-legend { display: flex; gap: 12px; font-size: 10px; font-weight: 600; }
+        .chart-legend { display: flex; gap: 12px; font-size: 12px; font-weight: 600; }
         .legend-item { display: flex; align-items: center; gap: 4px; color: rgba(255,255,255,0.82); }
         .dot-yellow { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-yellow); }
         .dot-white { width: 6px; height: 6px; border-radius: 50%; background: #fff; }
@@ -133,7 +134,7 @@
         .hourly-scroll::-webkit-scrollbar { display: none; }
         .hour-column { display: flex; flex-direction: column; align-items: center; min-width: 46px; padding: 10px 4px; border-radius: 14px; gap: 2px; }
         .hour-column.now { background: rgba(255,255,255,0.3); transform: scale(1.05); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .hour-time { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.7); line-height: 1; margin-bottom: 4px; }
+        .hour-time { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); line-height: 1; margin-bottom: 4px; }
         .hour-column.now .hour-time { color: #fff; font-weight: 800; }
         .hour-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; color: #fff; }
         .hour-icon .ui-icon-sm { width: 18px; height: 18px; color: #fff; }
@@ -146,7 +147,7 @@
         .info-card { background: #fff; border-radius: 18px; padding: var(--space-card); display: flex; align-items: center; box-shadow: 0 4px 16px rgba(0,80,160,0.08); transition: transform 0.2s; }
         .info-card-clickable { cursor: pointer; }
         .info-card:active { transform: scale(0.98); }
-        .card-chevron { font-size: 18px; font-weight: 700; color: #94a3b8; margin-left: 4px; flex-shrink: 0; line-height: 1; }
+        .card-chevron { font-size: 17px; font-weight: 700; color: var(--gray-400); margin-left: 4px; flex-shrink: 0; line-height: 1; }
         .card-icon-container { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex-shrink: 0; color: #fff; }
         .icon-wave { background: linear-gradient(135deg, var(--color-primary), #0284c7); }
         .icon-jelly { background: linear-gradient(135deg, #a78bfa, #db2777); }
@@ -250,8 +251,8 @@
             }
             .weather-metric-bar-fill.bar-animate { transition: none !important; }
         }
-        .sun-time-label { font-size: 11px; font-weight: 600; color: #64748b; }
-        .sun-time-val { font-size: 20px; font-weight: 800; color: #1e293b; margin-top: 4px; }
+        .sun-time-label { font-size: 12px; font-weight: 600; color: var(--gray-500); }
+        .sun-time-val { font-size: 20px; font-weight: 800; color: var(--gray-800); margin-top: 4px; font-variant-numeric: tabular-nums; }
 
         /* 하단 탭 */
         .bottom-tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: var(--tab-bar-height); background: #fff; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-around; align-items: stretch; padding-top: 0; padding-bottom: var(--safe-bottom); z-index: 100; }
@@ -260,7 +261,7 @@
         .tab-icon { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; transition: transform 0.2s; }
         .tab-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
         .tab-item:active .tab-icon { transform: scale(1.08); }
-        .tab-label { font-size: 10px; font-weight: 700; letter-spacing: -0.2px; }
+        .tab-label { font-size: 12px; font-weight: 700; letter-spacing: -0.2px; }
         .tab-item.active { color: #1E7EC8; }
         .tab-item.inactive { color: #9CA3AF; }
 
@@ -278,53 +279,58 @@
         .loc-sheet-handle { width: 36px; height: 4px; background: #e2e8f0; border-radius: 2px; margin: 0 auto 16px; }
         .loc-sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
         .loc-sheet-title { font-size: 17px; font-weight: 800; color: var(--gray-800); display: inline-flex; align-items: center; gap: 8px; }
-        .loc-sheet-close { background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
-        .loc-sheet-hint { font-size: 12px; font-weight: 600; color: #64748b; padding: 0 20px 10px; line-height: 1.4; }
+        .loc-sheet-close { background: var(--gray-100); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--gray-500); }
+        .loc-sheet-close .ui-icon { width: 16px; height: 16px; }
+        .loc-sheet-hint { font-size: 12px; font-weight: 600; color: var(--gray-500); padding: 0 20px 10px; line-height: 1.4; }
 
         /* 검색창 */
         .loc-search-box { margin: 0 20px 12px; position: relative; flex-shrink: 0; }
-        .loc-search-input { width: 100%; padding: 12px 16px 12px 40px; border-radius: 14px; border: 2px solid #e2e8f0; font-size: 14px; font-family: var(--font-sans); outline: none; color: #1e293b; transition: border-color 0.2s; background: #f8fafc; }
+        .loc-search-input { width: 100%; padding: 12px 16px 12px 40px; border-radius: 14px; border: 2px solid var(--gray-200); font-size: 15px; font-family: var(--font-sans); outline: none; color: var(--gray-800); transition: border-color 0.2s; background: var(--gray-50); }
         .loc-search-input:focus { border-color: var(--primary); background: #fff; }
         .loc-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; display: inline-flex; align-items: center; color: var(--gray-400); }
 
         /* 섹션 */
         .loc-sheet-body { flex: 1; overflow-y: auto; padding: 0 20px calc(20px + env(safe-area-inset-bottom, 16px)); scrollbar-width: none; }
         .loc-sheet-body::-webkit-scrollbar { display: none; }
-        .loc-section-title { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase; margin: 16px 0 8px; }
+        .loc-section-title { font-size: 12px; font-weight: 700; color: var(--gray-400); letter-spacing: 0.5px; text-transform: uppercase; margin: 16px 0 8px; }
+        .gps-row-icon { width: 24px; height: 24px; color: var(--color-safe); display: flex; align-items: center; justify-content: center; }
+        .gps-row-icon .ui-icon { width: 20px; height: 20px; }
+        .gps-row-name { font-size: 15px; font-weight: 700; color: var(--color-safe); }
+        .gps-row-desc { font-size: 12px; color: var(--color-safe); margin-top: 1px; }
+        .gps-row-arrow { font-size: 15px; color: var(--color-safe); }
+        .fav-emoji, .fav-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; }
+        .fav-emoji .ui-icon, .fav-icon .ui-icon { width: 22px; height: 22px; }
+        .fav-name { font-size: 15px; font-weight: 700; color: var(--gray-800); }
+        .fav-desc { font-size: 12px; color: var(--gray-500); margin-top: 1px; }
+        .fav-check { color: var(--primary); display: flex; align-items: center; }
+        .fav-delete { background: var(--color-danger-bg); border: none; min-width: 44px; min-height: 44px; width: 44px; height: 44px; border-radius: 10px; cursor: pointer; color: var(--color-danger); display: flex; align-items: center; justify-content: center; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+        .fav-delete .ui-icon { width: 16px; height: 16px; }
 
         /* GPS 버튼 */
         .gps-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; background: #f0fdf4; border: 2px solid #bbf7d0; cursor: pointer; margin-bottom: 4px; transition: all 0.2s; }
         .gps-row:active { transform: scale(0.98); }
-        .gps-row-icon { font-size: 20px; }
         .gps-row-info { flex: 1; }
-        .gps-row-name { font-size: 14px; font-weight: 700; color: #15803d; }
-        .gps-row-desc { font-size: 12px; color: #16a34a; margin-top: 1px; }
-        .gps-row-arrow { font-size: 14px; color: #16a34a; }
 
         /* 즐겨찾기 목록 */
         .fav-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; min-height: 56px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: background 0.15s, transform 0.15s; margin-bottom: 6px; position: relative; -webkit-tap-highlight-color: transparent; }
         .fav-item.selected { border-color: var(--primary); background: #eff6ff; }
         .fav-item:active { transform: scale(0.99); background: #f1f5f9; }
         .fav-item.selected:active { background: #dbeafe; }
-        .fav-emoji { font-size: 22px; }
         .fav-info { flex: 1; }
-        .fav-name { font-size: 15px; font-weight: 700; color: #1e293b; }
-        .fav-desc { font-size: 12px; color: #64748b; margin-top: 1px; }
         .fav-actions { display: flex; align-items: center; gap: 6px; }
-        .fav-check { font-size: 16px; color: var(--primary); }
-        .fav-delete { background: #fee2e2; border: none; min-width: 44px; min-height: 44px; width: 44px; height: 44px; border-radius: 10px; font-size: 14px; cursor: pointer; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
         .fav-delete:active { background: #fecaca; }
 
         /* 검색 결과 */
         .search-result-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: all 0.2s; margin-bottom: 6px; }
         .search-result-item:active { transform: scale(0.98); background: #f8fafc; }
-        .search-result-item .sr-emoji { font-size: 20px; }
+        .search-result-item .sr-emoji { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; }
+        .search-result-item .sr-emoji .ui-icon { width: 20px; height: 20px; }
         .search-result-item .sr-info { flex: 1; }
-        .search-result-item .sr-name { font-size: 14px; font-weight: 700; color: #1e293b; }
-        .search-result-item .sr-desc { font-size: 12px; color: #64748b; margin-top: 1px; }
-        .search-result-item .sr-add { font-size: 18px; color: #94a3b8; }
+        .search-result-item .sr-name { font-size: 15px; font-weight: 700; color: var(--gray-800); }
+        .search-result-item .sr-desc { font-size: 12px; color: var(--gray-500); margin-top: 1px; }
+        .search-result-item .sr-add { color: var(--gray-400); display: flex; align-items: center; }
         .search-result-item.already-fav .sr-add { color: var(--primary); }
-        .no-result { text-align: center; padding: 30px 0; color: #94a3b8; font-size: 14px; }
+        .no-result { text-align: center; padding: 30px 0; color: var(--gray-400); font-size: 15px; }
 
         /* 탭 패널 */
         .tab-panel { display: none; }
@@ -332,7 +338,7 @@
 
         /* 기록 탭 (Strava) */
         .record-header { margin-bottom: 20px; }
-        .record-title { font-size: 28px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: -0.5px; }
+        .record-title { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: -0.5px; }
         .record-subtitle { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 4px; }
         #tab-panel-2.strava-auth-mode.active {
             display: flex;
@@ -376,39 +382,41 @@
         }
         .strava-connect-btn:active { transform: scale(0.98); }
         .strava-auth-prompt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; width: 100%; max-width: 300px; }
-        .strava-auth-emoji { font-size: 48px; line-height: 1; }
-        .strava-auth-desc { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.5; margin: 0; }
+        .strava-auth-emoji { line-height: 1; color: #fff; }
+        .strava-auth-emoji .ui-icon { width: 48px; height: 48px; }
+        .strava-auth-desc { font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.5; margin: 0; }
         .strava-user-bar { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.18); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 12px 14px; margin-bottom: 16px; }
         .strava-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.5); flex-shrink: 0; background: #fff; }
         .strava-user-info { flex: 1; min-width: 0; }
         .strava-user-name { font-size: 15px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .strava-user-meta { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 2px; }
-        .strava-logout-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; font-size: 11px; font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
+        .strava-user-meta { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.75); margin-top: 2px; }
+        .strava-logout-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer; flex-shrink: 0; }
         .strava-section-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: 12px; padding: 0 2px; }
         .strava-activity-list { display: flex; flex-direction: column; gap: 10px; }
-        .strava-activity-card { background: #fff; border-radius: 18px; padding: 16px 18px; box-shadow: 0 4px 16px rgba(0,80,160,0.08); cursor: pointer; transition: transform 0.2s; }
+        .strava-activity-card { background: #fff; border-radius: 18px; padding: var(--space-card); box-shadow: 0 4px 16px rgba(0,80,160,0.08); cursor: pointer; transition: transform 0.2s; }
         .strava-activity-card:active { transform: scale(0.98); }
         .strava-act-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-        .strava-act-name { font-size: 15px; font-weight: 800; color: #1e293b; line-height: 1.35; flex: 1; }
-        .strava-act-date { font-size: 11px; font-weight: 700; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+        .strava-act-name { font-size: 15px; font-weight: 800; color: var(--gray-800); line-height: 1.35; flex: 1; }
+        .strava-act-date { font-size: 12px; font-weight: 700; color: var(--gray-500); white-space: nowrap; flex-shrink: 0; }
         .strava-act-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
-        .strava-act-location { font-size: 10px; font-weight: 600; color: #94a3b8; text-align: right; max-width: 140px; line-height: 1.3; }
+        .strava-act-location { font-size: 12px; font-weight: 600; color: var(--gray-400); text-align: right; max-width: 140px; line-height: 1.3; }
         .strava-act-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .strava-stat { background: #f8fafc; border-radius: 12px; padding: 10px 8px; text-align: center; }
-        .strava-stat-val { font-size: 14px; font-weight: 800; color: #1e293b; line-height: 1.2; }
-        .strava-stat-label { font-size: 10px; font-weight: 600; color: #94a3b8; margin-top: 3px; }
-        .strava-empty, .strava-loading { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.8); font-size: 14px; font-weight: 600; }
+        .strava-stat { background: var(--gray-50); border-radius: 12px; padding: 10px 8px; text-align: center; }
+        .strava-stat-val { font-size: 15px; font-weight: 800; color: var(--gray-800); line-height: 1.2; font-variant-numeric: tabular-nums; }
+        .strava-stat-label { font-size: 12px; font-weight: 600; color: var(--gray-400); margin-top: 3px; }
+        .strava-empty, .strava-loading { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.8); font-size: 15px; font-weight: 600; }
         .strava-loading { animation: pulse 1.2s infinite; }
         .tab-placeholder { text-align: center; padding: 80px 20px; color: rgba(255,255,255,0.85); }
-        .tab-placeholder-icon { font-size: 48px; margin-bottom: 12px; }
-        .tab-placeholder-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+        .tab-placeholder-icon { margin-bottom: 12px; display: flex; justify-content: center; color: #fff; }
+        .tab-placeholder-icon .ui-icon { width: 48px; height: 48px; }
+        .tab-placeholder-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
         .tab-placeholder-desc { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7); }
 
         /* Strava 활동 상세 */
-        .strava-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
+        .strava-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--gray-100); }
         .strava-detail-row:last-child { border-bottom: none; }
-        .strava-detail-label { font-size: 13px; font-weight: 600; color: #64748b; }
-        .strava-detail-value { font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; }
+        .strava-detail-label { font-size: 13px; font-weight: 600; color: var(--gray-500); }
+        .strava-detail-value { font-size: 15px; font-weight: 800; color: var(--gray-800); text-align: right; font-variant-numeric: tabular-nums; }
         .strava-detail-map-placeholder { background: #f1f5f9; border-radius: 14px; padding: 28px 16px; text-align: center; color: #94a3b8; font-size: 12px; font-weight: 600; margin-top: 8px; }
         .strava-detail-map { height: 200px; width: 100%; border-radius: 14px; margin-top: 8px; overflow: hidden; background: #e2e8f0; z-index: 0; }
         .strava-detail-map .leaflet-container { height: 200px; width: 100%; font-family: var(--font-sans); }
@@ -479,7 +487,7 @@
             border-radius: 14px;
             background: #1E7EC8;
             color: #fff;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 700;
             cursor: pointer;
             font-family: var(--font-sans);
@@ -490,12 +498,12 @@
 
         /* 내정보 탭 */
         .profile-tab-header { margin-bottom: 16px; }
-        .profile-tab-title { font-size: 28px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: -0.5px; }
+        .profile-tab-title { font-size: 24px; font-weight: 800; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: -0.5px; }
         .profile-card { background: rgba(255,255,255,0.92); border-radius: 18px; padding: 16px 18px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,80,160,0.08); }
         .profile-section-title { font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 12px; letter-spacing: -0.2px; }
         .profile-nickname-row { display: flex; align-items: center; gap: 10px; }
         .profile-nickname-text { font-size: 20px; font-weight: 800; color: #1e293b; flex: 1; min-width: 0; }
-        .profile-nickname-input { flex: 1; min-width: 0; font-size: 18px; font-weight: 700; color: #1e293b; border: 2px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; font-family: var(--font-sans); outline: none; }
+        .profile-nickname-input { flex: 1; min-width: 0; font-size: 17px; font-weight: 700; color: var(--gray-800); border: 2px solid var(--gray-200); border-radius: 12px; padding: 10px 12px; font-family: var(--font-sans); outline: none; }
         .profile-nickname-input:focus { border-color: var(--primary); }
         .profile-edit-btn { background: #eff6ff; border: none; width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
         .profile-edit-btn svg { width: 18px; height: 18px; stroke: var(--primary); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -513,21 +521,22 @@
         .profile-beach-item.checked:active { background: #dbeafe; }
         .profile-beach-check-wrap { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin: -6px 0 -6px -6px; pointer-events: none; }
         .profile-beach-check { width: 20px; height: 20px; accent-color: var(--primary); flex-shrink: 0; pointer-events: none; }
-        .profile-beach-emoji { font-size: 20px; flex-shrink: 0; pointer-events: none; }
-        .profile-beach-name { font-size: 14px; font-weight: 700; color: #1e293b; flex: 1; pointer-events: none; }
+        .profile-beach-emoji { width: 24px; height: 24px; flex-shrink: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; color: var(--color-primary); }
+        .profile-beach-emoji .ui-icon { width: 20px; height: 20px; }
+        .profile-beach-name { font-size: 15px; font-weight: 700; color: var(--gray-800); flex: 1; pointer-events: none; }
         .profile-main-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
         .profile-main-beach-banner--set { background: #fffbeb; border-color: #FCD34D; }
-        .profile-main-beach-banner--unset { background: #fffbeb; border-color: #F59E0B; }
+        .profile-main-beach-banner--unset { background: #fffbeb; border-color: var(--color-caution); }
         .profile-main-beach-banner--empty { background: #f8fafc; border-color: #e2e8f0; }
         .profile-main-beach-label { font-size: 12px; font-weight: 700; color: #B45309; letter-spacing: -0.2px; display: inline-flex; align-items: center; gap: 4px; }
         .profile-main-beach-banner--empty .profile-main-beach-label { color: #64748b; }
         .profile-main-beach-name { font-size: 20px; font-weight: 800; color: #92400e; margin-top: 6px; line-height: 1.3; letter-spacing: -0.3px; }
-        .profile-main-beach-banner--unset .profile-main-beach-name { font-size: 16px; color: #92400e; }
-        .profile-main-beach-banner--empty .profile-main-beach-name { font-size: 15px; color: #64748b; font-weight: 700; }
-        .profile-main-beach-hint { display: block; font-size: 11px; font-weight: 600; color: #b45309; margin-top: 8px; line-height: 1.4; }
+        .profile-main-beach-banner--unset .profile-main-beach-name { font-size: 15px; color: #92400e; }
+        .profile-main-beach-banner--empty .profile-main-beach-name { font-size: 15px; color: var(--gray-500); font-weight: 700; }
+        .profile-main-beach-hint { display: block; font-size: 12px; font-weight: 600; color: #b45309; margin-top: 8px; line-height: 1.4; }
         .profile-main-beach-banner--empty .profile-main-beach-hint { color: #94a3b8; }
         .profile-search-box { margin-bottom: 12px; position: relative; }
-        .profile-search-input { width: 100%; padding: 11px 14px 11px 38px; border-radius: 14px; border: 2px solid #e2e8f0; font-size: 14px; font-family: var(--font-sans); outline: none; color: #1e293b; background: #f8fafc; transition: border-color 0.2s; }
+        .profile-search-input { width: 100%; padding: 11px 14px 11px 38px; border-radius: 14px; border: 2px solid var(--gray-200); font-size: 15px; font-family: var(--font-sans); outline: none; color: var(--gray-800); background: var(--gray-50); transition: border-color 0.2s; }
         .profile-search-input:focus { border-color: var(--primary); background: #fff; }
         .profile-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--gray-400); display: flex; align-items: center; }
         .profile-star-btn { border: none; background: none; cursor: pointer; flex-shrink: 0; line-height: 1; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0; -webkit-tap-highlight-color: transparent; color: var(--gray-400); }
@@ -537,11 +546,11 @@
         .profile-star-btn:not(:disabled):active { transform: scale(1.08); }
         .profile-strava-status { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; background: #f8fafc; }
         .profile-strava-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .profile-strava-dot.connected { background: #4ade80; }
-        .profile-strava-dot.disconnected { background: #94a3b8; }
-        .profile-strava-status-text { font-size: 14px; font-weight: 700; color: #1e293b; }
+        .profile-strava-dot.connected { background: var(--color-safe); }
+        .profile-strava-dot.disconnected { background: var(--gray-400); }
+        .profile-strava-status-text { font-size: 15px; font-weight: 700; color: var(--gray-800); }
         .profile-strava-connect-btn { width: 100%; max-width: none; margin-top: 4px; margin-bottom: 14px; }
-        .profile-strava-disconnect { border: none; background: none; color: #dc2626; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; margin: -6px 0 14px; font-family: var(--font-sans); text-decoration: underline; display: block; }
+        .profile-strava-disconnect { border: none; background: none; color: var(--color-danger); font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; margin: -6px 0 14px; font-family: var(--font-sans); text-decoration: underline; display: block; }
         .profile-strava-disconnect:active { opacity: 0.75; }
         .profile-guide-list { display: flex; flex-direction: column; gap: 10px; }
         .profile-guide-item { padding: 12px 14px; border-radius: 14px; background: #f8fafc; border: 1px solid #f1f5f9; }
@@ -555,21 +564,25 @@
         .notif-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; }
         .notif-beach-banner-clickable { cursor: pointer; transition: transform 0.2s, background 0.2s; }
         .notif-beach-banner-clickable:active { transform: scale(0.99); background: #dbeafe; }
-        .notif-beach-label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+        .notif-beach-label { font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 4px; }
         .notif-beach-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .notif-beach-name { font-size: 16px; font-weight: 800; color: #1e293b; flex: 1; min-width: 0; }
-        .notif-beach-chevron { font-size: 20px; font-weight: 700; color: #94a3b8; flex-shrink: 0; line-height: 1; }
-        .notif-beach-hint { font-size: 11px; font-weight: 600; color: #64748b; margin-top: 6px; line-height: 1.4; }
-        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
+        .notif-beach-name { font-size: 17px; font-weight: 800; color: var(--gray-800); flex: 1; min-width: 0; }
+        .notif-beach-chevron { font-size: 20px; font-weight: 700; color: var(--gray-400); flex-shrink: 0; line-height: 1; }
+        .notif-beach-hint { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-top: 6px; line-height: 1.4; }
+        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--gray-100); }
         .settings-row:last-child { border-bottom: none; }
-        .settings-row-label { font-size: 14px; font-weight: 700; color: #1e293b; flex: 1; min-width: 0; }
-        .settings-row-desc { font-size: 11px; font-weight: 600; color: #94a3b8; margin-top: 2px; line-height: 1.35; }
-        .settings-row-value { font-size: 14px; font-weight: 700; color: #64748b; flex-shrink: 0; }
-        .settings-row-link { font-size: 14px; font-weight: 700; color: var(--primary); text-decoration: none; flex-shrink: 0; }
+        .settings-row-label { font-size: 15px; font-weight: 700; color: var(--gray-800); flex: 1; min-width: 0; }
+        .settings-row-desc { font-size: 12px; font-weight: 600; color: var(--gray-400); margin-top: 2px; line-height: 1.35; }
+        .settings-row-value { font-size: 15px; font-weight: 700; color: var(--gray-500); flex-shrink: 0; }
+        .settings-row-link { font-size: 15px; font-weight: 700; color: var(--primary); text-decoration: none; flex-shrink: 0; }
         .kakao-inquiry-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: none; border-radius: 12px; background: #FEE500; color: #191919; font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font-sans); flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
         .kakao-inquiry-btn:active { transform: scale(0.98); }
-        .settings-row-danger { color: #dc2626; background: none; border: none; font-size: 14px; font-weight: 700; cursor: pointer; font-family: var(--font-sans); padding: 0; }
-        .settings-section-title { font-size: 11px; font-weight: 700; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase; margin: 8px 0 4px; }
+        .kakao-inquiry-icon { display: inline-flex; align-items: center; }
+        .kakao-inquiry-icon .ui-icon { width: 16px; height: 16px; }
+        .strava-capture-icon { display: inline-flex; align-items: center; }
+        .strava-capture-icon .ui-icon { width: 16px; height: 16px; }
+        .settings-row-danger { color: var(--color-danger); background: none; border: none; font-size: 15px; font-weight: 700; cursor: pointer; font-family: var(--font-sans); padding: 0; }
+        .settings-section-title { font-size: 12px; font-weight: 700; color: var(--gray-400); letter-spacing: 0.5px; text-transform: uppercase; margin: 8px 0 4px; }
         .toggle-switch { position: relative; display: inline-block; width: 48px; height: 28px; flex-shrink: 0; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
         .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 28px; transition: 0.25s; }
@@ -585,7 +598,7 @@
         .radio-pill span { display: inline-block; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; background: #f1f5f9; color: #64748b; cursor: pointer; transition: all 0.2s; }
         .radio-pill input:checked + span { background: var(--primary); color: #fff; }
         .notif-time-groups { display: flex; flex-direction: column; gap: 12px; }
-        .notif-time-group-label { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 6px; padding: 0 2px; }
+        .notif-time-group-label { font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 6px; padding: 0 2px; }
         .notif-time-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; flex-wrap: nowrap; }
         .notif-time-scroll::-webkit-scrollbar { display: none; }
         .notif-time-scroll .radio-pill span { white-space: nowrap; font-size: 12px; padding: 8px 12px; }
@@ -705,7 +718,7 @@
                 <span class="card-chevron" aria-hidden="true">›</span>
             </div>
             <div class="info-card info-card-clickable" id="info-card-ttakkomi" onclick="goToWeatherSection('weather-ttakkomi-card')">
-                <div class="card-icon-container icon-ttakkomi" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 20h18L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg></div>
+                <div class="card-icon-container icon-ttakkomi" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
                 <span class="card-title">따꼼이 (바다물벼룩)</span>
                 <div class="flex-space"></div>
                 <span class="card-val" id="val-ttakkomi">--</span>
@@ -863,7 +876,7 @@
 
                 <div class="weather-metric-card" id="weather-ttakkomi-card">
                     <div class="weather-metric-top">
-                        <div class="weather-metric-icon icon-ttakkomi-bg" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 20h18L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg></div>
+                        <div class="weather-metric-icon icon-ttakkomi-bg" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
                         <div class="weather-metric-body">
                             <div class="weather-metric-label">따꼼이 (바다물벼룩)</div>
                             <div class="weather-metric-value-row">
@@ -1024,7 +1037,7 @@
                 <div class="loc-sheet-handle"></div>
                 <div class="loc-sheet-header">
                     <div class="loc-sheet-title"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/><path d="M2 17c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/></svg>바다 선택</div>
-                    <button class="loc-sheet-close" onclick="closeLocSheet()">✕</button>
+                    <button class="loc-sheet-close" onclick="closeLocSheet()" aria-label="닫기"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
                 </div>
             </div>
             <!-- 검색창 -->
@@ -1045,7 +1058,7 @@
                 <div class="loc-sheet-handle"></div>
                 <div class="loc-sheet-header">
                     <div class="loc-sheet-title"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 18a3.5 3.5 0 0 0 7 0"/><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/></svg>알림 설정</div>
-                    <button class="loc-sheet-close" onclick="closeNotificationSheet()">✕</button>
+                    <button class="loc-sheet-close" onclick="closeNotificationSheet()" aria-label="닫기"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
                 </div>
             </div>
             <div class="app-sheet-body">
@@ -1087,7 +1100,7 @@
                 <div class="loc-sheet-handle"></div>
                 <div class="loc-sheet-header">
                     <div class="loc-sheet-title"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>앱 설정</div>
-                    <button class="loc-sheet-close" onclick="closeSettingsSheet()">✕</button>
+                    <button class="loc-sheet-close" onclick="closeSettingsSheet()" aria-label="닫기"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
                 </div>
             </div>
             <div class="app-sheet-body">
@@ -1104,7 +1117,7 @@
                 </div>
                 <div class="settings-row">
                     <div class="settings-row-label">문의하기</div>
-                    <button type="button" class="kakao-inquiry-btn" onclick="openKakaoInquiry()"><span>💬</span> 카카오채널 문의</button>
+                    <button type="button" class="kakao-inquiry-btn" onclick="openKakaoInquiry()"><span class="kakao-inquiry-icon" aria-hidden="true"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H9l-5 4V6z"/></svg></span> 카카오채널 문의</button>
                 </div>
                 <div class="settings-row">
                     <div class="settings-row-label">데이터 초기화</div>
@@ -1127,7 +1140,7 @@
                             <div class="loc-sheet-title" id="strava-detail-title">활동 상세</div>
                             <div class="strava-detail-location" id="strava-detail-location"></div>
                         </div>
-                        <button type="button" class="loc-sheet-close" id="strava-detail-close-btn" onclick="closeStravaDetail()">✕</button>
+                        <button type="button" class="loc-sheet-close" id="strava-detail-close-btn" onclick="closeStravaDetail()" aria-label="닫기"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
                     </div>
                     <div class="strava-detail-scroll" id="strava-detail-scroll">
                         <div class="loc-sheet-body" id="strava-detail-body"></div>
@@ -1135,7 +1148,7 @@
                 </div>
             </div>
             <div class="strava-detail-footer" id="strava-detail-footer">
-                <button type="button" class="strava-detail-action-btn" id="strava-capture-btn" onclick="shareStravaActivity()">📸 캡처하기</button>
+                <button type="button" class="strava-detail-action-btn" id="strava-capture-btn" onclick="shareStravaActivity()"><span class="strava-capture-icon" aria-hidden="true"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.5"/></svg></span> 캡처하기</button>
                 <button type="button" class="strava-detail-action-btn" id="strava-copy-btn" onclick="copyStravaActivity()">복사하기</button>
             </div>
         </div>
@@ -1156,7 +1169,7 @@ const UI_ICON = {
     wave: () => svgIcon('<path d="M2 12c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/><path d="M2 17c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/>'),
     wind: () => svgIcon('<path d="M4 10h12a3 3 0 1 0-2.8-4"/><path d="M6 14h11a2.5 2.5 0 1 1-2.4 3.5"/><path d="M4 18h8"/>'),
     jelly: () => svgIcon('<path d="M6 11a6 6 0 0 1 12 0"/><line x1="9" y1="13" x2="9" y2="19"/><line x1="12" y1="12" x2="12" y2="20"/><line x1="15" y1="13" x2="15" y2="18"/><line x1="18" y1="14" x2="18" y2="17"/>'),
-    ttakkomi: () => svgIcon('<path d="M12 3 3 20h18L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>'),
+    ttakkomi: () => svgIcon('<polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
     starFilled: () => svgIcon('<polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18.5 5.5 22 7 14.5 2 9.5 9 9"/>', { filled: true }),
     starOutline: () => svgIcon('<polygon points="12 2 15 9 22 9.5 17 14.5 18.5 22 12 18.5 5.5 22 7 14.5 2 9.5 9 9"/>'),
     search: () => svgIcon('<circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>', { cls: 'ui-icon-sm' }),
@@ -1175,6 +1188,10 @@ const UI_ICON = {
     mapPin: () => svgIcon('<path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2"/>', { cls: 'ui-icon-xs' }),
     check: () => svgIcon('<polyline points="5 12 10 17 19 7"/>', { cls: 'ui-icon-xs' }),
     loader: () => svgIcon('<path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/>', { cls: 'ui-icon-sm' }),
+    close: () => svgIcon('<line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>', { cls: 'ui-icon-sm' }),
+    chat: () => svgIcon('<path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H9l-5 4V6z"/>', { cls: 'ui-icon-sm' }),
+    camera: () => svgIcon('<path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.5"/>', { cls: 'ui-icon-sm' }),
+    plus: () => svgIcon('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>', { cls: 'ui-icon-sm' }),
 };
 
 function statusBadgeClass(level) {
@@ -1950,7 +1967,7 @@ function updateProfileMainBeachBanner() {
         el.className = 'profile-main-beach-banner profile-main-beach-banner--set';
         el.innerHTML = `
             <div class="profile-main-beach-label">${starSm} 메인 바다</div>
-            <div class="profile-main-beach-name">${beach?.emoji || '🏖️'} ${beach?.name || ''}</div>
+            <div class="profile-main-beach-name" style="display:inline-flex;align-items:center;gap:8px">${UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon ui-icon-sm"')} ${beach?.name || ''}</div>
             ${hint}`;
     } else {
         el.className = 'profile-main-beach-banner profile-main-beach-banner--unset';
@@ -2357,8 +2374,8 @@ function renderProfileBeachList() {
             <span class="profile-beach-check-wrap">
                 <input type="checkbox" class="profile-beach-check" ${isFav ? 'checked' : ''} tabindex="-1" aria-hidden="true" />
             </span>
-            <span class="profile-beach-emoji">${beach.emoji}</span>
-            <span class="profile-beach-name">${beach.name}${profileFavSearchQuery ? ` <span style="font-size:11px;font-weight:600;color:#94a3b8;">${beach.region}</span>` : ''}</span>
+            <span class="profile-beach-emoji">${UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon ui-icon-sm"')}</span>
+            <span class="profile-beach-name">${beach.name}${profileFavSearchQuery ? ` <span style="font-size:12px;font-weight:600;color:var(--gray-400);">${beach.region}</span>` : ''}</span>
             ${starHtml}`;
         container.appendChild(item);
     });
@@ -3096,7 +3113,7 @@ function renderLocationChips() {
 
     const manageChip = document.createElement('button');
     manageChip.className = 'l-chip l-chip-manage inactive';
-    manageChip.innerHTML = '<span style="font-size:15px;line-height:1;">＋</span> 바다 선택';
+    manageChip.innerHTML = `${UI_ICON.plus()} 바다 선택`;
     manageChip.onclick = openLocSheet;
     container.appendChild(manageChip);
 
@@ -3107,7 +3124,8 @@ function renderLocationChips() {
         const isMain = id === mainId;
         const chip = document.createElement('button');
         chip.className = `l-chip ${id === currentLocationId ? 'active' : 'inactive'}${isMain ? ' l-chip-main' : ''}`;
-        chip.innerHTML = `${isMain ? UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"') + ' ' : ''}${beach.emoji} ${beach.name}`;
+        const waveIcon = UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon chip-wave-icon"');
+        chip.innerHTML = `${isMain ? UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"') + ' ' : ''}${waveIcon} ${beach.name}`;
         chip.onclick = () => selectLocation(id);
         container.appendChild(chip);
     });
@@ -3204,11 +3222,11 @@ function renderLocSheetBody(query) {
                 item.className = `fav-item ${id === currentLocationId ? 'selected' : ''}`;
                 item.dataset.beachId = id;
                 item.innerHTML = `
-                    <div class="fav-emoji">${beach.emoji}</div>
+                    <div class="fav-emoji">${UI_ICON.wave()}</div>
                     <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region} · ${beach.beachCode || ''}</div></div>
                     <div class="fav-actions">
                         ${id === currentLocationId ? `<span class="fav-check">${UI_ICON.check()}</span>` : ''}
-                        <button type="button" class="fav-delete" aria-label="즐겨찾기 제거">✕</button>
+                        <button type="button" class="fav-delete" aria-label="즐겨찾기 제거">${UI_ICON.close()}</button>
                     </div>`;
                 body.appendChild(item);
             });
@@ -3245,9 +3263,9 @@ function renderLocSheetBody(query) {
             item.className = `search-result-item ${isFav ? 'already-fav' : ''}`;
             item.dataset.beachId = beach.id;
             item.innerHTML = `
-                <div class="sr-emoji">${beach.emoji}</div>
+                <div class="sr-emoji">${UI_ICON.wave()}</div>
                 <div class="sr-info"><div class="sr-name">${beach.name}</div><div class="sr-desc">${beach.region}</div></div>
-                <div class="sr-add">${isFav ? UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"') : '+'}</div>`;
+                <div class="sr-add">${isFav ? UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"') : UI_ICON.plus()}</div>`;
             body.appendChild(item);
         });
     }
