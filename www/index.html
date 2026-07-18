@@ -470,7 +470,7 @@
         .gps-row-name { font-size: 15px; font-weight: 700; color: var(--color-safe); }
         .gps-row-desc { font-size: 12px; color: var(--color-safe); margin-top: 1px; }
         .gps-row-arrow { font-size: 15px; color: var(--color-safe); }
-        .fav-emoji, .fav-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; }
+        .fav-emoji, .fav-icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; font-size: 20px; line-height: 1; }
         .fav-emoji .ui-icon, .fav-icon .ui-icon { width: 22px; height: 22px; }
         .fav-name { font-size: 15px; font-weight: 700; color: var(--gray-800); }
         .fav-desc { font-size: 12px; color: var(--gray-500); margin-top: 1px; }
@@ -495,7 +495,7 @@
         /* 검색 결과 */
         .search-result-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 2px solid #f1f5f9; cursor: pointer; transition: all 0.2s; margin-bottom: 6px; }
         .search-result-item:active { transform: scale(0.98); background: #f8fafc; }
-        .search-result-item .sr-emoji { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; }
+        .search-result-item .sr-emoji { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; font-size: 20px; line-height: 1; }
         .search-result-item .sr-emoji .ui-icon { width: 20px; height: 20px; }
         .search-result-item .sr-info { flex: 1; }
         .search-result-item .sr-name { font-size: 15px; font-weight: 700; color: var(--gray-800); }
@@ -3444,6 +3444,12 @@ function onSearchInput(val) {
     renderLocSheetBody(val.trim());
 }
 
+function beachListIconHtml(beach) {
+    const emoji = beach?.emoji != null ? String(beach.emoji).trim() : '';
+    if (emoji) return emoji;
+    return UI_ICON.wave();
+}
+
 function renderLocSheetBody(query) {
     const body = document.getElementById('loc-sheet-body');
     setupLocSheetDelegation();
@@ -3468,7 +3474,7 @@ function renderLocSheetBody(query) {
                 item.className = `fav-item ${id === currentLocationId ? 'selected' : ''}`;
                 item.dataset.beachId = id;
                 item.innerHTML = `
-                    <div class="fav-emoji">${UI_ICON.wave()}</div>
+                    <div class="fav-emoji">${beachListIconHtml(beach)}</div>
                     <div class="fav-info"><div class="fav-name">${beach.name}</div><div class="fav-desc">${beach.region} · ${beach.beachCode || ''}</div></div>
                     <div class="fav-actions">
                         ${id === currentLocationId ? `<span class="fav-check">${UI_ICON.check()}</span>` : ''}
