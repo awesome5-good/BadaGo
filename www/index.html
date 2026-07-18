@@ -161,6 +161,9 @@
         .hour-air { font-size: 12px; font-weight: 700; color: var(--accent-yellow); line-height: 1; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
         .hour-divider { width: 16px; height: 1px; background: rgba(255,255,255,0.25); margin-bottom: 8px; flex-shrink: 0; }
         .hour-water { font-size: 12px; font-weight: 700; color: #fff; line-height: 1; margin-top: 0; font-variant-numeric: tabular-nums; }
+        .hourly-card.hide-water-temps .hour-water,
+        .hourly-card.hide-water-temps .hour-divider,
+        .hourly-card.hide-water-temps .legend-item-water { display: none; }
 
         /* 종합 입수지수 */
         .swim-index-row {
@@ -746,7 +749,7 @@
                 <span class="hourly-title">오늘의 예보</span>
                 <div class="chart-legend">
                     <div class="legend-item"><span class="dot-yellow"></span>기온</div>
-                    <div class="legend-item"><span class="dot-white"></span>수온(예측)</div>
+                    <div class="legend-item legend-item-water"><span class="dot-white"></span>수온(예측)</div>
                 </div>
             </div>
             <div class="hourly-scroll" id="hourly-scroll-container"></div>
@@ -791,12 +794,18 @@
                 </div>
             </div>
 
+            <div class="swim-index-row" id="weather-swim-index-row" aria-live="polite">
+                <span class="swim-index-label">종합 입수지수</span>
+                <span class="swim-index-grade" id="weather-swim-index-grade">--</span>
+                <span class="swim-index-score metric-num" id="weather-swim-index-score">--</span>
+            </div>
+
             <div class="hourly-card">
                 <div class="hourly-header">
                     <span class="hourly-title">오늘의 예보</span>
                     <div class="chart-legend">
                         <div class="legend-item"><span class="dot-yellow"></span>기온</div>
-                        <div class="legend-item"><span class="dot-white"></span>수온(예측)</div>
+                        <div class="legend-item legend-item-water"><span class="dot-white"></span>수온(예측)</div>
                     </div>
                 </div>
                 <div class="hourly-scroll" id="weather-hourly-scroll-container"></div>
@@ -3490,7 +3499,33 @@ function getMarineWaterTempAtIso(isoTime) {
     const idx = hourly.marine.time.indexOf(isoTime);
     if (idx === -1) return null;
     const w = hourly.marine.sea_surface_temperature?.[idx];
-    return w !== undefined ? w : null;
+    if (w === undefined || w === null || Number.isNaN(Number(w))) return null;
+    return Number(w);
+}
+
+/** null 구간을 좌우 유효값으로 선형 보간. 전체가 null이면 hasAny=false */
+function interpolateNullableSeries(values) {
+    const n = values.length;
+    const out = values.map((v) => (v === null || v === undefined || Number.isNaN(v) ? null : Number(v)));
+    const hasAny = out.some((v) => v !== null);
+    if (!hasAny) return { values: out, hasAny: false };
+
+    for (let i = 0; i < n; i++) {
+        if (out[i] !== null) continue;
+        let prev = i - 1;
+        while (prev >= 0 && out[prev] === null) prev--;
+        let next = i + 1;
+        while (next < n && out[next] === null) next++;
+        if (prev >= 0 && next < n) {
+            const t = (i - prev) / (next - prev);
+            out[i] = out[prev] + (out[next] - out[prev]) * t;
+        } else if (prev >= 0) {
+            out[i] = out[prev];
+        } else if (next < n) {
+            out[i] = out[next];
+        }
+    }
+    return { values: out, hasAny: true };
 }
 
 function renderHourly(containerId = 'hourly-scroll-container') {
@@ -3511,7 +3546,20 @@ function renderHourly(containerId = 'hourly-scroll-container') {
             ? currentWaterTemp - omCurrentWater
             : null;
 
-    for (let offset = -24; offset <= 24; offset++) {
+    const offsets = [];
+    for (let offset = -24; offset <= 24; offset++) offsets.push(offset);
+
+    const rawWaterSeries = offsets.map((offset) => {
+        const omWater = getMarineWaterTempAtIso(getKstHourlyIsoWithOffset(offset));
+        if (omWater === null) return null;
+        return waterTempOffset !== null ? omWater + waterTempOffset : omWater;
+    });
+    const { values: waterSeries, hasAny: hasWaterSeries } = interpolateNullableSeries(rawWaterSeries);
+
+    const hourlyCard = container.closest('.hourly-card');
+    if (hourlyCard) hourlyCard.classList.toggle('hide-water-temps', !hasWaterSeries);
+
+    offsets.forEach((offset, i) => {
         const isNow = offset === 0;
         const isoTime = getKstHourlyIsoWithOffset(offset);
         const timeStr = getKstHourLabelFromIso(isoTime);
@@ -3534,11 +3582,8 @@ function renderHourly(containerId = 'hourly-scroll-container') {
             airTemp = Math.round(currentAirTemp) + '°';
         }
 
-        // 수온: Open-Meteo 예측 (+ 필요 시 실측 기준 offset). khoa-hourly 미사용.
-        const omWater = getMarineWaterTempAtIso(isoTime);
-        if (omWater !== null) {
-            const adjusted = waterTempOffset !== null ? omWater + waterTempOffset : omWater;
-            waterTemp = formatWaterTempShort(adjusted);
+        if (hasWaterSeries && waterSeries[i] !== null) {
+            waterTemp = formatWaterTempShort(waterSeries[i]);
         }
 
         if (isNow && currentWaterTemp !== null && !currentWaterTempIsSatellite) {
@@ -3556,7 +3601,7 @@ function renderHourly(containerId = 'hourly-scroll-container') {
         `;
         container.appendChild(col);
         if (isNow) nowCol = col;
-    }
+    });
 
     if (nowCol) {
         setTimeout(() => nowCol.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }), 100);
@@ -3636,7 +3681,9 @@ function applyWeatherMetricCard(valId, badgeId, barId, descId, info) {
     if (barEl) {
         barEl.className = `weather-metric-bar-fill weather-bar-${info.level}`;
         barEl.dataset.barPct = String(info.meterPct ?? 0);
-        barEl.style.setProperty('--bar-pct', barEl.dataset.barPct);
+        if (!window.__weatherBarAnimLock) {
+            barEl.style.setProperty('--bar-pct', barEl.dataset.barPct);
+        }
     }
     if (descEl) descEl.textContent = info.desc;
     applyWeatherMetricCardAnimations(barId.replace('-bar', '-card'), info.level);
@@ -3653,20 +3700,24 @@ function applyWeatherMetricCardAnimations(cardId, level) {
 }
 
 function animateWeatherMetricBars() {
-    const bars = document.querySelectorAll('.weather-metric-bar-fill');
-    bars.forEach(bar => {
-        const pct = bar.dataset.barPct ?? '0';
+    if (window.__weatherBarAnimLock) return;
+    window.__weatherBarAnimLock = true;
+    const bars = document.querySelectorAll('#tab-panel-1 .weather-metric-bar-fill');
+    bars.forEach((bar) => {
         bar.classList.add('no-transition');
         bar.classList.remove('bar-animate');
         bar.style.setProperty('--bar-pct', '0');
     });
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            bars.forEach(bar => {
+            bars.forEach((bar) => {
                 bar.classList.remove('no-transition');
                 bar.classList.add('bar-animate');
                 bar.style.setProperty('--bar-pct', bar.dataset.barPct ?? '0');
             });
+            setTimeout(() => {
+                window.__weatherBarAnimLock = false;
+            }, 900);
         });
     });
 }
@@ -3799,19 +3850,25 @@ function calcSwimIndex() {
 }
 
 function renderSwimIndex() {
-    const gradeEl = document.getElementById('swim-index-grade');
-    const scoreEl = document.getElementById('swim-index-score');
-    if (!gradeEl || !scoreEl) return;
     const result = calcSwimIndex();
-    if (!result) {
-        gradeEl.className = 'swim-index-grade';
-        gradeEl.textContent = '--';
-        scoreEl.textContent = '--';
-        return;
-    }
-    gradeEl.className = `swim-index-grade ${result.gradeClass}`;
-    gradeEl.textContent = result.grade;
-    scoreEl.textContent = `${result.score}점`;
+    const pairs = [
+        ['swim-index-grade', 'swim-index-score'],
+        ['weather-swim-index-grade', 'weather-swim-index-score'],
+    ];
+    pairs.forEach(([gradeId, scoreId]) => {
+        const gradeEl = document.getElementById(gradeId);
+        const scoreEl = document.getElementById(scoreId);
+        if (!gradeEl || !scoreEl) return;
+        if (!result) {
+            gradeEl.className = 'swim-index-grade';
+            gradeEl.textContent = '--';
+            scoreEl.textContent = '--';
+            return;
+        }
+        gradeEl.className = `swim-index-grade ${result.gradeClass}`;
+        gradeEl.textContent = result.grade;
+        scoreEl.textContent = `${result.score}점`;
+    });
 }
 
 function getDetailSheetInfo(type) {
@@ -3960,9 +4017,10 @@ function switchTab(idx) {
     }
     if (idx === 2) initStravaTab();
     if (idx === 1) {
-        animateWeatherMetricBars();
         renderHourly('weather-hourly-scroll-container');
         renderWeatherTab();
+        renderSwimIndex();
+        animateWeatherMetricBars();
     }
     if (idx === 3) {
         profileRegionTab = getDefaultProfileRegionTab();
@@ -4948,6 +5006,7 @@ window.onload = function() {
     syncTempUnitButtons();
     renderProfileTab();
     renderLocationChips();
+    setupLocationChipsSticky();
     loadBeachDataWithCache(currentLocationId);
     setInterval(() => fetchAllData({ background: true }), 5 * 60 * 1000);
     setupStravaOAuthListeners();
