@@ -1505,18 +1505,18 @@ function getKhoaApiDateYmd(date = new Date()) {
     }).format(date).replace(/-/g, '');
 }
 
-async function fetchKhoaTidalBuTemp(obsCode) {
-    const code = String(obsCode || '').trim().toUpperCase();
-    if (!/^DT_\d{4}$/.test(code) && !/^\d{4,6}$/.test(code)) return null;
+async function fetchKhoaTidalBuTemp(beachCode) {
+    const code = String(beachCode || '').trim().toUpperCase();
+    if (!/^BCH\d{3}$/.test(code)) return null;
 
-    const proxyUrl = `${getKhoaTidalBuApiBase()}?obsCode=${encodeURIComponent(code)}`;
-    console.log('[BadaGo] khoa-tidalbu proxy URL', proxyUrl);
-    logApiFetch('1순위', `KHOA tideObsTemp ObsCode=${code}`, 'khoa-tidalbu');
+    const proxyUrl = `${getKhoaTidalBuApiBase()}?beachCode=${encodeURIComponent(code)}`;
+    console.log('[BadaGo] khoa-beach proxy URL', proxyUrl);
+    logApiFetch('1순위', `KHOA BeachCode=${code}`, 'khoa-tidalbu');
 
     try {
         const res = await fetch(proxyUrl);
         const text = await res.text();
-        console.log('[BadaGo] khoa-tidalbu 응답', { status: res.status, body: text.slice(0, 2000) });
+        console.log('[BadaGo] khoa-beach 응답', { status: res.status, body: text.slice(0, 2000) });
         if (!res.ok) return null;
 
         const json = JSON.parse(text);
@@ -1525,13 +1525,13 @@ async function fetchKhoaTidalBuTemp(obsCode) {
         return {
             water_temp: json.water_temp,
             obs_time: json.obs_time ?? null,
-            beach_name: json.beach_name ?? json.obs_post_name ?? null,
+            beach_name: json.beach_name ?? null,
             obs_post_name: json.obs_post_name ?? null,
-            obsCode: json.obsCode || code,
-            source: 'khoa-tideObsTemp',
+            beachCode: json.beachCode || code,
+            source: 'khoa-beach',
         };
     } catch (e) {
-        console.warn('[BadaGo] khoa-tidalbu 실패', code, e);
+        console.warn('[BadaGo] khoa-beach 실패', code, e);
         return null;
     }
 }
@@ -2483,9 +2483,13 @@ function formatKmaStatusText(beachName, obsTime) {
     return `기상청 ${beachName} · ${t} 기준`;
 }
 
+function formatBeachApiStatusText(beachData, loc) {
+    const post = beachData?.obs_post_name || beachData?.beach_name || loc?.name || '관측소';
+    return `해양조사원 ${post} · ${formatKhoaObsTime(beachData?.obs_time)} 기준`;
+}
+
 function formatTidalBuStatusText(loc, beachData) {
-    const label = beachData?.beach_name || loc.name;
-    return `${label} · ${formatKhoaObsTime(beachData?.obs_time)} 기준`;
+    return formatBeachApiStatusText(beachData, loc);
 }
 
 function formatMarineApiStatusText(loc, json) {
@@ -2842,27 +2846,31 @@ function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, ncst
     let statusText = null;
     let dataSource = null;
 
-    // 1순위: khoa-hourly 오늘 최신 실측 (Open-Meteo SST 절대 사용 금지)
-    const hourlyLatest = getLatestKhoaHourlyReading();
-    if (hourlyLatest) {
-        const code = hourlyLatest.obsCode || getKhoaHourlyObsCode(loc) || loc.obsCode || '';
-        finalizeMeasuredWaterTemp(loc.id, hourlyLatest.temp, hourlyLatest.obsTime, 'khoa-hourly');
+    // 1순위: khoa-tidalbu 프록시 (oceandata beach API, BCH)
+    if (tidalBu?.water_temp != null) {
+        finalizeMeasuredWaterTemp(loc.id, tidalBu.water_temp, tidalBu.obs_time, 'khoa-beach');
         if (kma?.wave_height != null) currentWaveHeight = kma.wave_height;
         applyOpenMeteoWind(weather);
         statusText = currentWaterTempIsCached
             ? buildWaterUnavailableStatus()
-            : `해양조사원 조위관측소 ${code} · ${hourlyLatest.hour}:00 기준`;
+            : formatBeachApiStatusText(tidalBu, loc);
         usedKhoaApi = true;
-        dataSource = 'KHOA-hourly';
-    } else if (tidalBu?.water_temp != null) {
-        finalizeMeasuredWaterTemp(loc.id, tidalBu.water_temp, tidalBu.obs_time, 'khoa-tideObsTemp');
+        dataSource = 'KHOA-beach';
+    // 2순위: 네이티브 직접 beach API (동일 소스)
+    } else if (khoa && parseObsWaterTemp(khoa.water_temp) !== null && isKhoaObsAcceptable(loc, khoa.obs_post_name)) {
+        finalizeMeasuredWaterTemp(loc.id, khoa.water_temp, khoa.obs_time, 'KHOA');
+        if (khoa.wind_speed != null) {
+            currentWindSpeed = khoa.wind_speed;
+        } else {
+            applyOpenMeteoWind(weather);
+        }
         if (kma?.wave_height != null) currentWaveHeight = kma.wave_height;
-        applyOpenMeteoWind(weather);
         statusText = currentWaterTempIsCached
             ? buildWaterUnavailableStatus()
-            : formatTidalBuStatusText(loc, tidalBu);
+            : formatBeachApiStatusText(khoa, loc);
         usedKhoaApi = true;
-        dataSource = 'KHOA-tideObsTemp';
+        dataSource = 'KHOA-beach';
+    // 3순위: kma / nifs
     } else if (kma && parseObsWaterTemp(kma.water_temp) !== null) {
         applyKmaBeachData(kma, marine, weather);
         statusText = currentWaterTemp === null
@@ -2876,11 +2884,6 @@ function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, ncst
             : kma.source === 'khoa-survey'
                 ? 'KHOA-조위'
                 : 'KMA';
-    } else if (khoa) {
-        const khoaResult = applyKhoaWithOpenMeteoFallback(loc, khoa, marine, weather);
-        statusText = khoaResult.statusText;
-        usedKhoaApi = khoaResult.usedKhoa;
-        dataSource = usedKhoaApi ? 'KHOA' : 'cache';
     } else if (nifs) {
         finalizeMeasuredWaterTemp(loc.id, nifs.water_temp, nifs.obs_time, 'NIFS');
         applyOpenMeteoWind(weather);
@@ -2889,17 +2892,31 @@ function resolveBeachDataFromSources(loc, marine, weather, kma, khoa, nifs, ncst
             : formatNifsStatusText(nifs.sta_nam_kor, nifs.obs_time);
         usedNifsApi = true;
         dataSource = 'NIFS';
+    // 4순위: khoa-hourly 최신 시각 (폴백)
     } else {
-        logApiFetch('폴백', '실측 수온 없음 → 캐시/중단 (Open-Meteo SST 미사용)', 'none');
-        applyOpenMeteoWindFromWeather(weather);
-        applyCachedMeasuredWaterTemp(loc.id);
-        statusText = buildWaterUnavailableStatus();
-        dataSource = currentWaterTempIsCached ? 'cache' : 'unavailable';
+        const hourlyLatest = getLatestKhoaHourlyReading();
+        if (hourlyLatest) {
+            const code = hourlyLatest.obsCode || getKhoaHourlyObsCode(loc) || loc.obsCode || '';
+            finalizeMeasuredWaterTemp(loc.id, hourlyLatest.temp, hourlyLatest.obsTime, 'khoa-hourly');
+            if (kma?.wave_height != null) currentWaveHeight = kma.wave_height;
+            applyOpenMeteoWind(weather);
+            statusText = currentWaterTempIsCached
+                ? buildWaterUnavailableStatus()
+                : `해양조사원 조위관측소 ${code} · ${hourlyLatest.hour}:00 기준`;
+            usedKhoaApi = true;
+            dataSource = 'KHOA-hourly';
+        } else {
+            // 5순위: 캐시 / 중단 — Open-Meteo SST 미사용
+            logApiFetch('폴백', '실측 수온 없음 → 캐시/중단 (Open-Meteo SST 미사용)', 'none');
+            applyOpenMeteoWindFromWeather(weather);
+            applyCachedMeasuredWaterTemp(loc.id);
+            statusText = buildWaterUnavailableStatus();
+            dataSource = currentWaterTempIsCached ? 'cache' : 'unavailable';
+        }
     }
 
     applyKmaAirTempOverlay(ncstData, asosData, weather);
     updateWaterTempSatelliteFlag(loc);
-    // 위성/예측 플래그: 실측 없이 캐시만 있으면 satellite 아님, OM 수온은 쓰지 않음
     if (currentWaterTemp !== null && !currentWaterTempIsCached && (usedKhoaApi || usedKmaApi || usedNifsApi)) {
         currentWaterTempIsSatellite = false;
     }
@@ -2980,8 +2997,8 @@ async function fetchAllData(opts = {}) {
             ? fetchKmaAsosHourly(loc.stnId)
             : Promise.resolve(null);
 
-        const tidalBuPromise = loc.obsCode
-            ? fetchKhoaTidalBuTemp(loc.obsCode)
+        const tidalBuPromise = loc.beachCode
+            ? fetchKhoaTidalBuTemp(loc.beachCode)
             : Promise.resolve(null);
 
         const [marineRes, weatherRes, , kma, khoa, nifs, ncstData, asosData, tidalBu] = await Promise.all([
