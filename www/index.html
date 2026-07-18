@@ -142,21 +142,43 @@
         .hour-divider { width: 16px; height: 1px; background: rgba(255,255,255,0.25); margin-bottom: 8px; flex-shrink: 0; }
         .hour-water { font-size: 12px; font-weight: 700; color: #fff; line-height: 1; margin-top: 0; font-variant-numeric: tabular-nums; }
 
-        /* 정보 카드 */
-        .info-cards-stack { display: flex; flex-direction: column; gap: var(--space-card-gap); }
-        .info-card { background: #fff; border-radius: 18px; padding: var(--space-card); display: flex; align-items: center; box-shadow: 0 4px 16px rgba(0,80,160,0.08); transition: transform 0.2s; }
-        .info-card-clickable { cursor: pointer; }
-        .info-card:active { transform: scale(0.98); }
-        .card-chevron { font-size: 17px; font-weight: 700; color: var(--gray-400); margin-left: 4px; flex-shrink: 0; line-height: 1; }
-        .card-icon-container { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 14px; flex-shrink: 0; color: #fff; }
+        /* 종합 입수지수 */
+        .swim-index-row {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,0.15); border-radius: 16px;
+            padding: 12px 16px; margin-bottom: var(--space-card-gap);
+            backdrop-filter: blur(8px);
+        }
+        .swim-index-label { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.95); flex-shrink: 0; }
+        .swim-index-grade {
+            font-size: 12px; font-weight: 800; color: #fff;
+            padding: 5px 12px; border-radius: 20px; white-space: nowrap;
+            background: var(--gray-400);
+        }
+        .swim-index-grade.grade-best { background: var(--color-safe); }
+        .swim-index-grade.grade-good { background: var(--color-primary); }
+        .swim-index-grade.grade-ok { background: var(--color-caution); }
+        .swim-index-grade.grade-warn { background: var(--color-danger); }
+        .swim-index-score { font-size: 17px; font-weight: 800; color: #fff; margin-left: auto; font-variant-numeric: tabular-nums; }
+
+        /* 정보 카드 2×2 그리드 */
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .info-grid-card {
+            background: #fff; border-radius: 20px; padding: 16px 14px;
+            display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+            box-shadow: 0 4px 16px rgba(0,80,160,0.08);
+            cursor: pointer; transition: transform 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .info-grid-card:active { transform: scale(0.96); }
+        .card-icon-container { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
         .icon-wave { background: linear-gradient(135deg, var(--color-primary), #0284c7); }
         .icon-jelly { background: linear-gradient(135deg, #a78bfa, #db2777); }
         .icon-wind { background: linear-gradient(135deg, #34d399, #059669); }
         .icon-ttakkomi { background: var(--color-caution); }
-        .card-icon-container .ui-icon { width: 22px; height: 22px; color: #fff; }
-        .card-title { font-size: 15px; font-weight: 700; color: var(--gray-800); }
-        .flex-space { flex: 1; }
-        .card-val { font-size: 17px; font-weight: 800; color: var(--gray-800); margin-right: 10px; font-variant-numeric: tabular-nums; }
+        .card-icon-container .ui-icon { width: 20px; height: 20px; color: #fff; }
+        .info-grid-title { font-size: 12px; font-weight: 600; color: var(--gray-400); }
+        .info-grid-val { font-size: 20px; font-weight: 800; color: var(--gray-800); font-variant-numeric: tabular-nums; line-height: 1.15; }
         .status-badge { font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: currentColor; }
         .status-safe { background: var(--color-safe-bg); color: var(--color-safe); }
@@ -166,6 +188,18 @@
         .status-green { background: var(--color-safe-bg); color: var(--color-safe); }
         .status-orange { background: var(--color-caution-bg); color: var(--color-caution); }
         .status-red { background: var(--color-danger-bg); color: var(--color-danger); }
+
+        /* 상세 바텀시트 */
+        .detail-sheet-hero { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+        .detail-sheet-val { font-size: 32px; font-weight: 800; color: var(--gray-800); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; line-height: 1.1; }
+        .detail-sheet-desc { font-size: 15px; font-weight: 600; color: var(--gray-600); line-height: 1.45; margin: 4px 0 0; }
+        .detail-sheet-note { font-size: 12px; font-weight: 500; color: var(--gray-400); line-height: 1.45; margin-top: 12px; }
+        .detail-sheet-weather-btn {
+            width: 100%; margin-top: 20px; padding: 14px 16px; border: none; border-radius: 14px;
+            background: var(--primary); color: #fff; font-size: 15px; font-weight: 700;
+            cursor: pointer; font-family: var(--font-sans);
+        }
+        .detail-sheet-weather-btn:active { transform: scale(0.98); }
 
         /* 날씨 탭 */
         .weather-tab-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -231,8 +265,8 @@
             from { transform: translateY(-4px); }
             to { transform: translateY(22px); }
         }
-        .info-card.metric-pulse-danger::before,
-        .info-card.metric-pulse-caution::before {
+        .info-grid-card.metric-pulse-danger::before,
+        .info-grid-card.metric-pulse-caution::before {
             content: '';
             position: absolute;
             inset: 0;
@@ -240,13 +274,12 @@
             pointer-events: none;
             animation: metricCardPulse 2.5s ease-in-out infinite;
         }
-        .info-card { position: relative; overflow: hidden; }
-        .info-card.metric-pulse-danger::before { background: rgba(220, 38, 38, 0.1); }
-        .info-card.metric-pulse-caution::before { background: rgba(234, 88, 12, 0.08); }
+        .info-grid-card.metric-pulse-danger::before { background: rgba(220, 38, 38, 0.1); }
+        .info-grid-card.metric-pulse-caution::before { background: rgba(234, 88, 12, 0.08); }
         @media (prefers-reduced-motion: reduce) {
             .sun-rise-sun, .sun-set-sun,
             .weather-metric-card.metric-pulse-danger::before, .weather-metric-card.metric-pulse-caution::before,
-            .info-card.metric-pulse-danger::before, .info-card.metric-pulse-caution::before {
+            .info-grid-card.metric-pulse-danger::before, .info-grid-card.metric-pulse-caution::before {
                 animation: none !important;
             }
             .weather-metric-bar-fill.bar-animate { transition: none !important; }
@@ -679,6 +712,13 @@
             </div>
         </div>
 
+        <!-- 종합 입수지수 -->
+        <div class="swim-index-row" id="swim-index-row" aria-live="polite">
+            <span class="swim-index-label">종합 입수지수</span>
+            <span class="swim-index-grade" id="swim-index-grade">--</span>
+            <span class="swim-index-score metric-num" id="swim-index-score">--</span>
+        </div>
+
         <!-- 시간별 예보 -->
         <div class="hourly-card">
             <div class="hourly-header">
@@ -691,39 +731,31 @@
             <div class="hourly-scroll" id="hourly-scroll-container"></div>
         </div>
 
-        <!-- 정보 카드: 파도 → 풍속 → 해파리 → 따꼼이 -->
-        <div class="info-cards-stack">
-            <div class="info-card info-card-clickable" id="info-card-wave" onclick="goToWeatherSection('weather-wave-card')">
+        <!-- 정보 카드 2×2 -->
+        <div class="info-grid">
+            <div class="info-grid-card" id="info-card-wave" onclick="openDetailSheet('wave')" role="button" tabindex="0">
                 <div class="card-icon-container icon-wave" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/><path d="M2 17c1.5-1.5 3.5-1.5 5 0s3.5 1.5 5 0 3.5-1.5 5 0 3.5 1.5 5 0"/></svg></div>
-                <span class="card-title">파도 높이</span>
-                <div class="flex-space"></div>
-                <span class="card-val" id="val-wave">--</span>
+                <span class="info-grid-title">파도 높이</span>
+                <span class="info-grid-val" id="val-wave">--</span>
                 <span class="status-badge status-safe" id="badge-wave"><span class="status-dot"></span>로딩</span>
-                <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card info-card-clickable" id="info-card-wind" onclick="goToWeatherSection('weather-wind-card')">
+            <div class="info-grid-card" id="info-card-wind" onclick="openDetailSheet('wind')" role="button" tabindex="0">
                 <div class="card-icon-container icon-wind" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12a3 3 0 1 0-2.8-4"/><path d="M6 14h11a2.5 2.5 0 1 1-2.4 3.5"/><path d="M4 18h8"/></svg></div>
-                <span class="card-title">풍속</span>
-                <div class="flex-space"></div>
-                <span class="card-val" id="val-wind">--</span>
+                <span class="info-grid-title">풍속</span>
+                <span class="info-grid-val" id="val-wind">--</span>
                 <span class="status-badge status-safe" id="badge-wind"><span class="status-dot"></span>로딩</span>
-                <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card info-card-clickable" id="info-card-jelly" onclick="goToWeatherSection('weather-jelly-card')">
+            <div class="info-grid-card" id="info-card-jelly" onclick="openDetailSheet('jelly')" role="button" tabindex="0">
                 <div class="card-icon-container icon-jelly" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11a6 6 0 0 1 12 0"/><line x1="9" y1="13" x2="9" y2="19"/><line x1="12" y1="12" x2="12" y2="20"/><line x1="15" y1="13" x2="15" y2="18"/><line x1="18" y1="14" x2="18" y2="17"/></svg></div>
-                <span class="card-title">해파리</span>
-                <div class="flex-space"></div>
-                <span class="card-val" id="val-jelly">--</span>
+                <span class="info-grid-title">해파리</span>
+                <span class="info-grid-val" id="val-jelly">--</span>
                 <span class="status-badge status-safe" id="badge-jelly"><span class="status-dot"></span>로딩</span>
-                <span class="card-chevron" aria-hidden="true">›</span>
             </div>
-            <div class="info-card info-card-clickable" id="info-card-ttakkomi" onclick="goToWeatherSection('weather-ttakkomi-card')">
+            <div class="info-grid-card" id="info-card-ttakkomi" onclick="openDetailSheet('ttakkomi')" role="button" tabindex="0">
                 <div class="card-icon-container icon-ttakkomi" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-                <span class="card-title">따꼼이 (바다물벼룩)</span>
-                <div class="flex-space"></div>
-                <span class="card-val" id="val-ttakkomi">--</span>
+                <span class="info-grid-title">따꼼이</span>
+                <span class="info-grid-val" id="val-ttakkomi">--</span>
                 <span class="status-badge status-safe" id="badge-ttakkomi"><span class="status-dot"></span>로딩</span>
-                <span class="card-chevron" aria-hidden="true">›</span>
             </div>
         </div>
         </div>
@@ -1151,6 +1183,20 @@
                 <button type="button" class="strava-detail-action-btn" id="strava-capture-btn" onclick="shareStravaActivity()"><span class="strava-capture-icon" aria-hidden="true"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2h6l2 2h3v11H4V8z"/><circle cx="12" cy="13" r="3.5"/></svg></span> 캡처하기</button>
                 <button type="button" class="strava-detail-action-btn" id="strava-copy-btn" onclick="copyStravaActivity()">복사하기</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 홈 메트릭 상세 바텀시트 -->
+    <div class="loc-sheet-overlay" id="detail-sheet-overlay" onclick="handleDetailOverlayClick(event)">
+        <div class="loc-sheet app-sheet" id="detail-sheet">
+            <div class="loc-sheet-handle-area">
+                <div class="loc-sheet-handle"></div>
+                <div class="loc-sheet-header">
+                    <div class="loc-sheet-title" id="detail-sheet-title">상세</div>
+                    <button type="button" class="loc-sheet-close" onclick="closeDetailSheet()" aria-label="닫기"><svg class="ui-icon ui-icon-sm" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+                </div>
+            </div>
+            <div class="app-sheet-body" id="detail-sheet-body"></div>
         </div>
     </div>
 </div>
@@ -3582,10 +3628,8 @@ function applyInfoCardAnim(cardId, level) {
     const card = document.getElementById(cardId);
     if (!card) return;
     card.classList.remove('metric-pulse-danger', 'metric-pulse-caution');
-    if (cardId === 'info-card-jelly') {
-        if (level === 'danger') card.classList.add('metric-pulse-danger');
-        else if (level === 'caution') card.classList.add('metric-pulse-caution');
-    }
+    if (level === 'danger') card.classList.add('metric-pulse-danger');
+    else if (level === 'caution') card.classList.add('metric-pulse-caution');
 }
 
 function getWindDirectionLabel(deg) {
@@ -3640,8 +3684,157 @@ function renderWeatherTab() {
 }
 
 // =====================================================
-//  정보 카드
+//  정보 카드 + 종합 입수지수 + 상세 시트
 // =====================================================
+const DETAIL_SHEET_META = {
+    wave: {
+        title: '파도 높이',
+        weatherId: 'weather-wave-card',
+        note: '너울이 심하면 예상치 못한 방향에서 파도가 올 수 있어 위험합니다.',
+    },
+    wind: {
+        title: '풍속',
+        weatherId: 'weather-wind-card',
+        note: '해풍(바다→육지)은 파도를 높이고, 육풍은 수면을 잔잔하게 합니다.',
+    },
+    jelly: {
+        title: '해파리',
+        weatherId: 'weather-jelly-card',
+        note: '수온 25℃ 이상·7~9월 집중 출현 · 쏘였을 때 바닷물로 씻고 촉수 제거 후 즉시 119',
+    },
+    ttakkomi: {
+        title: '따꼼이 (바다물벼룩)',
+        weatherId: 'weather-ttakkomi-card',
+        note: '수영인들이 \'따꼼이\'라 부르는 바다물벼룩(단각류)입니다. 해파리가 아닌 새우와 비슷한 작은 갑각류로 크기는 수mm~수cm. 독성은 없지만 피부를 깨물어 따끔한 통증을 유발합니다. 수온 23℃ 이상 여름철 개체수 급증, 수온이 낮아지면 감소. 국립수산과학원에 따르면 전세계 해역에 서식하는 일반적인 생물군입니다. 따꼼이가 많은 날은 래시가드·수트 착용 권장.',
+    },
+};
+
+function getJellyLevelForIndex(wt, month) {
+    if (wt >= 25 && month >= 7 && month <= 9) return 'danger';
+    if (wt >= 22 && month >= 6 && month <= 9) return 'caution';
+    return 'safe';
+}
+
+function calcSwimIndex() {
+    if (currentWaterTemp === null || currentWaveHeight === null || currentWindSpeed === null) {
+        return null;
+    }
+    const wt = currentWaterTemp;
+    const wave = currentWaveHeight;
+    const wind = currentWindSpeed;
+    const month = new Date().getMonth() + 1;
+    const jellyLevel = getJellyLevelForIndex(wt, month);
+
+    let tempScore = 0;
+    if (wt >= 24) tempScore = 30;
+    else if (wt >= 22) tempScore = 20;
+    else if (wt >= 20) tempScore = 10;
+
+    let waveScore = 0;
+    if (wave <= 0.5) waveScore = 30;
+    else if (wave <= 0.8) waveScore = 20;
+    else if (wave <= 1.5) waveScore = 10;
+
+    let windScore = 0;
+    if (wind <= 4) windScore = 25;
+    else if (wind <= 8) windScore = 15;
+
+    const jellyScore = jellyLevel === 'safe' ? 15 : jellyLevel === 'caution' ? 8 : 0;
+    const score = Math.max(0, Math.min(100, tempScore + waveScore + windScore + jellyScore));
+
+    let grade, gradeClass;
+    if (score >= 85) { grade = '최적'; gradeClass = 'grade-best'; }
+    else if (score >= 65) { grade = '좋음'; gradeClass = 'grade-good'; }
+    else if (score >= 40) { grade = '보통'; gradeClass = 'grade-ok'; }
+    else { grade = '주의'; gradeClass = 'grade-warn'; }
+
+    return { score, grade, gradeClass };
+}
+
+function renderSwimIndex() {
+    const gradeEl = document.getElementById('swim-index-grade');
+    const scoreEl = document.getElementById('swim-index-score');
+    if (!gradeEl || !scoreEl) return;
+    const result = calcSwimIndex();
+    if (!result) {
+        gradeEl.className = 'swim-index-grade';
+        gradeEl.textContent = '--';
+        scoreEl.textContent = '--';
+        return;
+    }
+    gradeEl.className = `swim-index-grade ${result.gradeClass}`;
+    gradeEl.textContent = result.grade;
+    scoreEl.textContent = `${result.score}점`;
+}
+
+function getDetailSheetInfo(type) {
+    const month = new Date().getMonth() + 1;
+    const wt = currentWaterTemp ?? 20;
+    if (type === 'wave') return getWaveDetailInfo(currentWaveHeight);
+    if (type === 'wind') {
+        const wind = getWindDetailInfo(currentWindSpeed);
+        const windDir = getWindDirectionLabel(currentWindDirection);
+        if (wind.desc !== '데이터 없음') wind.desc = `${wind.desc} · 풍향 ${windDir}`;
+        return wind;
+    }
+    if (type === 'jelly') return getJellyfishDetailInfo(wt, month);
+    if (type === 'ttakkomi') return getTtakkomiDetailInfo(wt, month);
+    return { val: '--', level: 'safe', badge: '--', desc: '', meterPct: 0 };
+}
+
+function openDetailSheet(type) {
+    const meta = DETAIL_SHEET_META[type];
+    if (!meta) return;
+    const info = getDetailSheetInfo(type);
+    const titleEl = document.getElementById('detail-sheet-title');
+    const body = document.getElementById('detail-sheet-body');
+    if (titleEl) titleEl.textContent = meta.title;
+    if (body) {
+        body.innerHTML = `
+            <div class="detail-sheet-hero">
+                <div class="detail-sheet-val">${info.val}</div>
+                <span class="status-badge ${statusBadgeClass(info.level)}" id="detail-sheet-badge"><span class="status-dot" aria-hidden="true"></span>${info.badge}</span>
+            </div>
+            <div class="weather-metric-bar-track">
+                <div class="weather-metric-bar-fill weather-bar-${info.level} bar-animate" id="detail-sheet-bar" style="--bar-pct:${info.meterPct ?? 0}" data-bar-pct="${info.meterPct ?? 0}"></div>
+            </div>
+            <p class="detail-sheet-desc">${info.desc || ''}</p>
+            <p class="detail-sheet-note">${meta.note}</p>
+            <button type="button" class="detail-sheet-weather-btn" onclick="openDetailInWeather('${meta.weatherId}')">날씨탭에서 자세히 보기</button>
+        `;
+    }
+    document.getElementById('detail-sheet-overlay')?.classList.add('show');
+    requestAnimationFrame(() => {
+        const bar = document.getElementById('detail-sheet-bar');
+        if (!bar) return;
+        bar.classList.add('no-transition');
+        bar.classList.remove('bar-animate');
+        bar.style.setProperty('--bar-pct', '0');
+        requestAnimationFrame(() => {
+            bar.classList.remove('no-transition');
+            bar.classList.add('bar-animate');
+            bar.style.setProperty('--bar-pct', bar.dataset.barPct ?? '0');
+        });
+    });
+}
+
+function closeDetailSheet() {
+    document.getElementById('detail-sheet-overlay')?.classList.remove('show');
+}
+
+function handleDetailOverlayClick(e) {
+    if (e.target === document.getElementById('detail-sheet-overlay')) closeDetailSheet();
+}
+
+function isDetailSheetOpen() {
+    return document.getElementById('detail-sheet-overlay')?.classList.contains('show');
+}
+
+function openDetailInWeather(sectionId) {
+    closeDetailSheet();
+    goToWeatherSection(sectionId);
+}
+
 function renderInfoCards() {
     // 파고
     const waveVal = document.getElementById('val-wave');
@@ -3657,12 +3850,14 @@ function renderInfoCards() {
     // 풍속
     const windVal = document.getElementById('val-wind');
     const windBadge = document.getElementById('badge-wind');
+    let windLevel = 'safe';
     if (currentWindSpeed !== null) {
         windVal.textContent = `${currentWindSpeed}m/s`;
-        if (currentWindSpeed <= 4)      { setStatusBadge(windBadge, 'safe', '잔잔'); }
-        else if (currentWindSpeed <= 8) { setStatusBadge(windBadge, 'caution', '보통'); }
-        else                            { setStatusBadge(windBadge, 'danger', '강풍'); }
+        if (currentWindSpeed <= 4)      { windLevel = 'safe'; setStatusBadge(windBadge, 'safe', '잔잔'); }
+        else if (currentWindSpeed <= 8) { windLevel = 'caution'; setStatusBadge(windBadge, 'caution', '보통'); }
+        else                            { windLevel = 'danger'; setStatusBadge(windBadge, 'danger', '강풍'); }
     }
+    applyInfoCardAnim('info-card-wind', windLevel);
     // 해파리
     const jellyVal = document.getElementById('val-jelly');
     const jellyBadge = document.getElementById('badge-jelly');
@@ -3680,6 +3875,8 @@ function renderInfoCards() {
     if (ttakkomiVal) ttakkomiVal.textContent = ttakkomi.val;
     if (ttakkomiBadge) setStatusBadge(ttakkomiBadge, ttakkomi.level, ttakkomi.badge);
     applyInfoCardAnim('info-card-ttakkomi', ttakkomi.level);
+
+    renderSwimIndex();
 }
 
 // =====================================================
@@ -3752,6 +3949,10 @@ async function setupAndroidBackButton() {
     window.__androidBackReady = true;
 
     await App.addListener('backButton', () => {
+        if (isDetailSheetOpen()) {
+            closeDetailSheet();
+            return;
+        }
         if (isStravaDetailSheetOpen()) {
             closeStravaDetail();
             return;
