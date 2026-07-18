@@ -129,6 +129,7 @@
         .l-chip.l-chip-main .ui-icon-xs { width: 14px; height: 14px; color: #FCD34D; }
         .l-chip.l-chip-main.active .ui-icon-xs { color: #F59E0B; }
         .l-chip .chip-wave-icon { width: 14px; height: 14px; color: inherit; opacity: 0.9; }
+        .l-chip .chip-emoji { font-size: 14px; line-height: 1; flex-shrink: 0; }
 
         /* 위치 헤더 */
         .location-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -497,6 +498,8 @@
         .search-result-item:active { transform: scale(0.98); background: #f8fafc; }
         .search-result-item .sr-emoji { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--color-primary); flex-shrink: 0; font-size: 20px; line-height: 1; }
         .search-result-item .sr-emoji .ui-icon { width: 20px; height: 20px; }
+        .fav-emoji .beach-emoji, .search-result-item .sr-emoji .beach-emoji,
+        .profile-beach-emoji .beach-emoji { font-size: 20px; line-height: 1; }
         .search-result-item .sr-info { flex: 1; }
         .search-result-item .sr-name { font-size: 15px; font-weight: 700; color: var(--gray-800); }
         .search-result-item .sr-desc { font-size: 12px; color: var(--gray-500); margin-top: 1px; }
@@ -693,7 +696,7 @@
         .profile-beach-item.checked:active { background: #dbeafe; }
         .profile-beach-check-wrap { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin: -6px 0 -6px -6px; pointer-events: none; }
         .profile-beach-check { width: 20px; height: 20px; accent-color: var(--primary); flex-shrink: 0; pointer-events: none; }
-        .profile-beach-emoji { width: 24px; height: 24px; flex-shrink: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; color: var(--color-primary); }
+        .profile-beach-emoji { width: 24px; height: 24px; flex-shrink: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; color: var(--color-primary); font-size: 20px; line-height: 1; }
         .profile-beach-emoji .ui-icon { width: 20px; height: 20px; }
         .profile-beach-name { font-size: 15px; font-weight: 700; color: var(--gray-800); flex: 1; pointer-events: none; }
         .profile-main-beach-banner { background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
@@ -702,7 +705,8 @@
         .profile-main-beach-banner--empty { background: #f8fafc; border-color: #e2e8f0; }
         .profile-main-beach-label { font-size: 12px; font-weight: 700; color: #B45309; letter-spacing: -0.2px; display: inline-flex; align-items: center; gap: 4px; }
         .profile-main-beach-banner--empty .profile-main-beach-label { color: #64748b; }
-        .profile-main-beach-name { font-size: 20px; font-weight: 800; color: #92400e; margin-top: 6px; line-height: 1.3; letter-spacing: -0.3px; }
+        .profile-main-beach-name { font-size: 20px; font-weight: 800; color: #92400e; margin-top: 6px; line-height: 1.3; letter-spacing: -0.3px; display: inline-flex; align-items: center; gap: 8px; }
+        .profile-main-beach-name .beach-emoji { font-size: 20px; line-height: 1; }
         .profile-main-beach-banner--unset .profile-main-beach-name { font-size: 15px; color: #92400e; }
         .profile-main-beach-banner--empty .profile-main-beach-name { font-size: 15px; color: var(--gray-500); font-weight: 700; }
         .profile-main-beach-hint { display: block; font-size: 12px; font-weight: 600; color: #b45309; margin-top: 8px; line-height: 1.4; }
@@ -2152,7 +2156,7 @@ function updateProfileMainBeachBanner() {
         el.className = 'profile-main-beach-banner profile-main-beach-banner--set';
         el.innerHTML = `
             <div class="profile-main-beach-label">${starSm} 메인 바다</div>
-            <div class="profile-main-beach-name" style="display:inline-flex;align-items:center;gap:8px">${UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon ui-icon-sm"')} ${beach?.name || ''}</div>
+            <div class="profile-main-beach-name">${beachEmojiHtml(beach, 'list')} ${beach?.name || ''}</div>
             ${hint}`;
     } else {
         el.className = 'profile-main-beach-banner profile-main-beach-banner--unset';
@@ -2559,7 +2563,7 @@ function renderProfileBeachList() {
             <span class="profile-beach-check-wrap">
                 <input type="checkbox" class="profile-beach-check" ${isFav ? 'checked' : ''} tabindex="-1" aria-hidden="true" />
             </span>
-            <span class="profile-beach-emoji">${UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon ui-icon-sm"')}</span>
+            <span class="profile-beach-emoji">${beachEmojiHtml(beach, 'list')}</span>
             <span class="profile-beach-name">${beach.name}${profileFavSearchQuery ? ` <span style="font-size:12px;font-weight:600;color:var(--gray-400);">${beach.region}</span>` : ''}</span>
             ${starHtml}`;
         container.appendChild(item);
@@ -3319,8 +3323,7 @@ function renderLocationChips() {
             const isActive = mainId === currentLocationId;
             chip.className = `l-chip l-chip-main ${isActive ? 'active' : 'inactive'}`;
             const star = UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"');
-            const waveIcon = UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon chip-wave-icon"');
-            chip.innerHTML = `${star} ${waveIcon} ${beach.name}`;
+            chip.innerHTML = `${star} ${beachEmojiHtml(beach, 'chip')} ${beach.name}`;
             chip.onclick = () => selectLocation(mainId);
             fixed.appendChild(chip);
         }
@@ -3342,8 +3345,7 @@ function renderLocationChips() {
         if (!beach) return;
         const chip = document.createElement('button');
         chip.className = `l-chip ${id === currentLocationId ? 'active' : 'inactive'}`;
-        const waveIcon = UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon chip-wave-icon"');
-        chip.innerHTML = `${waveIcon} ${beach.name}`;
+        chip.innerHTML = `${beachEmojiHtml(beach, 'chip')} ${beach.name}`;
         chip.onclick = () => selectLocation(id);
         scroll.appendChild(chip);
     });
@@ -3444,10 +3446,21 @@ function onSearchInput(val) {
     renderLocSheetBody(val.trim());
 }
 
-function beachListIconHtml(beach) {
+/** 해변명 앞 아이콘: emoji 우선, 없으면 파도 SVG 폴백. size: 'list'(20px) | 'chip'(14px) */
+function beachEmojiHtml(beach, size = 'list') {
     const emoji = beach?.emoji != null ? String(beach.emoji).trim() : '';
-    if (emoji) return emoji;
-    return UI_ICON.wave();
+    if (emoji) {
+        const cls = size === 'chip' ? 'chip-emoji' : 'beach-emoji';
+        return `<span class="${cls}" aria-hidden="true">${emoji}</span>`;
+    }
+    if (size === 'chip') {
+        return UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon chip-wave-icon"');
+    }
+    return UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon ui-icon-sm"');
+}
+
+function beachListIconHtml(beach) {
+    return beachEmojiHtml(beach, 'list');
 }
 
 function renderLocSheetBody(query) {
@@ -3515,7 +3528,7 @@ function renderLocSheetBody(query) {
             item.className = `search-result-item ${isFav ? 'already-fav' : ''}`;
             item.dataset.beachId = beach.id;
             item.innerHTML = `
-                <div class="sr-emoji">${UI_ICON.wave()}</div>
+                <div class="sr-emoji">${beachListIconHtml(beach)}</div>
                 <div class="sr-info"><div class="sr-name">${beach.name}</div><div class="sr-desc">${beach.region}</div></div>
                 <div class="sr-add">${isFav ? UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"') : UI_ICON.plus()}</div>`;
             body.appendChild(item);
