@@ -57,18 +57,18 @@
         .content-scroll { flex: 1; overflow-y: auto; padding: var(--space-card); padding-top: calc(15px + var(--safe-top)); padding-bottom: calc(var(--tab-bar-height) + 28px); scrollbar-width: none; }
         .content-scroll::-webkit-scrollbar { display: none; }
 
-        /* 위치 칩 (홈 sticky) */
+        /* 위치 칩 (홈 sticky + 메인바다 좌측 고정) */
         .location-chips-sentinel { height: 1px; width: 100%; margin: 0; padding: 0; pointer-events: none; visibility: hidden; }
         .location-chips {
             position: sticky;
             top: 0;
             z-index: 50;
             display: flex;
+            align-items: center;
             gap: 8px;
             margin: 0 calc(-1 * var(--space-card)) var(--space-section);
             padding: 6px var(--space-card) 14px;
-            overflow-x: auto;
-            scrollbar-width: none;
+            overflow: hidden;
             background: linear-gradient(
                 180deg,
                 #A8E6FF 0%,
@@ -78,17 +78,56 @@
             box-shadow: none;
             transition: box-shadow 0.2s ease;
         }
-        .location-chips::-webkit-scrollbar { display: none; }
         .location-chips.scrolled { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); }
-        .l-chip { padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.25s; flex-shrink: 0; }
+        .location-chips-fixed {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .location-chips-divider {
+            width: 1px;
+            height: 60%;
+            min-height: 22px;
+            align-self: center;
+            background: rgba(255, 255, 255, 0.35);
+            flex-shrink: 0;
+            border-radius: 1px;
+        }
+        .location-chips-divider.is-hidden { display: none; }
+        .location-chips-scroll {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+        .location-chips-scroll::-webkit-scrollbar { display: none; }
+        .l-chip { padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 2px solid transparent; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: all 0.25s; flex-shrink: 0; }
         .l-chip.active { background: #fff; color: var(--primary); box-shadow: 0 4px 12px rgba(0,50,100,0.15); }
         .l-chip.inactive { background: rgba(255,255,255,0.25); color: #fff; }
         .l-chip.gps-active { background: #4ade80; color: #064e3b; }
         .l-chip.l-chip-manage { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); border: 1.5px dashed rgba(255,255,255,0.5); display: inline-flex; align-items: center; gap: 5px; }
         .l-chip.l-chip-manage:active { background: rgba(255,255,255,0.25); }
-        .l-chip.l-chip-main { border: 2px solid var(--color-caution); }
-        .l-chip.l-chip-main.active { box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
-        .l-chip .ui-icon-xs { width: 14px; height: 14px; color: var(--color-caution); }
+        /* 메인바다: 골드 테두리+별 (선택 여부와 무관). 선택은 채움으로만 구분 */
+        .l-chip.l-chip-main {
+            border: 2px solid #FCD34D;
+            box-shadow: none;
+        }
+        .l-chip.l-chip-main.inactive {
+            background: rgba(255,255,255,0.18);
+            color: #fff;
+        }
+        .l-chip.l-chip-main.active {
+            background: #fff;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0,50,100,0.15);
+        }
+        .l-chip.l-chip-main .ui-icon-xs { width: 14px; height: 14px; color: #FCD34D; }
+        .l-chip.l-chip-main.active .ui-icon-xs { color: #F59E0B; }
         .l-chip .chip-wave-icon { width: 14px; height: 14px; color: inherit; opacity: 0.9; }
 
         /* 위치 헤더 */
@@ -3185,26 +3224,61 @@ function renderAll() {
 // =====================================================
 function renderLocationChips() {
     const container = document.getElementById('location-chips');
+    if (!container) return;
+    const scrolled = container.classList.contains('scrolled');
     container.innerHTML = '';
+    if (scrolled) container.classList.add('scrolled');
+
+    const fixed = document.createElement('div');
+    fixed.className = 'location-chips-fixed';
 
     const manageChip = document.createElement('button');
     manageChip.className = 'l-chip l-chip-manage inactive';
     manageChip.innerHTML = `${UI_ICON.plus()} 바다 선택`;
     manageChip.onclick = openLocSheet;
-    container.appendChild(manageChip);
+    fixed.appendChild(manageChip);
 
     const mainId = getMainBeachId();
-    getOrderedFavoriteIds().forEach(id => {
+    const otherIds = favorites.filter((id) => id !== mainId);
+    const showDivider = !!(mainId && otherIds.length > 0);
+
+    if (mainId) {
+        const beach = getBeachById(mainId);
+        if (beach) {
+            const chip = document.createElement('button');
+            const isActive = mainId === currentLocationId;
+            chip.className = `l-chip l-chip-main ${isActive ? 'active' : 'inactive'}`;
+            const star = UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"');
+            const waveIcon = UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon chip-wave-icon"');
+            chip.innerHTML = `${star} ${waveIcon} ${beach.name}`;
+            chip.onclick = () => selectLocation(mainId);
+            fixed.appendChild(chip);
+        }
+    }
+
+    const divider = document.createElement('div');
+    divider.className = `location-chips-divider${showDivider ? '' : ' is-hidden'}`;
+    divider.setAttribute('aria-hidden', 'true');
+    fixed.appendChild(divider);
+
+    container.appendChild(fixed);
+
+    const scroll = document.createElement('div');
+    scroll.className = 'location-chips-scroll';
+
+    const scrollIds = mainId ? otherIds : [...favorites];
+    scrollIds.forEach((id) => {
         const beach = getBeachById(id);
         if (!beach) return;
-        const isMain = id === mainId;
         const chip = document.createElement('button');
-        chip.className = `l-chip ${id === currentLocationId ? 'active' : 'inactive'}${isMain ? ' l-chip-main' : ''}`;
+        chip.className = `l-chip ${id === currentLocationId ? 'active' : 'inactive'}`;
         const waveIcon = UI_ICON.wave().replace('class="ui-icon"', 'class="ui-icon chip-wave-icon"');
-        chip.innerHTML = `${isMain ? UI_ICON.starFilled().replace('class="ui-icon"', 'class="ui-icon ui-icon-xs"') + ' ' : ''}${waveIcon} ${beach.name}`;
+        chip.innerHTML = `${waveIcon} ${beach.name}`;
         chip.onclick = () => selectLocation(id);
-        container.appendChild(chip);
+        scroll.appendChild(chip);
     });
+
+    container.appendChild(scroll);
 }
 
 function setupLocationChipsSticky() {
