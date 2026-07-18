@@ -3388,16 +3388,15 @@ function renderHourly(containerId = 'hourly-scroll-container') {
     container.innerHTML = '';
 
     const hourly = window._hourlyData;
-    const loc = getCurrentLoc();
-    const khoaHourlyMap = window._khoaHourlyMap;
-    const useKhoaHourly = !!(loc.obsCode && khoaHourlyMap);
     let nowCol = null;
 
     const nowIso = getKstHourlyIsoWithOffset(0);
     const omCurrentWater = getMarineWaterTempAtIso(nowIso);
-    // 미래 예측 보정용 오프셋 — 실측이 있을 때만 (메인 표시는 실측 유지)
+    // 실측(비캐시)과 현재시각 예측이 2℃ 이상 차이나면 전체 예보줄에 동일 offset 적용
+    const hasLiveMeasured =
+        currentWaterTemp !== null && !currentWaterTempIsSatellite && !currentWaterTempIsCached;
     const waterTempOffset =
-        currentWaterTemp !== null && !currentWaterTempIsSatellite && omCurrentWater !== null
+        hasLiveMeasured && omCurrentWater !== null && Math.abs(currentWaterTemp - omCurrentWater) >= 2
             ? currentWaterTemp - omCurrentWater
             : null;
 
@@ -3405,7 +3404,6 @@ function renderHourly(containerId = 'hourly-scroll-container') {
         const isNow = offset === 0;
         const isoTime = getKstHourlyIsoWithOffset(offset);
         const timeStr = getKstHourLabelFromIso(isoTime);
-        const slotDate = new Date(Date.parse(`${isoTime}:00+09:00`));
 
         let airTemp = '--';
         let waterTemp = '--';
@@ -3420,35 +3418,20 @@ function renderHourly(containerId = 'hourly-scroll-container') {
             }
         }
 
-        // 기본: Open-Meteo 예측 (미래·실측 없는 슬롯)
-        if (hourly?.marine?.time) {
-            const idx = hourly.marine.time.indexOf(isoTime);
-            if (idx !== -1) {
-                const w = hourly.marine.sea_surface_temperature?.[idx];
-                if (w !== undefined) waterTemp = formatWaterTempShort(w);
-            }
+        // 현재 칸 기온: 초단기실황(또는 ASOS) 실측으로 덮어쓰기
+        if (isNow && currentAirTemp != null && !Number.isNaN(currentAirTemp)) {
+            airTemp = Math.round(currentAirTemp) + '°';
         }
 
-        if (useKhoaHourly && isKstToday(slotDate)) {
-            const khoaTemp = khoaHourlyMap[getKstHourKey(slotDate)];
-            if (khoaTemp != null && !Number.isNaN(khoaTemp)) {
-                // 오늘 과거·현재 시각: KHOA 실측으로 덮어쓰기
-                if (offset <= 0) {
-                    waterTemp = formatWaterTempShort(khoaTemp);
-                }
-            }
+        // 수온: Open-Meteo 예측 (+ 필요 시 실측 기준 offset). khoa-hourly 미사용.
+        const omWater = getMarineWaterTempAtIso(isoTime);
+        if (omWater !== null) {
+            const adjusted = waterTempOffset !== null ? omWater + waterTempOffset : omWater;
+            waterTemp = formatWaterTempShort(adjusted);
         }
 
         if (isNow && currentWaterTemp !== null && !currentWaterTempIsSatellite) {
             waterTemp = formatWaterTempShort(currentWaterTemp);
-        }
-
-        // 미래 시각만 예측 유지 (실측 오프셋 보정 가능)
-        if (offset > 0 && waterTempOffset !== null) {
-            const omFuture = getMarineWaterTempAtIso(isoTime);
-            if (omFuture !== null) {
-                waterTemp = formatWaterTempShort(omFuture + waterTempOffset);
-            }
         }
 
         const col = document.createElement('div');
