@@ -1092,7 +1092,7 @@
                 <button class="strava-logout-btn" onclick="stravaLogout()">로그아웃</button>
             </div>
             <div id="strava-loading" class="strava-loading" style="display:none;">활동 불러오는 중...</div>
-            <div id="strava-empty" class="strava-empty" style="display:none;">수영 기록이 없어요</div>
+            <div id="strava-empty" class="strava-empty" style="display:none;">최근 30일 수영 기록이 없습니다</div>
             <div class="strava-section-title" id="strava-list-title" style="display:none;">최근 수영 활동</div>
             <div class="strava-activity-list" id="strava-activity-list"></div>
         </div>
@@ -4483,28 +4483,65 @@ async function exchangeStravaCode(code) {
 }
 
 async function refreshStravaToken(refreshToken) {
-    const res = await fetch(`${getStravaApiBase()}/refresh`, {
+    const url = `${getStravaApiBase()}/refresh`;
+    console.log('[Strava] refresh token request', { url, has_refresh: !!refreshToken });
+    const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || data.error || '토큰 갱신 실패');
+    console.log('[Strava] refresh response status', res.status);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        console.warn('[Strava] refresh failed', data);
+        throw new Error(data.message || data.error || '토큰 갱신 실패');
+    }
     saveStravaTokens({
         access_token: data.access_token,
-        refresh_token: data.refresh_token,
+        refresh_token: data.refresh_token || refreshToken,
         expires_at: data.expires_at,
+    });
+    console.log('[Strava] refresh ok', {
+        expires_at: data.expires_at,
+        expires_at_iso: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
     });
     return data.access_token;
 }
 
 async function getStravaAccessToken() {
     const tokens = getStravaTokens();
-    if (!tokens?.access_token) return null;
     const now = Math.floor(Date.now() / 1000);
-    if (tokens.expires_at && now < tokens.expires_at - 120) return tokens.access_token;
-    if (!tokens.refresh_token) return null;
+    const expiresAt = tokens?.expires_at ?? null;
+    const expired = expiresAt != null ? now >= expiresAt : null;
+    console.log('[Strava] token diag', {
+        storage_key: STRAVA_TOKEN_KEY,
+        strava_access_token: tokens?.access_token
+            ? `${String(tokens.access_token).slice(0, 10)}…`
+            : null,
+        strava_expires_at: expiresAt,
+        strava_expires_at_iso: expiresAt ? new Date(expiresAt * 1000).toISOString() : null,
+        now,
+        now_iso: new Date(now * 1000).toISOString(),
+        expired,
+        has_refresh_token: !!tokens?.refresh_token,
+    });
+
+    if (!tokens?.access_token) return null;
+    // 만료 2분 전부터 갱신
+    if (expiresAt && now < expiresAt - 120) return tokens.access_token;
+    if (!tokens.refresh_token) {
+        console.warn('[Strava] access expired/missing buffer and no refresh_token');
+        return null;
+    }
+    console.log('[Strava] access token expired or near expiry → auto refresh');
     return refreshStravaToken(tokens.refresh_token);
+}
+
+function isStravaSwimActivity(a) {
+    return a?.type === 'Swim'
+        || a?.type === 'OpenWaterSwim'
+        || a?.sport_type === 'Swim'
+        || a?.sport_type === 'OpenWaterSwim';
 }
 
 function stravaLogout() {
@@ -4633,22 +4670,49 @@ function formatStravaLocation(activity) {
 }
 
 async function fetchStravaAthlete(accessToken) {
-    const res = await fetch(`${STRAVA_API}/athlete`, {
+    const url = `${STRAVA_API}/athlete`;
+    console.log('[Strava] athlete URL', url);
+    const res = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
     });
+    console.log('[Strava] athlete status', res.status);
     if (!res.ok) throw new Error('프로필 조회 실패');
     const athlete = await res.json();
     saveStravaAthlete(athlete);
     return athlete;
 }
 
-async function fetchStravaSwimActivities(accessToken) {
-    const res = await fetch(`${STRAVA_API}/athlete/activities?per_page=50`, {
+async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) {
+    const after = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
+    const url = `${STRAVA_API}/athlete/activities?per_page=100&after=${after}`;
+    console.log('[Strava] activities URL', url);
+    const res = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!res.ok) throw new Error('활동 조회 실패');
+    console.log('[Strava] activities status', res.status);
+
+    if (res.status === 401 && !retried) {
+        console.warn('[Strava] 401 on activities → refresh and retry once');
+        const tokens = getStravaTokens();
+        if (!tokens?.refresh_token) throw new Error('활동 조회 실패 (401)');
+        const newToken = await refreshStravaToken(tokens.refresh_token);
+        return fetchStravaSwimActivities(newToken, { retried: true });
+    }
+
+    if (!res.ok) throw new Error(`활동 조회 실패 (${res.status})`);
     const activities = await res.json();
-    return activities.filter(a => a.type === 'Swim' || a.sport_type === 'Swim');
+    const typeList = (Array.isArray(activities) ? activities : []).map((a) => ({
+        id: a.id,
+        type: a.type,
+        sport_type: a.sport_type,
+        name: a.name,
+    }));
+    console.log('[Strava] activities count', Array.isArray(activities) ? activities.length : 0);
+    console.log('[Strava] activities type list', typeList);
+
+    const swims = (Array.isArray(activities) ? activities : []).filter(isStravaSwimActivity);
+    console.log('[Strava] swim filtered count', swims.length);
+    return swims;
 }
 
 function renderStravaUI() {
@@ -4748,6 +4812,7 @@ async function loadStravaActivities() {
         stravaActivities = await fetchStravaSwimActivities(accessToken);
         renderStravaUI();
     } catch (err) {
+        console.error('[Strava] loadStravaActivities failed', err);
         loadingEl.style.display = 'none';
         if (String(err.message).includes('not logged in')) {
             renderStravaUI();
