@@ -36,7 +36,11 @@ module.exports = async (req, res) => {
             `https://www.strava.com/api/v3/athlete/activities?per_page=${encodeURIComponent(perPage)}&page=${encodeURIComponent(page)}`,
             { headers: { Authorization: `Bearer ${accessToken}` } }
         );
+        // 403 포함 Strava 에러 메시지 전문을 그대로 전달
         const data = await r.json();
+        if (r.status === 403) {
+            console.log('[strava-activities] 403 body', data);
+        }
         return res.status(r.status).json(data);
     } catch (err) {
         return res.status(500).json({ error: 'Activities fetch failed' });

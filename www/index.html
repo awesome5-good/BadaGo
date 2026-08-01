@@ -4940,7 +4940,17 @@ async function fetchStravaActivitiesRaw(accessToken, { page = 1, perPage = 30 } 
     console.log('[Strava] activities proxy URL', url.replace(accessToken, `${stravaTokenPrefix(accessToken)}…`));
     const res = await fetch(url);
     console.log('[Strava] activities status', { status: res.status, page, perPage, token: stravaTokenPrefix(accessToken) });
-    return { res, url };
+
+    let data = null;
+    try {
+        data = await res.json();
+    } catch (_) {
+        data = null;
+    }
+    if (res.status === 403) {
+        console.log('[Strava] 403 error body:', data);
+    }
+    return { res, url, data };
 }
 
 async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) {
@@ -4954,7 +4964,10 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
         throw err;
     }
 
-    const handleAuthStatus = async (status) => {
+    const handleAuthStatus = async (status, errData) => {
+        if (status === 403) {
+            console.log('[Strava] 403 error body:', errData);
+        }
         if ((status === 401 || status === 403) && !retried) {
             console.warn(`[Strava] ${status} on activities → refresh and retry with NEW token`);
             const tokens = getStravaTokens();
@@ -4962,6 +4975,7 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
             if (!refresh) {
                 const err = new Error(`활동 조회 실패 (${status})`);
                 err.code = status === 403 ? 'scope' : 'reauth';
+                err.body = errData;
                 throw err;
             }
             try {
@@ -4977,18 +4991,19 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
             const err = new Error(`활동 조회 실패 (${status})`);
             err.code = status === 403 || !hasActivityReadScope() ? 'scope' : 'reauth';
             err.status = status;
+            err.body = errData;
             throw err;
         }
         return null;
     };
 
     // 최근 30개 (서버리스 프록시) → type 필터
-    const { res } = await fetchStravaActivitiesRaw(accessToken, { page: 1, perPage: 30 });
-    const retryResult = await handleAuthStatus(res.status);
+    const { res, data } = await fetchStravaActivitiesRaw(accessToken, { page: 1, perPage: 30 });
+    const retryResult = await handleAuthStatus(res.status, data);
     if (retryResult) return retryResult;
     if (!res.ok) throw new Error(`활동 조회 실패 (${res.status})`);
 
-    const activities = await res.json();
+    const activities = data;
     console.log('[Strava] recent30 response full', activities);
     const typeList = (Array.isArray(activities) ? activities : []).map((a) => ({
         id: a.id,
@@ -5008,11 +5023,14 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
         const allSwims = [];
         for (let page = 1; page <= 20 && allSwims.length < 10; page++) {
             const pageFetch = await fetchStravaActivitiesRaw(accessToken, { page, perPage: 50 });
+            if (pageFetch.res.status === 403) {
+                console.log('[Strava] 403 error body:', pageFetch.data);
+            }
             if (!pageFetch.res.ok) {
-                console.warn('[Strava] page fetch failed', pageFetch.res.status);
+                console.warn('[Strava] page fetch failed', pageFetch.res.status, pageFetch.data);
                 break;
             }
-            const pageActs = await pageFetch.res.json();
+            const pageActs = pageFetch.data;
             console.log('[Strava] page activities', {
                 page,
                 count: Array.isArray(pageActs) ? pageActs.length : 0,
