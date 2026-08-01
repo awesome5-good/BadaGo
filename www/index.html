@@ -4271,10 +4271,12 @@ async function setupAndroidBackButton() {
 //  Strava 연동 (Browser 팝업 + deep link 콜백)
 // =====================================================
 const STRAVA_CLIENT_ID = '250779';
+const STRAVA_CLIENT_SECRET = 'df1584490a7a20226b50f4e0b0eaf79101cf609f';
 const STRAVA_REDIRECT_URI = 'https://bada-go.vercel.app/api/strava/callback';
 const STRAVA_DEEP_LINK_PREFIX = 'com.badago.app://strava/callback';
 const STRAVA_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/strava';
 const STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize';
+const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token';
 const STRAVA_API = 'https://www.strava.com/api/v3';
 const STRAVA_TOKEN_KEY = 'bada_strava_tokens';
 const STRAVA_ATHLETE_KEY = 'bada_strava_athlete';
@@ -4431,6 +4433,11 @@ function getStravaTokens() {
 
 function saveStravaTokens(tokens) {
     localStorage.setItem(STRAVA_TOKEN_KEY, JSON.stringify(tokens));
+    try {
+        if (tokens?.access_token) localStorage.setItem('strava_access_token', tokens.access_token);
+        if (tokens?.expires_at != null) localStorage.setItem('strava_expires_at', String(tokens.expires_at));
+        if (tokens?.refresh_token) localStorage.setItem('strava_refresh_token', tokens.refresh_token);
+    } catch (_) { /* ignore */ }
 }
 
 function saveStravaAthlete(athlete) {
@@ -4483,15 +4490,41 @@ async function exchangeStravaCode(code) {
 }
 
 async function refreshStravaToken(refreshToken) {
-    const url = `${getStravaApiBase()}/refresh`;
-    console.log('[Strava] refresh token request', { url, has_refresh: !!refreshToken });
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+    console.log('[Strava] refresh token request', {
+        url: STRAVA_TOKEN_URL,
+        has_refresh: !!refreshToken,
     });
-    console.log('[Strava] refresh response status', res.status);
-    const data = await res.json().catch(() => ({}));
+
+    let res;
+    let data = {};
+    try {
+        // STEP 2: Strava OAuth 직접 갱신
+        res = await fetch(STRAVA_TOKEN_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                client_id: STRAVA_CLIENT_ID,
+                client_secret: STRAVA_CLIENT_SECRET,
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+            }),
+        });
+        data = await res.json().catch(() => ({}));
+        console.log('[Strava] refresh response status', res.status);
+    } catch (err) {
+        // CORS 등으로 직접 호출 실패 시 기존 서버 프록시로 폴백
+        console.warn('[Strava] direct refresh failed, fallback to proxy', err);
+        const proxyUrl = `${getStravaApiBase()}/refresh`;
+        console.log('[Strava] refresh proxy URL', proxyUrl);
+        res = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        data = await res.json().catch(() => ({}));
+        console.log('[Strava] refresh proxy status', res.status);
+    }
+
     if (!res.ok) {
         console.warn('[Strava] refresh failed', data);
         throw new Error(data.message || data.error || '토큰 갱신 실패');
@@ -4501,6 +4534,13 @@ async function refreshStravaToken(refreshToken) {
         refresh_token: data.refresh_token || refreshToken,
         expires_at: data.expires_at,
     });
+    // 진단용 flat 키도 함께 갱신
+    try {
+        localStorage.setItem('strava_access_token', data.access_token || '');
+        localStorage.setItem('strava_expires_at', String(data.expires_at ?? ''));
+        if (data.refresh_token) localStorage.setItem('strava_refresh_token', data.refresh_token);
+    } catch (_) { /* ignore */ }
+
     console.log('[Strava] refresh ok', {
         expires_at: data.expires_at,
         expires_at_iso: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
@@ -4513,13 +4553,17 @@ async function getStravaAccessToken() {
     const now = Math.floor(Date.now() / 1000);
     const expiresAt = tokens?.expires_at ?? null;
     const expired = expiresAt != null ? now >= expiresAt : null;
+    const flatAccess = localStorage.getItem('strava_access_token');
+    const flatExpires = localStorage.getItem('strava_expires_at');
     console.log('[Strava] token diag', {
         storage_key: STRAVA_TOKEN_KEY,
         strava_access_token: tokens?.access_token
             ? `${String(tokens.access_token).slice(0, 10)}…`
-            : null,
-        strava_expires_at: expiresAt,
-        strava_expires_at_iso: expiresAt ? new Date(expiresAt * 1000).toISOString() : null,
+            : (flatAccess ? `${String(flatAccess).slice(0, 10)}…` : null),
+        strava_expires_at: expiresAt ?? (flatExpires ? Number(flatExpires) : null),
+        strava_expires_at_iso: expiresAt
+            ? new Date(expiresAt * 1000).toISOString()
+            : (flatExpires ? new Date(Number(flatExpires) * 1000).toISOString() : null),
         now,
         now_iso: new Date(now * 1000).toISOString(),
         expired,
@@ -4527,7 +4571,7 @@ async function getStravaAccessToken() {
     });
 
     if (!tokens?.access_token) return null;
-    // 만료 2분 전부터 갱신
+    // 만료됐거나 2분 이내 만료 예정이면 자동 갱신
     if (expiresAt && now < expiresAt - 120) return tokens.access_token;
     if (!tokens.refresh_token) {
         console.warn('[Strava] access expired/missing buffer and no refresh_token');
