@@ -4411,8 +4411,13 @@ function parseStravaOAuthUrl(url) {
     const params = new URLSearchParams(qIndex >= 0 ? url.slice(qIndex + 1) : '');
     return {
         code: params.get('code'),
-        error: params.get('error'),
-        scope: params.get('scope'),
+        error: params.get('error') || params.get('strava_error'),
+        scope: params.get('scope') || params.get('strava_scope'),
+        access_token: params.get('strava_access_token'),
+        refresh_token: params.get('strava_refresh_token'),
+        expires_at: params.get('strava_expires_at'),
+        athlete: params.get('strava_athlete'),
+        params,
     };
 }
 
@@ -4436,6 +4441,15 @@ async function setupStravaOAuthListeners() {
         console.log('[Strava OAuth] appUrlOpen', event.url);
         stravaOAuthInProgress = false;
         await closeStravaBrowser();
+        if (parsed.access_token) {
+            applyStravaTokensFromSearchParams(parsed.params);
+            stravaTabInitialized = false;
+            updateProfileStravaStatus();
+            switchTab(2);
+            await loadStravaActivities();
+            showToast('Strava 연결 완료!');
+            return;
+        }
         await completeStravaOAuth(parsed.code, parsed.error, parsed.scope);
     });
 
@@ -4457,7 +4471,16 @@ async function setupStravaOAuthListeners() {
             if (parsed) {
                 console.log('[Strava OAuth] launchUrl', launch.url);
                 await closeStravaBrowser();
-                await completeStravaOAuth(parsed.code, parsed.error, parsed.scope);
+                if (parsed.access_token) {
+                    applyStravaTokensFromSearchParams(parsed.params);
+                    stravaTabInitialized = false;
+                    updateProfileStravaStatus();
+                    switchTab(2);
+                    await loadStravaActivities();
+                    showToast('Strava 연결 완료!');
+                } else {
+                    await completeStravaOAuth(parsed.code, parsed.error, parsed.scope);
+                }
             }
         }
     } catch (_) { /* no launch url */ }
@@ -4491,14 +4514,99 @@ function getStravaTokens() {
     try { return JSON.parse(localStorage.getItem(STRAVA_TOKEN_KEY) || 'null'); } catch { return null; }
 }
 
+function stravaTokenPrefix(token) {
+    return token ? `${String(token).slice(0, 10)}` : null;
+}
+
 function saveStravaTokens(tokens) {
     localStorage.setItem(STRAVA_TOKEN_KEY, JSON.stringify(tokens));
     try {
-        if (tokens?.access_token) localStorage.setItem('strava_access_token', tokens.access_token);
+        if (tokens?.access_token) {
+            localStorage.setItem('strava_access_token', tokens.access_token);
+            console.log(`[Strava] new token saved: ${stravaTokenPrefix(tokens.access_token)}`);
+        }
         if (tokens?.expires_at != null) localStorage.setItem('strava_expires_at', String(tokens.expires_at));
         if (tokens?.refresh_token) localStorage.setItem('strava_refresh_token', tokens.refresh_token);
         if (tokens?.scope) localStorage.setItem(STRAVA_SCOPE_KEY, tokens.scope);
     } catch (_) { /* ignore */ }
+}
+
+function applyStravaTokensFromSearchParams(params) {
+    const access = params.get('strava_access_token');
+    if (!access) return false;
+
+    const refresh = params.get('strava_refresh_token') || '';
+    const expiresAt = params.get('strava_expires_at') || '';
+    const scope = params.get('strava_scope') || '';
+    const athleteRaw = params.get('strava_athlete');
+
+    saveStravaTokens({
+        access_token: access,
+        refresh_token: refresh,
+        expires_at: expiresAt ? Number(expiresAt) : null,
+        scope,
+    });
+
+    if (athleteRaw) {
+        try {
+            const athlete = JSON.parse(athleteRaw);
+            saveStravaAthlete(athlete);
+        } catch (_) { /* ignore */ }
+    }
+
+    console.log(`[Strava] new token saved: ${stravaTokenPrefix(access)}`, {
+        strava_scope: scope || null,
+        strava_expires_at: expiresAt || null,
+    });
+    return true;
+}
+
+function scrubStravaParamsFromUrl() {
+    try {
+        const url = new URL(window.location.href);
+        let changed = false;
+        [
+            'strava_access_token',
+            'strava_refresh_token',
+            'strava_expires_at',
+            'strava_scope',
+            'strava_athlete',
+            'strava_error',
+        ].forEach((key) => {
+            if (url.searchParams.has(key)) {
+                url.searchParams.delete(key);
+                changed = true;
+            }
+        });
+        if (changed) {
+            const next = `${url.pathname}${url.search ? url.search : ''}${url.hash || ''}`;
+            window.history.replaceState({}, document.title, next || '/');
+        }
+    } catch (_) { /* ignore */ }
+}
+
+/** STEP 2: URL ?strava_* 파라미터 → localStorage */
+function consumeStravaUrlParams() {
+    const params = new URLSearchParams(window.location.search || '');
+    const err = params.get('strava_error');
+    if (err) {
+        console.warn('[Strava] oauth error from callback', err);
+        scrubStravaParamsFromUrl();
+        showToast('Strava 연결 실패');
+        return false;
+    }
+    if (!params.get('strava_access_token')) return false;
+
+    console.log('[Strava] URL params received', {
+        has_access: !!params.get('strava_access_token'),
+        access_prefix: stravaTokenPrefix(params.get('strava_access_token')),
+        scope: params.get('strava_scope'),
+        expires_at: params.get('strava_expires_at'),
+    });
+
+    const ok = applyStravaTokensFromSearchParams(params);
+    scrubStravaParamsFromUrl();
+    return ok;
 }
 
 function saveStravaAthlete(athlete) {
@@ -4588,7 +4696,11 @@ async function exchangeStravaCode(code, scopeFromCallback = null) {
 
 async function refreshStravaToken(refreshToken) {
     const url = getStravaRefreshUrl();
-    console.log('[Strava] refresh token request', { url, has_refresh: !!refreshToken });
+    console.log('[Strava] refresh token request', {
+        url,
+        has_refresh: !!refreshToken,
+        old_access_prefix: stravaTokenPrefix(localStorage.getItem('strava_access_token')),
+    });
     const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4596,19 +4708,28 @@ async function refreshStravaToken(refreshToken) {
     });
     const data = await res.json().catch(() => ({}));
     console.log('[Strava] refresh response status', res.status);
-    if (!res.ok) {
+    if (!res.ok || !data.access_token) {
         console.warn('[Strava] refresh failed', data);
         const err = new Error(data.message || data.error || '토큰 갱신 실패');
         err.code = 'reauth';
         throw err;
     }
-    saveStravaTokens({
+
+    // 새 토큰을 반드시 flat key + JSON 모두에 반영
+    const nextTokens = {
         access_token: data.access_token,
         refresh_token: data.refresh_token || refreshToken,
         expires_at: data.expires_at,
         scope: data.scope || getStravaTokens()?.scope || localStorage.getItem(STRAVA_SCOPE_KEY) || '',
-    });
-    console.log('[Strava] refresh ok', {
+    };
+    localStorage.setItem('strava_access_token', data.access_token);
+    localStorage.setItem('strava_refresh_token', nextTokens.refresh_token || '');
+    if (data.expires_at != null) localStorage.setItem('strava_expires_at', String(data.expires_at));
+    if (nextTokens.scope) localStorage.setItem(STRAVA_SCOPE_KEY, nextTokens.scope);
+    saveStravaTokens(nextTokens);
+
+    console.log('[Strava] refresh ok — using NEW access_token', {
+        access_prefix: stravaTokenPrefix(data.access_token),
         expires_at: data.expires_at,
         expires_at_iso: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
     });
@@ -4616,37 +4737,58 @@ async function refreshStravaToken(refreshToken) {
 }
 
 async function getStravaAccessToken() {
-    const tokens = getStravaTokens();
-    const now = Math.floor(Date.now() / 1000);
-    const expiresAt = tokens?.expires_at ?? null;
-    const expired = expiresAt != null ? now >= expiresAt : null;
+    // flat key를 source of truth로 동기화 (갱신 후 불일치 방지)
     const flatAccess = localStorage.getItem('strava_access_token');
+    const flatRefresh = localStorage.getItem('strava_refresh_token');
     const flatExpires = localStorage.getItem('strava_expires_at');
+    const flatScope = localStorage.getItem(STRAVA_SCOPE_KEY);
+    let tokens = getStravaTokens();
+
+    if (flatAccess && (!tokens?.access_token || tokens.access_token !== flatAccess)) {
+        tokens = {
+            access_token: flatAccess,
+            refresh_token: flatRefresh || tokens?.refresh_token || '',
+            expires_at: flatExpires ? Number(flatExpires) : (tokens?.expires_at ?? null),
+            scope: flatScope || tokens?.scope || '',
+        };
+        localStorage.setItem(STRAVA_TOKEN_KEY, JSON.stringify(tokens));
+        console.log('[Strava] synced tokens from flat localStorage', {
+            access_prefix: stravaTokenPrefix(flatAccess),
+        });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = tokens?.expires_at ?? (flatExpires ? Number(flatExpires) : null);
+    const expired = expiresAt != null ? now >= expiresAt : null;
     console.log('[Strava] token diag', {
-        storage_key: STRAVA_TOKEN_KEY,
-        strava_access_token: tokens?.access_token
-            ? `${String(tokens.access_token).slice(0, 10)}…`
-            : (flatAccess ? `${String(flatAccess).slice(0, 10)}…` : null),
-        strava_expires_at: expiresAt ?? (flatExpires ? Number(flatExpires) : null),
-        strava_expires_at_iso: expiresAt
-            ? new Date(expiresAt * 1000).toISOString()
-            : (flatExpires ? new Date(Number(flatExpires) * 1000).toISOString() : null),
+        strava_access_token: stravaTokenPrefix(tokens?.access_token || flatAccess),
+        strava_expires_at: expiresAt,
+        strava_expires_at_iso: expiresAt ? new Date(expiresAt * 1000).toISOString() : null,
         now,
-        now_iso: new Date(now * 1000).toISOString(),
         expired,
-        has_refresh_token: !!tokens?.refresh_token,
-        scope: tokens?.scope || localStorage.getItem(STRAVA_SCOPE_KEY),
+        has_refresh_token: !!(tokens?.refresh_token || flatRefresh),
+        scope: tokens?.scope || flatScope,
     });
 
-    if (!tokens?.access_token) return null;
+    const access = tokens?.access_token || flatAccess;
+    const refresh = tokens?.refresh_token || flatRefresh;
+    if (!access) return null;
+
     // 만료됐거나 2분 이내 만료 예정이면 자동 갱신
-    if (expiresAt && now < expiresAt - 120) return tokens.access_token;
-    if (!tokens.refresh_token) {
+    if (expiresAt && now < expiresAt - 120) {
+        console.log('[Strava] using access_token', stravaTokenPrefix(access));
+        return access;
+    }
+    if (!refresh) {
         console.warn('[Strava] access expired/missing buffer and no refresh_token');
         return null;
     }
-    console.log('[Strava] access token expired or near expiry → auto refresh');
-    return refreshStravaToken(tokens.refresh_token);
+    console.log('[Strava] access token expired or near expiry → auto refresh', {
+        old_prefix: stravaTokenPrefix(access),
+    });
+    const newToken = await refreshStravaToken(refresh);
+    console.log('[Strava] using access_token after refresh', stravaTokenPrefix(newToken));
+    return newToken;
 }
 
 function isStravaSwimActivity(a) {
@@ -4793,14 +4935,19 @@ function formatStravaLocation(activity) {
 }
 
 async function fetchStravaActivitiesRaw(accessToken, { page = 1, perPage = 30 } = {}) {
+    console.log('[Strava] activities request with token', stravaTokenPrefix(accessToken));
     const url = getStravaActivitiesUrl(accessToken, { page, perPage });
-    console.log('[Strava] activities proxy URL', url.replace(accessToken, `${String(accessToken).slice(0, 10)}…`));
+    console.log('[Strava] activities proxy URL', url.replace(accessToken, `${stravaTokenPrefix(accessToken)}…`));
     const res = await fetch(url);
-    console.log('[Strava] activities status', { status: res.status, page, perPage });
+    console.log('[Strava] activities status', { status: res.status, page, perPage, token: stravaTokenPrefix(accessToken) });
     return { res, url };
 }
 
 async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) {
+    console.log('[Strava] fetchStravaSwimActivities start', {
+        token: stravaTokenPrefix(accessToken),
+        retried,
+    });
     if (!hasActivityReadScope() && localStorage.getItem(STRAVA_SCOPE_KEY)) {
         const err = new Error('activity:read 권한 없음');
         err.code = 'scope';
@@ -4809,15 +4956,17 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
 
     const handleAuthStatus = async (status) => {
         if ((status === 401 || status === 403) && !retried) {
-            console.warn(`[Strava] ${status} on activities → refresh and retry once`);
+            console.warn(`[Strava] ${status} on activities → refresh and retry with NEW token`);
             const tokens = getStravaTokens();
-            if (!tokens?.refresh_token) {
+            const refresh = tokens?.refresh_token || localStorage.getItem('strava_refresh_token');
+            if (!refresh) {
                 const err = new Error(`활동 조회 실패 (${status})`);
                 err.code = status === 403 ? 'scope' : 'reauth';
                 throw err;
             }
             try {
-                const newToken = await refreshStravaToken(tokens.refresh_token);
+                const newToken = await refreshStravaToken(refresh);
+                console.log('[Strava] retry activities with refreshed token', stravaTokenPrefix(newToken));
                 return fetchStravaSwimActivities(newToken, { retried: true });
             } catch (refreshErr) {
                 refreshErr.code = refreshErr.code || (status === 403 ? 'scope' : 'reauth');
@@ -5025,14 +5174,17 @@ async function loadStravaActivities() {
             console.log('[Strava] athlete from localStorage', athlete
                 ? { id: athlete.id, name: `${athlete.firstname || ''} ${athlete.lastname || ''}`.trim() }
                 : null);
+            console.log('[Strava] load activities with token', stravaTokenPrefix(accessToken));
             stravaActivities = await fetchStravaSwimActivities(accessToken);
         } catch (inner) {
             // 토큰 만료/401이면 자동 갱신 후 1회 재시도
             if (inner.code === 'auth' || inner.status === 401 || inner.status === 403) {
                 console.warn('[Strava] auth error → auto refresh then retry');
                 const tokens = getStravaTokens();
-                if (!tokens?.refresh_token) throw Object.assign(new Error('재연동 필요'), { code: 'reauth' });
-                accessToken = await refreshStravaToken(tokens.refresh_token);
+                const refresh = tokens?.refresh_token || localStorage.getItem('strava_refresh_token');
+                if (!refresh) throw Object.assign(new Error('재연동 필요'), { code: 'reauth' });
+                accessToken = await refreshStravaToken(refresh);
+                console.log('[Strava] retry load with NEW token', stravaTokenPrefix(accessToken));
                 stravaActivities = await fetchStravaSwimActivities(accessToken, { retried: true });
             } else {
                 throw inner;
@@ -5506,6 +5658,22 @@ window.onload = function() {
     setupAndroidBackButton();
     setupStravaSheetSwipe();
     initLocalNotifications();
+
+    // OAuth 콜백 URL 토큰 수신
+    (async () => {
+        try {
+            const received = consumeStravaUrlParams();
+            if (received) {
+                stravaTabInitialized = false;
+                updateProfileStravaStatus();
+                switchTab(2);
+                await loadStravaActivities();
+                showToast('Strava 연결 완료!');
+            }
+        } catch (e) {
+            console.error('[Strava] consume URL params failed', e);
+        }
+    })();
 };
 </script>
 </body>
