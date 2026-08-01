@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
     }
 
     const clientId = process.env.STRAVA_CLIENT_ID || '250779';
-    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+    const clientSecret = process.env.STRAVA_CLIENT_SECRET || 'df1584490a7a20226b50f4e0b0eaf79101cf609f';
     if (!clientSecret) {
         return res.status(500).json({ error: 'STRAVA_CLIENT_SECRET not configured' });
     }

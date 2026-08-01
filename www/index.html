@@ -1099,7 +1099,7 @@
                 <p class="strava-error-msg" id="strava-error-msg">Strava 재연동이 필요합니다</p>
                 <button type="button" class="strava-connect-btn" onclick="stravaReauth()">Strava 재연동</button>
             </div>
-            <div id="strava-empty" class="strava-empty" style="display:none;">최근 30일 수영 기록이 없습니다</div>
+            <div id="strava-empty" class="strava-empty" style="display:none;">수영 기록이 없습니다</div>
             <div class="strava-section-title" id="strava-list-title" style="display:none;">최근 수영 활동</div>
             <div class="strava-activity-list" id="strava-activity-list"></div>
         </div>
@@ -4390,7 +4390,11 @@ function parseStravaOAuthUrl(url) {
     if (!isDeepLink) return null;
     const qIndex = url.indexOf('?');
     const params = new URLSearchParams(qIndex >= 0 ? url.slice(qIndex + 1) : '');
-    return { code: params.get('code'), error: params.get('error') };
+    return {
+        code: params.get('code'),
+        error: params.get('error'),
+        scope: params.get('scope'),
+    };
 }
 
 async function closeStravaBrowser() {
@@ -4413,7 +4417,7 @@ async function setupStravaOAuthListeners() {
         console.log('[Strava OAuth] appUrlOpen', event.url);
         stravaOAuthInProgress = false;
         await closeStravaBrowser();
-        await completeStravaOAuth(parsed.code, parsed.error);
+        await completeStravaOAuth(parsed.code, parsed.error, parsed.scope);
     });
 
     if (Browser) {
@@ -4434,7 +4438,7 @@ async function setupStravaOAuthListeners() {
             if (parsed) {
                 console.log('[Strava OAuth] launchUrl', launch.url);
                 await closeStravaBrowser();
-                await completeStravaOAuth(parsed.code, parsed.error);
+                await completeStravaOAuth(parsed.code, parsed.error, parsed.scope);
             }
         }
     } catch (_) { /* no launch url */ }
@@ -4515,21 +4519,39 @@ async function startStravaLogin({ force = false } = {}) {
     window.location.href = authUrl;
 }
 
-async function exchangeStravaCode(code) {
+function logStravaStoredTokens(label = 'stored') {
+    const access = localStorage.getItem('strava_access_token')
+        || getStravaTokens()?.access_token
+        || '';
+    console.log(`[Strava] ${label} localStorage`, {
+        strava_access_token: access ? `${String(access).slice(0, 10)}…` : null,
+        strava_scope: localStorage.getItem('strava_scope') || getStravaTokens()?.scope || null,
+        strava_expires_at: localStorage.getItem('strava_expires_at')
+            || (getStravaTokens()?.expires_at != null ? String(getStravaTokens().expires_at) : null),
+    });
+}
+
+async function exchangeStravaCode(code, scopeFromCallback = null) {
+    if (scopeFromCallback) {
+        try { localStorage.setItem(STRAVA_SCOPE_KEY, scopeFromCallback); } catch (_) { /* ignore */ }
+        console.log('[Strava] oauth callback scope param', scopeFromCallback);
+    }
     const res = await fetch(`${getStravaApiBase()}/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, redirect_uri: STRAVA_REDIRECT_URI }),
     });
     const data = await res.json();
+    console.log('[Strava] token exchange response scope', data.scope);
     if (!res.ok) throw new Error(data.message || data.error || 'Strava 인증 실패');
     saveStravaTokens({
         access_token: data.access_token,
         refresh_token: data.refresh_token,
         expires_at: data.expires_at,
-        scope: data.scope || 'read,activity:read',
+        scope: data.scope || scopeFromCallback || 'read,activity:read',
     });
     if (data.athlete) saveStravaAthlete(data.athlete);
+    logStravaStoredTokens('after exchange');
     return data;
 }
 
@@ -4757,6 +4779,16 @@ async function fetchStravaAthlete(accessToken) {
     return athlete;
 }
 
+async function fetchStravaActivitiesRaw(accessToken, { page = 1, perPage = 30 } = {}) {
+    const url = `${STRAVA_API}/athlete/activities?per_page=${perPage}&page=${page}`;
+    console.log('[Strava] activities URL', url);
+    const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    console.log('[Strava] activities status', { status: res.status, page, perPage });
+    return { res, url };
+}
+
 async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) {
     if (!hasActivityReadScope() && localStorage.getItem(STRAVA_SCOPE_KEY)) {
         const err = new Error('activity:read 권한 없음');
@@ -4764,35 +4796,56 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
         throw err;
     }
 
-    const after = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
-    const url = `${STRAVA_API}/athlete/activities?per_page=100&after=${after}`;
-    console.log('[Strava] activities URL', url);
-    const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    console.log('[Strava] activities status', res.status);
+    // STEP 3: after 없이 최근 10개 직접 테스트 + 응답 전문 로그
+    {
+        const probeUrl = `${STRAVA_API}/athlete/activities?per_page=10`;
+        console.log('[Strava] probe URL', probeUrl);
+        const probeRes = await fetch(probeUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const probeText = await probeRes.text();
+        console.log('[Strava] probe status', probeRes.status);
+        let probeData;
+        try { probeData = JSON.parse(probeText); } catch { probeData = probeText; }
+        console.log('[Strava] probe response full', probeData);
+        if (Array.isArray(probeData)) {
+            console.log('[Strava] probe summary', {
+                count: probeData.length,
+                empty: probeData.length === 0,
+                types: probeData.map((a) => a.type || a.sport_type),
+            });
+        }
+    }
 
-    if (res.status === 401 && !retried) {
-        console.warn('[Strava] 401 on activities → refresh and retry once');
-        const tokens = getStravaTokens();
-        if (!tokens?.refresh_token) {
-            const err = new Error('활동 조회 실패 (401)');
-            err.code = 'reauth';
+    const handleAuthStatus = async (status) => {
+        if (status === 401 && !retried) {
+            console.warn('[Strava] 401 on activities → refresh and retry once');
+            const tokens = getStravaTokens();
+            if (!tokens?.refresh_token) {
+                const err = new Error('활동 조회 실패 (401)');
+                err.code = 'reauth';
+                throw err;
+            }
+            const newToken = await refreshStravaToken(tokens.refresh_token);
+            return fetchStravaSwimActivities(newToken, { retried: true });
+        }
+        if (status === 401 || status === 403) {
+            const err = new Error(`활동 조회 실패 (${status})`);
+            err.code = status === 403 || !hasActivityReadScope() ? 'scope' : 'reauth';
+            err.status = status;
             throw err;
         }
-        const newToken = await refreshStravaToken(tokens.refresh_token);
-        return fetchStravaSwimActivities(newToken, { retried: true });
-    }
+        return null;
+    };
 
-    if (res.status === 401 || res.status === 403) {
-        const err = new Error(`활동 조회 실패 (${res.status})`);
-        err.code = res.status === 403 || !hasActivityReadScope() ? 'scope' : 'reauth';
-        err.status = res.status;
-        throw err;
-    }
-
+    // STEP 4: after 제거, 최근 30개 → type 필터
+    const { res } = await fetchStravaActivitiesRaw(accessToken, { page: 1, perPage: 30 });
+    const retryResult = await handleAuthStatus(res.status);
+    if (retryResult) return retryResult;
     if (!res.ok) throw new Error(`활동 조회 실패 (${res.status})`);
+
     const activities = await res.json();
+    console.log('[Strava] recent30 response full', activities);
     const typeList = (Array.isArray(activities) ? activities : []).map((a) => ({
         id: a.id,
         type: a.type,
@@ -4802,8 +4855,36 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
     console.log('[Strava] activities count', Array.isArray(activities) ? activities.length : 0);
     console.log('[Strava] activities type list', typeList);
 
-    const swims = (Array.isArray(activities) ? activities : []).filter(isStravaSwimActivity);
-    console.log('[Strava] swim filtered count', swims.length);
+    let swims = (Array.isArray(activities) ? activities : []).filter(isStravaSwimActivity);
+    console.log('[Strava] swim filtered count (recent30)', swims.length);
+
+    // STEP 5: 수영 없으면 전체 기간 페이지 순회 → 최근 수영 10개
+    if (!swims.length) {
+        console.log('[Strava] no swim in recent 30 → scan all pages for swims');
+        const allSwims = [];
+        for (let page = 1; page <= 20 && allSwims.length < 10; page++) {
+            const pageFetch = await fetchStravaActivitiesRaw(accessToken, { page, perPage: 50 });
+            if (!pageFetch.res.ok) {
+                console.warn('[Strava] page fetch failed', pageFetch.res.status);
+                break;
+            }
+            const pageActs = await pageFetch.res.json();
+            console.log('[Strava] page activities', {
+                page,
+                count: Array.isArray(pageActs) ? pageActs.length : 0,
+                types: Array.isArray(pageActs) ? pageActs.map((a) => a.type || a.sport_type) : [],
+            });
+            if (!Array.isArray(pageActs) || !pageActs.length) break;
+            for (const a of pageActs) {
+                if (isStravaSwimActivity(a)) allSwims.push(a);
+                if (allSwims.length >= 10) break;
+            }
+            if (pageActs.length < 50) break;
+        }
+        swims = allSwims.slice(0, 10);
+        console.log('[Strava] all-time swim count (capped 10)', swims.length);
+    }
+
     return swims;
 }
 
@@ -4936,6 +5017,7 @@ async function loadStravaActivities() {
 
     try {
         let accessToken = await getStravaAccessToken();
+        logStravaStoredTokens('before load');
         if (!accessToken) {
             const err = new Error('not logged in');
             err.code = 'reauth';
@@ -4995,7 +5077,7 @@ async function initStravaTab() {
     }
 }
 
-async function completeStravaOAuth(code, error) {
+async function completeStravaOAuth(code, error, scopeFromCallback = null) {
     if (error) {
         showToast('Strava 로그인 취소됨');
         switchTab(2);
@@ -5005,7 +5087,12 @@ async function completeStravaOAuth(code, error) {
 
     showToast('Strava 연결 중...');
     try {
-        await exchangeStravaCode(code);
+        if (scopeFromCallback) {
+            try { localStorage.setItem(STRAVA_SCOPE_KEY, scopeFromCallback); } catch (_) { /* ignore */ }
+            console.log('[Strava OAuth] callback scope', scopeFromCallback);
+        }
+        await exchangeStravaCode(code, scopeFromCallback);
+        logStravaStoredTokens('after oauth complete');
         stravaTabInitialized = false;
         updateProfileStravaStatus();
         switchTab(2);

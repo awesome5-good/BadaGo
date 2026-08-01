@@ -31,8 +31,15 @@ module.exports = async (req, res) => {
     (function () {
       var code = ${JSON.stringify(code || null)};
       var err = ${JSON.stringify(error || null)};
+      var oauthScope = ${JSON.stringify(scope || null)};
       var deepLink = ${JSON.stringify(deepLink)};
       var redirectUri = ${JSON.stringify(REDIRECT_URI)};
+
+      // Strava 콜백 query의 scope를 즉시 저장
+      if (oauthScope) {
+        try { localStorage.setItem('strava_scope', oauthScope); } catch (e) {}
+        console.log('[Strava callback] oauth scope param', oauthScope);
+      }
 
       if (code || err) {
         window.location.replace(deepLink);
@@ -59,14 +66,27 @@ module.exports = async (req, res) => {
           .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
           .then(function (res) {
             if (!res.ok || !res.data.access_token) throw new Error('token failed');
+            console.log('[Strava callback] token response scope', res.data.scope);
+            var tokenScope = res.data.scope || oauthScope || '';
             localStorage.setItem('bada_strava_tokens', JSON.stringify({
               access_token: res.data.access_token,
               refresh_token: res.data.refresh_token,
-              expires_at: res.data.expires_at
+              expires_at: res.data.expires_at,
+              scope: tokenScope
             }));
+            localStorage.setItem('strava_access_token', res.data.access_token || '');
+            localStorage.setItem('strava_refresh_token', res.data.refresh_token || '');
+            localStorage.setItem('strava_expires_at', String(res.data.expires_at || ''));
+            if (tokenScope) localStorage.setItem('strava_scope', tokenScope);
             if (res.data.athlete) {
               localStorage.setItem('bada_strava_athlete', JSON.stringify(res.data.athlete));
+              localStorage.setItem('strava_athlete', JSON.stringify(res.data.athlete));
             }
+            console.log('[Strava callback] stored tokens', {
+              strava_access_token: res.data.access_token ? String(res.data.access_token).slice(0, 10) : null,
+              strava_scope: localStorage.getItem('strava_scope'),
+              strava_expires_at: localStorage.getItem('strava_expires_at')
+            });
             window.location.href = '/';
           })
           .catch(function () {
