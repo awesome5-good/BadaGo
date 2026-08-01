@@ -580,6 +580,9 @@
         .strava-stat-val { font-size: 15px; font-weight: 800; color: var(--gray-800); line-height: 1.2; font-variant-numeric: tabular-nums; }
         .strava-stat-label { font-size: 12px; font-weight: 600; color: var(--gray-400); margin-top: 3px; }
         .strava-empty, .strava-loading { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.8); font-size: 15px; font-weight: 600; }
+        .strava-error-box { text-align: center; padding: 32px 20px; display: none; }
+        .strava-error-box .strava-error-msg { color: rgba(255,255,255,0.9); font-size: 15px; font-weight: 700; margin-bottom: 16px; line-height: 1.45; }
+        .strava-error-box .strava-connect-btn { margin: 0 auto; }
         .strava-loading { animation: pulse 1.2s infinite; }
         .tab-placeholder { text-align: center; padding: 80px 20px; color: rgba(255,255,255,0.85); }
         .tab-placeholder-icon { margin-bottom: 12px; display: flex; justify-content: center; color: #fff; }
@@ -1089,9 +1092,13 @@
                     <div class="strava-user-name" id="strava-user-name">--</div>
                     <div class="strava-user-meta" id="strava-user-meta">연결됨</div>
                 </div>
-                <button class="strava-logout-btn" onclick="stravaLogout()">로그아웃</button>
+                <button class="strava-logout-btn" onclick="stravaLogout()">연동 해제</button>
             </div>
             <div id="strava-loading" class="strava-loading" style="display:none;">활동 불러오는 중...</div>
+            <div id="strava-error" class="strava-error-box">
+                <p class="strava-error-msg" id="strava-error-msg">Strava 재연동이 필요합니다</p>
+                <button type="button" class="strava-connect-btn" onclick="stravaReauth()">Strava 재연동</button>
+            </div>
             <div id="strava-empty" class="strava-empty" style="display:none;">최근 30일 수영 기록이 없습니다</div>
             <div class="strava-section-title" id="strava-list-title" style="display:none;">최근 수영 활동</div>
             <div class="strava-activity-list" id="strava-activity-list"></div>
@@ -1154,6 +1161,7 @@
                         <span class="profile-strava-status-text" id="profile-strava-status-text">연동됨</span>
                     </div>
                     <button type="button" class="profile-strava-disconnect" onclick="stravaLogout()">연동 해제</button>
+                    <button type="button" class="strava-connect-btn profile-strava-connect-btn" onclick="stravaReauth()" style="margin-top:8px;">Strava 재연동</button>
                 </div>
             </div>
         </div>
@@ -4271,21 +4279,22 @@ async function setupAndroidBackButton() {
 //  Strava 연동 (Browser 팝업 + deep link 콜백)
 // =====================================================
 const STRAVA_CLIENT_ID = '250779';
-const STRAVA_CLIENT_SECRET = 'df1584490a7a20226b50f4e0b0eaf79101cf609f';
 const STRAVA_REDIRECT_URI = 'https://bada-go.vercel.app/api/strava/callback';
 const STRAVA_DEEP_LINK_PREFIX = 'com.badago.app://strava/callback';
 const STRAVA_REMOTE_API_BASE = 'https://bada-go.vercel.app/api/strava';
+const STRAVA_REMOTE_REFRESH_URL = 'https://bada-go.vercel.app/api/strava-refresh';
 const STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize';
-const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token';
 const STRAVA_API = 'https://www.strava.com/api/v3';
 const STRAVA_TOKEN_KEY = 'bada_strava_tokens';
 const STRAVA_ATHLETE_KEY = 'bada_strava_athlete';
+const STRAVA_SCOPE_KEY = 'strava_scope';
 
 let stravaActivities = [];
 let stravaDetailActivity = null;
 let stravaTabInitialized = false;
 let stravaOAuthInProgress = false;
 let stravaOAuthListenersReady = false;
+let stravaErrorState = null; // null | 'reauth' | 'scope'
 
 const LEAFLET_CSS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
@@ -4359,12 +4368,16 @@ function getStravaApiBase() {
     return window.location.hostname === 'bada-go.vercel.app' ? '/api/strava' : STRAVA_REMOTE_API_BASE;
 }
 
-function buildStravaAuthUrl() {
+function getStravaRefreshUrl() {
+    return window.location.hostname === 'bada-go.vercel.app' ? '/api/strava-refresh' : STRAVA_REMOTE_REFRESH_URL;
+}
+
+function buildStravaAuthUrl({ force = false } = {}) {
     const params = new URLSearchParams({
         client_id: STRAVA_CLIENT_ID,
         redirect_uri: STRAVA_REDIRECT_URI,
         response_type: 'code',
-        approval_prompt: 'auto',
+        approval_prompt: force ? 'force' : 'auto',
         scope: 'read,activity:read',
     });
     return `${STRAVA_AUTH_URL}?${params}`;
@@ -4427,6 +4440,25 @@ async function setupStravaOAuthListeners() {
     } catch (_) { /* no launch url */ }
 }
 
+function clearAllStravaStorage() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (
+            key.startsWith('strava_')
+            || key.startsWith('bada_strava')
+            || key === STRAVA_TOKEN_KEY
+            || key === STRAVA_ATHLETE_KEY
+            || key === STRAVA_SCOPE_KEY
+        ) {
+            keys.push(key);
+        }
+    }
+    keys.forEach((key) => localStorage.removeItem(key));
+    console.log('[Strava] cleared localStorage keys', keys);
+}
+
 function getStravaTokens() {
     try { return JSON.parse(localStorage.getItem(STRAVA_TOKEN_KEY) || 'null'); } catch { return null; }
 }
@@ -4437,23 +4469,34 @@ function saveStravaTokens(tokens) {
         if (tokens?.access_token) localStorage.setItem('strava_access_token', tokens.access_token);
         if (tokens?.expires_at != null) localStorage.setItem('strava_expires_at', String(tokens.expires_at));
         if (tokens?.refresh_token) localStorage.setItem('strava_refresh_token', tokens.refresh_token);
+        if (tokens?.scope) localStorage.setItem(STRAVA_SCOPE_KEY, tokens.scope);
     } catch (_) { /* ignore */ }
 }
 
 function saveStravaAthlete(athlete) {
     localStorage.setItem(STRAVA_ATHLETE_KEY, JSON.stringify(athlete));
+    try { localStorage.setItem('strava_athlete', JSON.stringify(athlete)); } catch (_) { /* ignore */ }
 }
 
 function getStravaAthlete() {
     try { return JSON.parse(localStorage.getItem(STRAVA_ATHLETE_KEY) || 'null'); } catch { return null; }
 }
 
-async function startStravaLogin() {
-    const authUrl = buildStravaAuthUrl();
+function hasActivityReadScope() {
+    const scope = localStorage.getItem(STRAVA_SCOPE_KEY)
+        || getStravaTokens()?.scope
+        || '';
+    return String(scope).split(/[,\s]+/).includes('activity:read')
+        || String(scope).split(/[,\s]+/).includes('activity:read_all');
+}
+
+async function startStravaLogin({ force = false } = {}) {
+    const authUrl = buildStravaAuthUrl({ force });
     console.log('[Strava OAuth]', {
         redirect_uri: STRAVA_REDIRECT_URI,
         redirect_uri_ok: STRAVA_REDIRECT_URI === 'https://bada-go.vercel.app/api/strava/callback',
         auth_url: authUrl,
+        scope: 'read,activity:read',
         native: isCapacitorNative(),
     });
 
@@ -4484,63 +4527,34 @@ async function exchangeStravaCode(code) {
         access_token: data.access_token,
         refresh_token: data.refresh_token,
         expires_at: data.expires_at,
+        scope: data.scope || 'read,activity:read',
     });
     if (data.athlete) saveStravaAthlete(data.athlete);
     return data;
 }
 
 async function refreshStravaToken(refreshToken) {
-    console.log('[Strava] refresh token request', {
-        url: STRAVA_TOKEN_URL,
-        has_refresh: !!refreshToken,
+    const url = getStravaRefreshUrl();
+    console.log('[Strava] refresh token request', { url, has_refresh: !!refreshToken });
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
     });
-
-    let res;
-    let data = {};
-    try {
-        // STEP 2: Strava OAuth 직접 갱신
-        res = await fetch(STRAVA_TOKEN_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                client_id: STRAVA_CLIENT_ID,
-                client_secret: STRAVA_CLIENT_SECRET,
-                grant_type: 'refresh_token',
-                refresh_token: refreshToken,
-            }),
-        });
-        data = await res.json().catch(() => ({}));
-        console.log('[Strava] refresh response status', res.status);
-    } catch (err) {
-        // CORS 등으로 직접 호출 실패 시 기존 서버 프록시로 폴백
-        console.warn('[Strava] direct refresh failed, fallback to proxy', err);
-        const proxyUrl = `${getStravaApiBase()}/refresh`;
-        console.log('[Strava] refresh proxy URL', proxyUrl);
-        res = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-        data = await res.json().catch(() => ({}));
-        console.log('[Strava] refresh proxy status', res.status);
-    }
-
+    const data = await res.json().catch(() => ({}));
+    console.log('[Strava] refresh response status', res.status);
     if (!res.ok) {
         console.warn('[Strava] refresh failed', data);
-        throw new Error(data.message || data.error || '토큰 갱신 실패');
+        const err = new Error(data.message || data.error || '토큰 갱신 실패');
+        err.code = 'reauth';
+        throw err;
     }
     saveStravaTokens({
         access_token: data.access_token,
         refresh_token: data.refresh_token || refreshToken,
         expires_at: data.expires_at,
+        scope: data.scope || getStravaTokens()?.scope || localStorage.getItem(STRAVA_SCOPE_KEY) || '',
     });
-    // 진단용 flat 키도 함께 갱신
-    try {
-        localStorage.setItem('strava_access_token', data.access_token || '');
-        localStorage.setItem('strava_expires_at', String(data.expires_at ?? ''));
-        if (data.refresh_token) localStorage.setItem('strava_refresh_token', data.refresh_token);
-    } catch (_) { /* ignore */ }
-
     console.log('[Strava] refresh ok', {
         expires_at: data.expires_at,
         expires_at_iso: data.expires_at ? new Date(data.expires_at * 1000).toISOString() : null,
@@ -4568,6 +4582,7 @@ async function getStravaAccessToken() {
         now_iso: new Date(now * 1000).toISOString(),
         expired,
         has_refresh_token: !!tokens?.refresh_token,
+        scope: tokens?.scope || localStorage.getItem(STRAVA_SCOPE_KEY),
     });
 
     if (!tokens?.access_token) return null;
@@ -4589,12 +4604,22 @@ function isStravaSwimActivity(a) {
 }
 
 function stravaLogout() {
-    localStorage.removeItem(STRAVA_TOKEN_KEY);
-    localStorage.removeItem(STRAVA_ATHLETE_KEY);
+    clearAllStravaStorage();
     stravaActivities = [];
+    stravaErrorState = null;
     renderStravaUI();
     updateProfileStravaStatus();
     showToast('스트라바 연결 해제됨');
+}
+
+async function stravaReauth() {
+    clearAllStravaStorage();
+    stravaActivities = [];
+    stravaErrorState = null;
+    renderStravaUI();
+    updateProfileStravaStatus();
+    showToast('Strava 재연동을 시작합니다');
+    await startStravaLogin({ force: true });
 }
 
 function formatStravaDuration(seconds) {
@@ -4720,6 +4745,12 @@ async function fetchStravaAthlete(accessToken) {
         headers: { Authorization: `Bearer ${accessToken}` },
     });
     console.log('[Strava] athlete status', res.status);
+    if (res.status === 401) {
+        const err = new Error('프로필 조회 실패 (401)');
+        err.code = 'auth';
+        err.status = 401;
+        throw err;
+    }
     if (!res.ok) throw new Error('프로필 조회 실패');
     const athlete = await res.json();
     saveStravaAthlete(athlete);
@@ -4727,6 +4758,12 @@ async function fetchStravaAthlete(accessToken) {
 }
 
 async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) {
+    if (!hasActivityReadScope() && localStorage.getItem(STRAVA_SCOPE_KEY)) {
+        const err = new Error('activity:read 권한 없음');
+        err.code = 'scope';
+        throw err;
+    }
+
     const after = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
     const url = `${STRAVA_API}/athlete/activities?per_page=100&after=${after}`;
     console.log('[Strava] activities URL', url);
@@ -4738,9 +4775,20 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
     if (res.status === 401 && !retried) {
         console.warn('[Strava] 401 on activities → refresh and retry once');
         const tokens = getStravaTokens();
-        if (!tokens?.refresh_token) throw new Error('활동 조회 실패 (401)');
+        if (!tokens?.refresh_token) {
+            const err = new Error('활동 조회 실패 (401)');
+            err.code = 'reauth';
+            throw err;
+        }
         const newToken = await refreshStravaToken(tokens.refresh_token);
         return fetchStravaSwimActivities(newToken, { retried: true });
+    }
+
+    if (res.status === 401 || res.status === 403) {
+        const err = new Error(`활동 조회 실패 (${res.status})`);
+        err.code = res.status === 403 || !hasActivityReadScope() ? 'scope' : 'reauth';
+        err.status = res.status;
+        throw err;
     }
 
     if (!res.ok) throw new Error(`활동 조회 실패 (${res.status})`);
@@ -4759,6 +4807,31 @@ async function fetchStravaSwimActivities(accessToken, { retried = false } = {}) 
     return swims;
 }
 
+function hideStravaError() {
+    const errorEl = document.getElementById('strava-error');
+    if (errorEl) errorEl.style.display = 'none';
+}
+
+function showStravaError(kind) {
+    stravaErrorState = kind === 'scope' ? 'scope' : 'reauth';
+    const errorEl = document.getElementById('strava-error');
+    const msgEl = document.getElementById('strava-error-msg');
+    const emptyEl = document.getElementById('strava-empty');
+    const listEl = document.getElementById('strava-activity-list');
+    const listTitle = document.getElementById('strava-list-title');
+    const loadingEl = document.getElementById('strava-loading');
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'none';
+    if (listTitle) listTitle.style.display = 'none';
+    if (listEl) listEl.innerHTML = '';
+    if (msgEl) {
+        msgEl.textContent = stravaErrorState === 'scope'
+            ? '권한 재설정이 필요합니다'
+            : 'Strava 재연동이 필요합니다';
+    }
+    if (errorEl) errorEl.style.display = 'block';
+}
+
 function renderStravaUI() {
     const tokens = getStravaTokens();
     const panel = document.getElementById('tab-panel-2');
@@ -4769,6 +4842,7 @@ function renderStravaUI() {
     const listEl = document.getElementById('strava-activity-list');
     const emptyEl = document.getElementById('strava-empty');
     const loadingEl = document.getElementById('strava-loading');
+    const errorEl = document.getElementById('strava-error');
 
     if (!tokens) {
         panel.classList.add('strava-auth-mode');
@@ -4779,6 +4853,8 @@ function renderStravaUI() {
         listEl.innerHTML = '';
         emptyEl.style.display = 'none';
         loadingEl.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        stravaErrorState = null;
         return;
     }
 
@@ -4800,6 +4876,13 @@ function renderStravaUI() {
     }
 
     loadingEl.style.display = 'none';
+
+    if (stravaErrorState) {
+        showStravaError(stravaErrorState);
+        return;
+    }
+
+    hideStravaError();
     if (!stravaActivities.length) {
         listTitle.style.display = 'none';
         listEl.innerHTML = '';
@@ -4847,23 +4930,54 @@ async function loadStravaActivities() {
     const loadingEl = document.getElementById('strava-loading');
     loadingEl.style.display = 'block';
     document.getElementById('strava-empty').style.display = 'none';
+    hideStravaError();
     document.getElementById('strava-activity-list').innerHTML = '';
+    stravaErrorState = null;
 
     try {
-        const accessToken = await getStravaAccessToken();
-        if (!accessToken) throw new Error('not logged in');
-        await fetchStravaAthlete(accessToken);
-        stravaActivities = await fetchStravaSwimActivities(accessToken);
+        let accessToken = await getStravaAccessToken();
+        if (!accessToken) {
+            const err = new Error('not logged in');
+            err.code = 'reauth';
+            throw err;
+        }
+
+        try {
+            await fetchStravaAthlete(accessToken);
+            stravaActivities = await fetchStravaSwimActivities(accessToken);
+        } catch (inner) {
+            // 토큰 만료/401이면 자동 갱신 후 1회 재시도
+            if (inner.code === 'auth' || inner.status === 401) {
+                console.warn('[Strava] auth error → auto refresh then retry');
+                const tokens = getStravaTokens();
+                if (!tokens?.refresh_token) throw Object.assign(new Error('재연동 필요'), { code: 'reauth' });
+                accessToken = await refreshStravaToken(tokens.refresh_token);
+                await fetchStravaAthlete(accessToken);
+                stravaActivities = await fetchStravaSwimActivities(accessToken, { retried: true });
+            } else {
+                throw inner;
+            }
+        }
+
+        stravaErrorState = null;
         renderStravaUI();
+        updateProfileStravaStatus();
     } catch (err) {
         console.error('[Strava] loadStravaActivities failed', err);
         loadingEl.style.display = 'none';
-        if (String(err.message).includes('not logged in')) {
+        if (String(err.message).includes('not logged in') && !getStravaTokens()) {
             renderStravaUI();
-        } else {
-            showToast('Strava 데이터 로드 실패');
-            renderStravaUI();
+            return;
         }
+        const kind = err.code === 'scope' ? 'scope' : 'reauth';
+        showStravaError(kind);
+        if (getStravaTokens()) {
+            const userBar = document.getElementById('strava-user-bar');
+            const authSection = document.getElementById('strava-auth-section');
+            if (userBar) userBar.style.display = 'flex';
+            if (authSection) authSection.style.display = 'none';
+        }
+        updateProfileStravaStatus();
     }
 }
 
