@@ -1,4 +1,5 @@
 const STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token';
+const REDIRECT_URI = 'https://bada-go.vercel.app/api/strava/callback';
 
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
@@ -6,6 +7,13 @@ module.exports = async (req, res) => {
     }
 
     const { code, redirect_uri: redirectUri } = req.body || {};
+    console.log('[Strava token] exchange request', {
+        has_code: !!code,
+        code_prefix: code ? String(code).slice(0, 8) : null,
+        body_redirect_uri: redirectUri || null,
+        fixed_redirect_uri: REDIRECT_URI,
+    });
+
     if (!code) {
         return res.status(400).json({ error: 'Missing authorization code' });
     }
@@ -16,13 +24,14 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: 'STRAVA_CLIENT_SECRET not configured' });
     }
 
+    // OAuth authorize 때 쓴 redirect_uri와 반드시 동일해야 함
     const tokenBody = {
         client_id: clientId,
         client_secret: clientSecret,
         code,
         grant_type: 'authorization_code',
+        redirect_uri: REDIRECT_URI,
     };
-    if (redirectUri) tokenBody.redirect_uri = redirectUri;
 
     try {
         const tokenRes = await fetch(STRAVA_TOKEN_URL, {
@@ -32,12 +41,18 @@ module.exports = async (req, res) => {
         });
 
         const data = await tokenRes.json();
+        console.log('[Strava token] exchange result', {
+            status: tokenRes.status,
+            has_access: !!data.access_token,
+            error: data.message || data.error || null,
+        });
         if (!tokenRes.ok) {
             return res.status(tokenRes.status).json(data);
         }
 
         return res.status(200).json(data);
     } catch (err) {
+        console.error('[Strava token] error', err);
         return res.status(500).json({ error: 'Token exchange failed' });
     }
 };

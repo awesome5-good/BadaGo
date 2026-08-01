@@ -4386,15 +4386,19 @@ function getStravaActivitiesUrl(accessToken, { page = 1, perPage = 30 } = {}) {
 }
 
 function buildStravaAuthUrl({ force = false } = {}) {
+    const redirectUri = 'https://bada-go.vercel.app/api/strava/callback';
     const params = new URLSearchParams({
         client_id: STRAVA_CLIENT_ID,
-        redirect_uri: STRAVA_REDIRECT_URI,
+        redirect_uri: redirectUri,
         response_type: 'code',
         approval_prompt: force ? 'force' : 'auto',
         scope: 'read,activity:read',
     });
     const url = `${STRAVA_AUTH_URL}?${params}`;
+    console.log('[Strava] OAuth start redirect_uri', redirectUri);
     console.log('[Strava] auth URL check', {
+        redirect_uri: redirectUri,
+        redirect_uri_ok: redirectUri === STRAVA_REDIRECT_URI,
         has_force: url.includes('approval_prompt=force'),
         has_scope: url.includes('activity%3Aread') || url.includes('activity:read'),
         url,
@@ -4642,6 +4646,7 @@ async function startStravaLogin({ force = false } = {}) {
         scope: 'read,activity:read',
         native: isCapacitorNative(),
     });
+    console.log('[Strava] OAuth start redirect_uri=', 'https://bada-go.vercel.app/api/strava/callback');
 
     if (isCapacitorNative()) {
         await setupStravaOAuthListeners();
@@ -4675,10 +4680,12 @@ async function exchangeStravaCode(code, scopeFromCallback = null) {
         try { localStorage.setItem(STRAVA_SCOPE_KEY, scopeFromCallback); } catch (_) { /* ignore */ }
         console.log('[Strava] oauth callback scope param', scopeFromCallback);
     }
+    const redirectUri = 'https://bada-go.vercel.app/api/strava/callback';
+    console.log('[Strava] token exchange redirect_uri', redirectUri);
     const res = await fetch(`${getStravaApiBase()}/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, redirect_uri: STRAVA_REDIRECT_URI }),
+        body: JSON.stringify({ code, redirect_uri: redirectUri }),
     });
     const data = await res.json();
     console.log('[Strava] token exchange response scope', data.scope);
