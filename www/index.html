@@ -4387,21 +4387,23 @@ function getStravaActivitiesUrl(accessToken, { page = 1, perPage = 30 } = {}) {
 
 function buildStravaAuthUrl({ force = false } = {}) {
     const redirectUri = 'https://bada-go.vercel.app/api/strava/callback';
-    const params = new URLSearchParams({
-        client_id: STRAVA_CLIENT_ID,
+    const approval = force ? 'force' : 'auto';
+    // scope 쉼표는 %2C로 인코딩하지 않음 (Strava 인식 이슈 방지)
+    const url =
+        `${STRAVA_AUTH_URL}`
+        + `?client_id=${encodeURIComponent(STRAVA_CLIENT_ID)}`
+        + `&redirect_uri=${encodeURIComponent(redirectUri)}`
+        + `&response_type=code`
+        + `&approval_prompt=${approval}`
+        + `&scope=read,activity:read`;
+
+    console.log('[Strava] OAuth full URL:', url);
+    console.log('[Strava] scope check', {
+        expected: 'read,activity:read',
+        has_raw_scope: url.includes('&scope=read,activity:read'),
+        has_encoded_comma: url.includes('%2C'),
+        has_encoded_colon: url.includes('activity%3Aread'),
         redirect_uri: redirectUri,
-        response_type: 'code',
-        approval_prompt: force ? 'force' : 'auto',
-        scope: 'read,activity:read',
-    });
-    const url = `${STRAVA_AUTH_URL}?${params}`;
-    console.log('[Strava] OAuth start redirect_uri', redirectUri);
-    console.log('[Strava] auth URL check', {
-        redirect_uri: redirectUri,
-        redirect_uri_ok: redirectUri === STRAVA_REDIRECT_URI,
-        has_force: url.includes('approval_prompt=force'),
-        has_scope: url.includes('activity%3Aread') || url.includes('activity:read'),
-        url,
     });
     return url;
 }
