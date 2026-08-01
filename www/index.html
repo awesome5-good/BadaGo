@@ -4365,7 +4365,7 @@ function buildStravaAuthUrl() {
         redirect_uri: STRAVA_REDIRECT_URI,
         response_type: 'code',
         approval_prompt: 'auto',
-        scope: 'activity:read_all,profile:read_all',
+        scope: 'read,activity:read',
     });
     return `${STRAVA_AUTH_URL}?${params}`;
 }
